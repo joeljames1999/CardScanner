@@ -1,0 +1,158 @@
+import Foundation
+
+// MARK: - Collection Store
+
+final class CollectionStore {
+
+    static let shared = CollectionStore()
+
+    private let fileURL: URL = {
+        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        return docs.appendingPathComponent("collection.json")
+    }()
+
+    private(set) var entries: [CollectionEntry] = []
+
+    // Notifications
+    static let didChangeNotification = Notification.Name("CollectionStoreDidChange")
+
+    // MARK: - Sorting
+
+    enum SortKey {
+        case name, set, price, date
+    }
+
+    private init() { load() }
+
+    // MARK: - Query
+
+    var totalCards: Int {
+        entries.reduce(0) { $0 + $1.count }
+    }
+
+    var estimatedValue: Double {
+        entries.reduce(0) { $0 + ($1.priceValue * Double($1.count)) }
+    }
+
+    func entry(for cardID: String) -> CollectionEntry? {
+        entries.first { $0.cardID == cardID }
+    }
+
+    // MARK: - Sorting
+
+    func sort(by key: SortKey) {
+        switch key {
+        case .name:
+            entries.sort { $0.name < $1.name }
+
+        case .set:
+            entries.sort { $0.setName < $1.setName }
+
+        case .price:
+            entries.sort { $0.priceValue > $1.priceValue }
+
+        case .date:
+            entries.sort { $0.dateAdded > $1.dateAdded }
+        }
+
+        save()
+        notifyChange()
+    }
+
+    // MARK: - Mutations
+
+    func addSessionEntries(_ sessionEntries: [SessionEntry], condition: CardCondition = .nearMint, isFoil: Bool = false) {
+        for session in sessionEntries {
+            let card = session.card
+
+            if let idx = entries.firstIndex(where: { $0.cardID == card.id }) {
+                entries[idx].count += session.count
+            } else {
+                let entry = CollectionEntry(from: card, count: session.count, condition: condition, isFoil: isFoil)
+                entries.insert(entry, at: 0)
+            }
+        }
+        save()
+        notifyChange()
+    }
+
+    func updateCount(id: UUID, count: Int) {
+        guard let idx = entries.firstIndex(where: { $0.id == id }) else { return }
+        if count <= 0 {
+            entries.remove(at: idx)
+        } else {
+            entries[idx].count = count
+        }
+        save()
+        notifyChange()
+    }
+
+    func updateCondition(id: UUID, condition: CardCondition) {
+        guard let idx = entries.firstIndex(where: { $0.id == id }) else { return }
+        entries[idx].condition = condition
+        save()
+        notifyChange()
+    }
+
+    func remove(id: UUID) {
+        entries.removeAll { $0.id == id }
+        save()
+        notifyChange()
+    }
+
+    func removeAll() {
+        entries = []
+        save()
+        notifyChange()
+    }
+
+    // MARK: - Import / Merge
+
+    func merge(_ imported: [CollectionEntry]) {
+        for entry in imported {
+            if let idx = entries.firstIndex(where: {
+                $0.name.lowercased() == entry.name.lowercased() &&
+                $0.setCode.lowercased() == entry.setCode.lowercased()
+            }) {
+                entries[idx].count += entry.count
+            } else {
+                entries.append(entry)
+            }
+        }
+        save()
+        notifyChange()
+    }
+
+    // MARK: - Persistence
+
+    private func save() {
+        do {
+            let data = try JSONEncoder().encode(entries)
+            try data.write(to: fileURL, options: .atomicWrite)
+        } catch {
+            print("[CollectionStore] Save error: \(error)")
+        }
+    }
+
+    private func load() {
+        guard FileManager.default.fileExists(atPath: fileURL.path) else { return }
+        do {
+            let data = try Data(contentsOf: fileURL)
+            entries = try JSONDecoder().decode([CollectionEntry].self, from: data)
+        } catch {
+            print("[CollectionStore] Load error: \(error)")
+        }
+    }
+
+    private func notifyChange() {
+        NotificationCenter.default.post(name: CollectionStore.didChangeNotification, object: nil)
+    }
+}
+
+// MARK: - Helpers
+
+extension CollectionEntry {
+    var priceValue: Double {
+        usdPrice.flatMap { Double($0) } ?? 0
+    }
+}

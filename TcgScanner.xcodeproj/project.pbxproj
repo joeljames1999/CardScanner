@@ -6,27 +6,61 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		986A78782F96E9F300EAEBEC /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986A78512F96E98800EAEBEC /* AppDelegate.swift */; };
+		986A78792F96E9F700EAEBEC /* MainTabBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986A78522F96E98800EAEBEC /* MainTabBarController.swift */; };
+		986A787A2F96E9FA00EAEBEC /* MTGCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986A78542F96E98800EAEBEC /* MTGCard.swift */; };
+		986A787B2F96E9FD00EAEBEC /* CardDetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986A78562F96E98800EAEBEC /* CardDetailViewController.swift */; };
+		986A787C2F96EA0300EAEBEC /* CollectionViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986A78582F96E98800EAEBEC /* CollectionViewController.swift */; };
+		986A787D2F96EA1600EAEBEC /* HomeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986A785A2F96E98800EAEBEC /* HomeViewController.swift */; };
+		986A787E2F96EA1D00EAEBEC /* MenuViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986A785C2F96E98800EAEBEC /* MenuViewController.swift */; };
+		986A787F2F96EA1D00EAEBEC /* ScannerViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986A785E2F96E98800EAEBEC /* ScannerViewController.swift */; };
+		986A78802F96EA1D00EAEBEC /* SearchViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986A78602F96E98800EAEBEC /* SearchViewController.swift */; };
+		986A78812F96EA1D00EAEBEC /* SessionViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986A78622F96E98800EAEBEC /* SessionViewController.swift */; };
+		986A78822F96EA1D00EAEBEC /* CollectionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986A78652F96E98800EAEBEC /* CollectionStore.swift */; };
+		986A78832F96EA1D00EAEBEC /* CSVService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986A78662F96E98800EAEBEC /* CSVService.swift */; };
+		986A78842F96EA1D00EAEBEC /* SessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986A78672F96E98800EAEBEC /* SessionStore.swift */; };
+		986A78AD2F96EBD900EAEBEC /* ScannerViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986A78AC2F96EBD900EAEBEC /* ScannerViewModel.swift */; };
+		986A78AF2F96EBEA00EAEBEC /* ScannerOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986A78AE2F96EBEA00EAEBEC /* ScannerOverlayView.swift */; };
+		986A78B12F96EBFD00EAEBEC /* CameraService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986A78B02F96EBFD00EAEBEC /* CameraService.swift */; };
+		986A78B32F96EC1400EAEBEC /* OCRService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986A78B22F96EC1400EAEBEC /* OCRService.swift */; };
+		986A78B52F96EC2300EAEBEC /* ScryfallService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986A78B42F96EC2300EAEBEC /* ScryfallService.swift */; };
+		9875E0DA2F96FB0F002929D0 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9875E0D92F96FB0F002929D0 /* SceneDelegate.swift */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
-		984A434F2F7F26D600640EE8 /* TcgScanner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TcgScanner.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		986A78512F96E98800EAEBEC /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		986A78522F96E98800EAEBEC /* MainTabBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabBarController.swift; sourceTree = "<group>"; };
+		986A78542F96E98800EAEBEC /* MTGCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MTGCard.swift; sourceTree = "<group>"; };
+		986A78562F96E98800EAEBEC /* CardDetailViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardDetailViewController.swift; sourceTree = "<group>"; };
+		986A78582F96E98800EAEBEC /* CollectionViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionViewController.swift; sourceTree = "<group>"; };
+		986A785A2F96E98800EAEBEC /* HomeViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViewController.swift; sourceTree = "<group>"; };
+		986A785C2F96E98800EAEBEC /* MenuViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuViewController.swift; sourceTree = "<group>"; };
+		986A785E2F96E98800EAEBEC /* ScannerViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScannerViewController.swift; sourceTree = "<group>"; };
+		986A78602F96E98800EAEBEC /* SearchViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchViewController.swift; sourceTree = "<group>"; };
+		986A78622F96E98800EAEBEC /* SessionViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionViewController.swift; sourceTree = "<group>"; };
+		986A78652F96E98800EAEBEC /* CollectionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionStore.swift; sourceTree = "<group>"; };
+		986A78662F96E98800EAEBEC /* CSVService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CSVService.swift; sourceTree = "<group>"; };
+		986A78672F96E98800EAEBEC /* SessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStore.swift; sourceTree = "<group>"; };
+		986A78AC2F96EBD900EAEBEC /* ScannerViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScannerViewModel.swift; sourceTree = "<group>"; };
+		986A78AE2F96EBEA00EAEBEC /* ScannerOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScannerOverlayView.swift; sourceTree = "<group>"; };
+		986A78B02F96EBFD00EAEBEC /* CameraService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraService.swift; sourceTree = "<group>"; };
+		986A78B22F96EC1400EAEBEC /* OCRService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OCRService.swift; sourceTree = "<group>"; };
+		986A78B42F96EC2300EAEBEC /* ScryfallService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScryfallService.swift; sourceTree = "<group>"; };
+		986A78BA2F96EC5F00EAEBEC /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
+		9875E0D92F96FB0F002929D0 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
+		9875E0DB2F96FC62002929D0 /* TcgScanner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TcgScanner.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		984A43612F7F26D800640EE8 /* Exceptions for "TcgScanner" folder in "TcgScanner" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = 984A434E2F7F26D600640EE8 /* TcgScanner */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		984A43512F7F26D600640EE8 /* TcgScanner */ = {
+		986A78B82F96EC4F00EAEBEC /* Supporting */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				984A43612F7F26D800640EE8 /* Exceptions for "TcgScanner" folder in "TcgScanner" target */,
-			);
-			path = TcgScanner;
+			path = Supporting;
+			sourceTree = "<group>";
+		};
+		9875E0D82F96FAB0002929D0 /* Resources */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Resources;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -45,17 +79,126 @@
 		984A43462F7F26D600640EE8 = {
 			isa = PBXGroup;
 			children = (
-				984A43512F7F26D600640EE8 /* TcgScanner */,
-				984A43502F7F26D600640EE8 /* Products */,
+				986A78692F96E98800EAEBEC /* MTGScanner */,
+				986A78B82F96EC4F00EAEBEC /* Supporting */,
+				9875E0D82F96FAB0002929D0 /* Resources */,
+				986A78BB2F96EC5F00EAEBEC /* LaunchScreen.storyboard */,
+				9875E0DB2F96FC62002929D0 /* TcgScanner.app */,
 			);
 			sourceTree = "<group>";
 		};
-		984A43502F7F26D600640EE8 /* Products */ = {
+		986A78532F96E98800EAEBEC /* App */ = {
 			isa = PBXGroup;
 			children = (
-				984A434F2F7F26D600640EE8 /* TcgScanner.app */,
+				986A78512F96E98800EAEBEC /* AppDelegate.swift */,
+				9875E0D92F96FB0F002929D0 /* SceneDelegate.swift */,
+				986A78522F96E98800EAEBEC /* MainTabBarController.swift */,
 			);
-			name = Products;
+			path = App;
+			sourceTree = "<group>";
+		};
+		986A78552F96E98800EAEBEC /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				986A78542F96E98800EAEBEC /* MTGCard.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		986A78572F96E98800EAEBEC /* CardDetail */ = {
+			isa = PBXGroup;
+			children = (
+				986A78562F96E98800EAEBEC /* CardDetailViewController.swift */,
+			);
+			path = CardDetail;
+			sourceTree = "<group>";
+		};
+		986A78592F96E98800EAEBEC /* Collection */ = {
+			isa = PBXGroup;
+			children = (
+				986A78582F96E98800EAEBEC /* CollectionViewController.swift */,
+			);
+			path = Collection;
+			sourceTree = "<group>";
+		};
+		986A785B2F96E98800EAEBEC /* Home */ = {
+			isa = PBXGroup;
+			children = (
+				986A785A2F96E98800EAEBEC /* HomeViewController.swift */,
+			);
+			path = Home;
+			sourceTree = "<group>";
+		};
+		986A785D2F96E98800EAEBEC /* Menu */ = {
+			isa = PBXGroup;
+			children = (
+				986A785C2F96E98800EAEBEC /* MenuViewController.swift */,
+			);
+			path = Menu;
+			sourceTree = "<group>";
+		};
+		986A785F2F96E98800EAEBEC /* Scanner */ = {
+			isa = PBXGroup;
+			children = (
+				986A785E2F96E98800EAEBEC /* ScannerViewController.swift */,
+				986A78AC2F96EBD900EAEBEC /* ScannerViewModel.swift */,
+				986A78AE2F96EBEA00EAEBEC /* ScannerOverlayView.swift */,
+			);
+			path = Scanner;
+			sourceTree = "<group>";
+		};
+		986A78612F96E98800EAEBEC /* Search */ = {
+			isa = PBXGroup;
+			children = (
+				986A78602F96E98800EAEBEC /* SearchViewController.swift */,
+			);
+			path = Search;
+			sourceTree = "<group>";
+		};
+		986A78632F96E98800EAEBEC /* Session */ = {
+			isa = PBXGroup;
+			children = (
+				986A78622F96E98800EAEBEC /* SessionViewController.swift */,
+			);
+			path = Session;
+			sourceTree = "<group>";
+		};
+		986A78642F96E98800EAEBEC /* Modules */ = {
+			isa = PBXGroup;
+			children = (
+				986A78572F96E98800EAEBEC /* CardDetail */,
+				986A78592F96E98800EAEBEC /* Collection */,
+				986A785B2F96E98800EAEBEC /* Home */,
+				986A785D2F96E98800EAEBEC /* Menu */,
+				986A785F2F96E98800EAEBEC /* Scanner */,
+				986A78612F96E98800EAEBEC /* Search */,
+				986A78632F96E98800EAEBEC /* Session */,
+			);
+			path = Modules;
+			sourceTree = "<group>";
+		};
+		986A78682F96E98800EAEBEC /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				986A78652F96E98800EAEBEC /* CollectionStore.swift */,
+				986A78B02F96EBFD00EAEBEC /* CameraService.swift */,
+				986A78B22F96EC1400EAEBEC /* OCRService.swift */,
+				986A78B42F96EC2300EAEBEC /* ScryfallService.swift */,
+				986A78662F96E98800EAEBEC /* CSVService.swift */,
+				986A78672F96E98800EAEBEC /* SessionStore.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		986A78692F96E98800EAEBEC /* MTGScanner */ = {
+			isa = PBXGroup;
+			children = (
+				986A78532F96E98800EAEBEC /* App */,
+				986A78552F96E98800EAEBEC /* Models */,
+				986A78642F96E98800EAEBEC /* Modules */,
+				986A78682F96E98800EAEBEC /* Services */,
+			);
+			path = MTGScanner;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -73,14 +216,11 @@
 			);
 			dependencies = (
 			);
-			fileSystemSynchronizedGroups = (
-				984A43512F7F26D600640EE8 /* TcgScanner */,
-			);
 			name = TcgScanner;
 			packageProductDependencies = (
 			);
 			productName = TcgScanner;
-			productReference = 984A434F2F7F26D600640EE8 /* TcgScanner.app */;
+			productReference = 9875E0DB2F96FC62002929D0 /* TcgScanner.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -108,7 +248,7 @@
 			mainGroup = 984A43462F7F26D600640EE8;
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
-			productRefGroup = 984A43502F7F26D600640EE8 /* Products */;
+			productRefGroup = 984A43462F7F26D600640EE8;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -132,10 +272,40 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				986A787E2F96EA1D00EAEBEC /* MenuViewController.swift in Sources */,
+				986A787F2F96EA1D00EAEBEC /* ScannerViewController.swift in Sources */,
+				986A78802F96EA1D00EAEBEC /* SearchViewController.swift in Sources */,
+				986A78B32F96EC1400EAEBEC /* OCRService.swift in Sources */,
+				986A78812F96EA1D00EAEBEC /* SessionViewController.swift in Sources */,
+				986A78B52F96EC2300EAEBEC /* ScryfallService.swift in Sources */,
+				986A78822F96EA1D00EAEBEC /* CollectionStore.swift in Sources */,
+				986A78832F96EA1D00EAEBEC /* CSVService.swift in Sources */,
+				986A78842F96EA1D00EAEBEC /* SessionStore.swift in Sources */,
+				986A78AD2F96EBD900EAEBEC /* ScannerViewModel.swift in Sources */,
+				986A78B12F96EBFD00EAEBEC /* CameraService.swift in Sources */,
+				986A787D2F96EA1600EAEBEC /* HomeViewController.swift in Sources */,
+				986A787C2F96EA0300EAEBEC /* CollectionViewController.swift in Sources */,
+				986A78AF2F96EBEA00EAEBEC /* ScannerOverlayView.swift in Sources */,
+				986A787B2F96E9FD00EAEBEC /* CardDetailViewController.swift in Sources */,
+				986A787A2F96E9FA00EAEBEC /* MTGCard.swift in Sources */,
+				9875E0DA2F96FB0F002929D0 /* SceneDelegate.swift in Sources */,
+				986A78792F96E9F700EAEBEC /* MainTabBarController.swift in Sources */,
+				986A78782F96E9F300EAEBEC /* AppDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXVariantGroup section */
+		986A78BB2F96EC5F00EAEBEC /* LaunchScreen.storyboard */ = {
+			isa = PBXVariantGroup;
+			children = (
+				986A78BA2F96EC5F00EAEBEC /* LaunchScreen.storyboard */,
+			);
+			name = LaunchScreen.storyboard;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
 		984A43632F7F26D800640EE8 /* Debug */ = {
@@ -145,12 +315,12 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = YK52SQ38S6;
+				DEVELOPMENT_TEAM = 4A9NA3SLD6;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = TcgScanner/Info.plist;
+				INFOPLIST_FILE = Resources/Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
-				INFOPLIST_KEY_UIMainStoryboardFile = Main;
+				INFOPLIST_KEY_UIStatusBarStyle = "";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -173,12 +343,12 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = YK52SQ38S6;
+				DEVELOPMENT_TEAM = 4A9NA3SLD6;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = TcgScanner/Info.plist;
+				INFOPLIST_FILE = Resources/Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
-				INFOPLIST_KEY_UIMainStoryboardFile = Main;
+				INFOPLIST_KEY_UIStatusBarStyle = "";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
