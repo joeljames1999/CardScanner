@@ -1,201 +1,173 @@
 import UIKit
-import Combine
-
-// MARK: - ScannerViewController
+import AVFoundation
+import Vision
+import CoreImage
 
 final class ScannerViewController: UIViewController {
 
-    // MARK: Services & ViewModel
+    private let session = AVCaptureSession()
+    private let videoOutput = AVCaptureVideoDataOutput()
+    private let previewLayer = AVCaptureVideoPreviewLayer()
 
-    private let cameraService = CameraService()
-    private let ocrService    = OCRService()
-    private let viewModel     = ScannerViewModel()
-    private var cancellables  = Set<AnyCancellable>()
+    private let viewModel = ScannerViewModel()
 
-    // MARK: UI
+    private let imageView = UIImageView() // debug preview
+    private let ciContext = CIContext()
 
-    private lazy var cameraContainerView: UIView = {
-        let v = UIView()
-        v.backgroundColor = .black
-        v.translatesAutoresizingMaskIntoConstraints = false
-        return v
-    }()
-
-    private lazy var overlayView: ScannerOverlayView = {
-        let v = ScannerOverlayView()
-        v.translatesAutoresizingMaskIntoConstraints = false
-        return v
-    }()
-
-    private lazy var hintLabel: UILabel = {
-        let lbl = UILabel()
-        lbl.translatesAutoresizingMaskIntoConstraints = false
-        lbl.text          = "Point camera at a Magic card"
-        lbl.textColor     = .white
-        lbl.textAlignment = .center
-        lbl.font          = .systemFont(ofSize: 13, weight: .medium)
-        lbl.backgroundColor = UIColor.black.withAlphaComponent(0.45)
-        lbl.layer.cornerRadius = 10
-        lbl.clipsToBounds = true
-        return lbl
-    }()
-
-    // MARK: Lifecycle
+    private var isProcessing = false
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = .black
-        title = "TCG Scanner"
-        navigationItem.rightBarButtonItem = UIBarButtonItem(
-            image: UIImage(systemName: "rectangle.stack"),
-            style: .plain,
-            target: self,
-            action: #selector(openCollection)
-        )
-        setupLayout()
+        setupUI()
         setupCamera()
-        setupOCRCallbacks()
-        bindViewModel()
-    }
-
-    override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
-        cameraService.start()
-        viewModel.resetAfterPresentation()
-        ocrService.resetCooldown()
-        overlayView.resetToScanning()
-    }
-
-    override func viewDidDisappear(_ animated: Bool) {
-        super.viewDidDisappear(animated)
-        cameraService.stop()
     }
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        cameraService.previewLayer?.frame = cameraContainerView.bounds
+        previewLayer.frame = view.bounds
+        imageView.frame = CGRect(x: 20, y: 50, width: 120, height: 168)
     }
 
-    // MARK: Layout
+    private func setupUI() {
+        view.backgroundColor = .black
 
-    private func setupLayout() {
-        view.addSubview(cameraContainerView)
-        view.addSubview(overlayView)
-        view.addSubview(hintLabel)
+        previewLayer.session = session
+        previewLayer.videoGravity = .resizeAspectFill
+        view.layer.addSublayer(previewLayer)
 
-        NSLayoutConstraint.activate([
-            cameraContainerView.topAnchor.constraint(equalTo: view.topAnchor),
-            cameraContainerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            cameraContainerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            cameraContainerView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-
-            overlayView.topAnchor.constraint(equalTo: view.topAnchor),
-            overlayView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            overlayView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            overlayView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-
-            hintLabel.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
-            hintLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            hintLabel.widthAnchor.constraint(lessThanOrEqualTo: view.widthAnchor, constant: -40),
-            hintLabel.heightAnchor.constraint(equalToConstant: 36),
-        ])
-
-        // Add padding to hintLabel
-        hintLabel.setContentHuggingPriority(.required, for: .horizontal)
+        imageView.contentMode = .scaleAspectFit
+        imageView.backgroundColor = UIColor.black.withAlphaComponent(0.7)
+        imageView.layer.cornerRadius = 8
+        imageView.clipsToBounds = true
+        view.addSubview(imageView)
     }
-
-    // MARK: Camera
 
     private func setupCamera() {
-        CameraService.requestPermission { [weak self] granted in
-            guard let self else { return }
+        session.sessionPreset = .high
+
+        guard let device = AVCaptureDevice.default(for: .video),
+              let input = try? AVCaptureDeviceInput(device: device) else {
+            return
+        }
+
+        if session.canAddInput(input) {
+            session.addInput(input)
+        }
+
+        videoOutput.setSampleBufferDelegate(self, queue: DispatchQueue(label: "camera.frame.processing"))
+        videoOutput.alwaysDiscardsLateVideoFrames = true
+
+        if session.canAddOutput(videoOutput) {
+            session.addOutput(videoOutput)
+        }
+
+        if let connection = videoOutput.connection(with: .video) {
+            connection.videoOrientation = .portrait
+        }
+
+        session.startRunning()
+    }
+}
+
+// MARK: - AVCaptureVideoDataOutputSampleBufferDelegate
+
+extension ScannerViewController: AVCaptureVideoDataOutputSampleBufferDelegate {
+
+    func captureOutput(_ output: AVCaptureOutput,
+                       didOutput sampleBuffer: CMSampleBuffer,
+                       from connection: AVCaptureConnection) {
+
+        guard !isProcessing else { return }
+        isProcessing = true
+
+        guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
+            isProcessing = false
+            return
+        }
+
+        let request = VNDetectRectanglesRequest { [weak self] request, error in
+            guard let self = self else { return }
+            defer { self.isProcessing = false }
+
+            guard error == nil,
+                  let observation = request.results?.first as? VNRectangleObservation else {
+                return
+            }
+
+            let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+            let corrected = self.perspectiveCorrect(ciImage: ciImage, rect: observation)
+
+            guard let cgImage = self.ciContext.createCGImage(corrected, from: corrected.extent) else {
+                return
+            }
+
+            let uiImage = UIImage(cgImage: cgImage, scale: 1.0, orientation: .down)
+            let fixedImage = self.rotate180(uiImage)
+            let resized = self.resizeImage(fixedImage)
 
             DispatchQueue.main.async {
-                if granted {
-                    self.cameraService.configure(in: self.cameraContainerView)
-
-                    self.cameraService.onFrameCaptured = { [weak self] buffer in
-                        self?.ocrService.processFrame(buffer)
-                    }
-
-                    self.cameraService.start()
-                } else {
-                    self.hintLabel.text = "Camera access required"
-                }
+                self.imageView.image = resized
             }
+
+            self.viewModel.processFrame(resized)
         }
+
+        request.minimumConfidence = 0.7
+        request.maximumObservations = 1
+        request.minimumAspectRatio = 0.6
+        request.maximumAspectRatio = 0.8
+
+        let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer,
+                                            orientation: .right,
+                                            options: [:])
+
+        try? handler.perform([request])
+    }
+}
+
+// MARK: - Image Helpers
+
+private extension ScannerViewController {
+
+    func perspectiveCorrect(ciImage: CIImage, rect: VNRectangleObservation) -> CIImage {
+        let size = ciImage.extent.size
+
+        let topLeft = CGPoint(x: rect.topLeft.x * size.width,
+                              y: (1 - rect.topLeft.y) * size.height)
+
+        let topRight = CGPoint(x: rect.topRight.x * size.width,
+                               y: (1 - rect.topRight.y) * size.height)
+
+        let bottomLeft = CGPoint(x: rect.bottomLeft.x * size.width,
+                                 y: (1 - rect.bottomLeft.y) * size.height)
+
+        let bottomRight = CGPoint(x: rect.bottomRight.x * size.width,
+                                  y: (1 - rect.bottomRight.y) * size.height)
+
+        return ciImage.applyingFilter("CIPerspectiveCorrection", parameters: [
+            "inputTopLeft": CIVector(cgPoint: bottomLeft),
+            "inputTopRight": CIVector(cgPoint: bottomRight),
+            "inputBottomLeft": CIVector(cgPoint: topLeft),
+            "inputBottomRight": CIVector(cgPoint: topRight)
+        ])
     }
 
-    // MARK: OCR Callbacks
-
-    private func setupOCRCallbacks() {
-        // Live rectangle tracking — update overlay on every frame
-        ocrService.onRectangleDetected = { [weak self] normRect in
-            self?.overlayView.updateDetectedRect(normRect)
-        }
-
-        // Card name identified — look it up
-        ocrService.onCardDetected = { [weak self] name in
-            self?.viewModel.handleDetectedName(name)
-        }
+    func rotate180(_ image: UIImage) -> UIImage {
+        guard let cgImage = image.cgImage else { return image }
+        return UIImage(cgImage: cgImage, scale: 1.0, orientation: .down)
     }
 
-    // MARK: ViewModel Binding
+    func resizeImage(_ image: UIImage) -> UIImage {
+        let targetWidth: CGFloat = 300
+        let targetHeight: CGFloat = targetWidth / 0.7159 // MTG ratio
 
-    private func bindViewModel() {
-        viewModel.$state
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] state in self?.handleState(state) }
-            .store(in: &cancellables)
-    }
+        let targetSize = CGSize(width: targetWidth, height: targetHeight)
 
-    private func handleState(_ state: ScannerState) {
-        switch state {
-        case .idle:
-            hintLabel.text = "Point camera at a Magic card"
-            overlayView.resetToScanning()
+        UIGraphicsBeginImageContextWithOptions(targetSize, true, 1.0)
+        image.draw(in: CGRect(origin: .zero, size: targetSize))
+        let resized = UIGraphicsGetImageFromCurrentImageContext()
+        UIGraphicsEndImageContext()
 
-        case .detecting:
-            hintLabel.text = "Identifying card…"
-
-        case .found(let card):
-            overlayView.showFound(cardName: card.name)
-            hintLabel.text = card.name
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
-            presentCardDetail(card)
-
-        case .error(let msg):
-            hintLabel.text = msg
-            overlayView.resetToScanning()
-        }
-    }
-
-    // MARK: Navigation
-
-    @objc private func openCollection() {
-        let vc = CollectionViewController()
-        navigationController?.pushViewController(vc, animated: true)
-    }
-
-    private func presentCardDetail(_ card: MTGCard) {
-        // Avoid presenting twice if state fires again
-        guard presentedViewController == nil else { return }
-
-        let detailVC = CardDetailViewController(card: card)
-        let nav = UINavigationController(rootViewController: detailVC)
-
-        if let sheet = nav.sheetPresentationController {
-            sheet.detents = [.medium(), .large()]
-            sheet.prefersGrabberVisible = true
-            sheet.prefersScrollingExpandsWhenScrolledToEdge = false
-        }
-
-        detailVC.onDismiss = { [weak self] in
-            self?.viewModel.resetAfterPresentation()
-            self?.ocrService.resetCooldown()
-            self?.overlayView.resetToScanning()
-        }
-
-        present(nav, animated: true)
+        return resized ?? image
     }
 }

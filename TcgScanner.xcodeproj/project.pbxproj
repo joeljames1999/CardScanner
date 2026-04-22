@@ -26,6 +26,10 @@
 		986A78B32F96EC1400EAEBEC /* OCRService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986A78B22F96EC1400EAEBEC /* OCRService.swift */; };
 		986A78B52F96EC2300EAEBEC /* ScryfallService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986A78B42F96EC2300EAEBEC /* ScryfallService.swift */; };
 		9875E0DA2F96FB0F002929D0 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9875E0D92F96FB0F002929D0 /* SceneDelegate.swift */; };
+		9875E0DD2F96FFF6002929D0 /* ScannedCardStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9875E0DC2F96FFF6002929D0 /* ScannedCardStore.swift */; };
+		9875E0DF2F97D4B8002929D0 /* GeminiService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9875E0DE2F97D4B8002929D0 /* GeminiService.swift */; };
+		9875E0E12F97D59B002929D0 /* KeyChainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9875E0E02F97D59B002929D0 /* KeyChainService.swift */; };
+		9875E0E32F97D5FA002929D0 /* CardConfirmationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9875E0E22F97D5FA002929D0 /* CardConfirmationViewController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -50,6 +54,10 @@
 		986A78BA2F96EC5F00EAEBEC /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		9875E0D92F96FB0F002929D0 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		9875E0DB2F96FC62002929D0 /* TcgScanner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TcgScanner.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		9875E0DC2F96FFF6002929D0 /* ScannedCardStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScannedCardStore.swift; sourceTree = "<group>"; };
+		9875E0DE2F97D4B8002929D0 /* GeminiService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiService.swift; sourceTree = "<group>"; };
+		9875E0E02F97D59B002929D0 /* KeyChainService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyChainService.swift; sourceTree = "<group>"; };
+		9875E0E22F97D5FA002929D0 /* CardConfirmationViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardConfirmationViewController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -142,7 +150,9 @@
 			children = (
 				986A785E2F96E98800EAEBEC /* ScannerViewController.swift */,
 				986A78AC2F96EBD900EAEBEC /* ScannerViewModel.swift */,
+				9875E0E22F97D5FA002929D0 /* CardConfirmationViewController.swift */,
 				986A78AE2F96EBEA00EAEBEC /* ScannerOverlayView.swift */,
+				9875E0DC2F96FFF6002929D0 /* ScannedCardStore.swift */,
 			);
 			path = Scanner;
 			sourceTree = "<group>";
@@ -183,6 +193,8 @@
 				986A78652F96E98800EAEBEC /* CollectionStore.swift */,
 				986A78B02F96EBFD00EAEBEC /* CameraService.swift */,
 				986A78B22F96EC1400EAEBEC /* OCRService.swift */,
+				9875E0E02F97D59B002929D0 /* KeyChainService.swift */,
+				9875E0DE2F97D4B8002929D0 /* GeminiService.swift */,
 				986A78B42F96EC2300EAEBEC /* ScryfallService.swift */,
 				986A78662F96E98800EAEBEC /* CSVService.swift */,
 				986A78672F96E98800EAEBEC /* SessionStore.swift */,
@@ -279,6 +291,7 @@
 				986A78812F96EA1D00EAEBEC /* SessionViewController.swift in Sources */,
 				986A78B52F96EC2300EAEBEC /* ScryfallService.swift in Sources */,
 				986A78822F96EA1D00EAEBEC /* CollectionStore.swift in Sources */,
+				9875E0E12F97D59B002929D0 /* KeyChainService.swift in Sources */,
 				986A78832F96EA1D00EAEBEC /* CSVService.swift in Sources */,
 				986A78842F96EA1D00EAEBEC /* SessionStore.swift in Sources */,
 				986A78AD2F96EBD900EAEBEC /* ScannerViewModel.swift in Sources */,
@@ -286,8 +299,11 @@
 				986A787D2F96EA1600EAEBEC /* HomeViewController.swift in Sources */,
 				986A787C2F96EA0300EAEBEC /* CollectionViewController.swift in Sources */,
 				986A78AF2F96EBEA00EAEBEC /* ScannerOverlayView.swift in Sources */,
+				9875E0E32F97D5FA002929D0 /* CardConfirmationViewController.swift in Sources */,
 				986A787B2F96E9FD00EAEBEC /* CardDetailViewController.swift in Sources */,
 				986A787A2F96E9FA00EAEBEC /* MTGCard.swift in Sources */,
+				9875E0DF2F97D4B8002929D0 /* GeminiService.swift in Sources */,
+				9875E0DD2F96FFF6002929D0 /* ScannedCardStore.swift in Sources */,
 				9875E0DA2F96FB0F002929D0 /* SceneDelegate.swift in Sources */,
 				986A78792F96E9F700EAEBEC /* MainTabBarController.swift in Sources */,
 				986A78782F96E9F300EAEBEC /* AppDelegate.swift in Sources */,
