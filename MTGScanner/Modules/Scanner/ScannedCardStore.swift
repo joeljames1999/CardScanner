@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import Foundation
 import Combine
 
@@ -42,3 +43,13 @@ final class ScannedCardStore: ObservableObject {
         return cards
     }
 }
+=======
+//
+//  ScannedCardStore.swift
+//  TcgScanner
+//
+//  Created by Joel James on 21/04/2026.
+//
+
+import Foundation
+>>>>>>> 7d67abed8899bd6b484c1167ed5531a4fe6a2be0
