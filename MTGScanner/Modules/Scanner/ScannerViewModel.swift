@@ -1,68 +1,139 @@
+import Foundation
+import Combine
 import UIKit
-import Vision
 
-final class ScannerViewModel {
+// MARK: - Scanner State
 
-    private var isProcessing = false
+enum ScannerState: Equatable {
+    case idle
+    case scanning
+    case found(MTGCard)
+    case selectPrinting([MTGCard])
+    case error(String)
 
-    func processFrame(_ image: UIImage) {
-        guard !isProcessing else { return }
-        isProcessing = true
-
-        recognizeText(from: image) { [weak self] text in
-            defer { self?.isProcessing = false }
-
-            guard let text = text, !text.isEmpty else {
-                print("❌ No text found")
-                return
-            }
-
-            print("🔍 OCR TEXT:", text)
-
-            if let cardName = self?.extractCardName(from: text) {
-                print("✅ Detected card:", cardName)
-                // TODO: Call Scryfall or your DB here
-            } else {
-                print("❌ Could not identify card")
-            }
+    static func == (lhs: ScannerState, rhs: ScannerState) -> Bool {
+        switch (lhs, rhs) {
+        case (.idle, .idle), (.scanning, .scanning): return true
+        case (.found(let a), .found(let b)):         return a.id == b.id
+        case (.selectPrinting(let a), .selectPrinting(let b)): return a.map(\.id) == b.map(\.id)
+        case (.error(let a), .error(let b)):         return a == b
+        default: return false
         }
     }
 }
 
-// MARK: - OCR
+// MARK: - ScannerViewModel
 
-private extension ScannerViewModel {
+@MainActor
+final class ScannerViewModel: ObservableObject {
 
-    func recognizeText(from image: UIImage, completion: @escaping (String?) -> Void) {
+    @Published private(set) var state: ScannerState = .idle
+    @Published var isScanning: Bool = false
+    @Published private(set) var hashIndexCount: Int = 0
 
-        guard let cgImage = image.cgImage else {
-            completion(nil)
+    private let scryfallService = ScryfallService()
+    private var lookupTask: Task<Void, Never>?
+    private var lastFoundCardName: String = ""
+
+    // MARK: - Public
+
+    func startScanning() {
+        isScanning = true
+        state = .scanning
+        lastFoundCardName = ""
+        hashIndexCount = CardDatabaseService.shared.artHashCount
+    }
+
+    func stopScanning() {
+        isScanning = false
+        lookupTask?.cancel()
+        state = .idle
+    }
+
+    func resetToScanning() {
+        lookupTask?.cancel()
+        state = .scanning
+        lastFoundCardName = ""
+    }
+
+    func processCardImage(_ image: UIImage) {
+        guard isScanning else { return }
+        guard case .scanning = state else { return }
+
+        lookupTask?.cancel()
+        lookupTask = Task {
+            await matchByArt(image)
+        }
+    }
+
+    // MARK: - Art Matching
+
+    private func matchByArt(_ image: UIImage) async {
+        guard let artCrop  = ArtHashService.shared.cropArtRegion(from: image),
+              let liveHash = ArtHashService.shared.pHash(of: artCrop)
+        else {
+            print("[Scanner] ❌ pHash failed")
             return
         }
 
-        let request = VNRecognizeTextRequest { request, _ in
+        let indexSize = CardDatabaseService.shared.artHashCount
+        print("[Scanner] 🔍 Index: \(indexSize) | hash: \(liveHash)")
 
-            let observations = request.results as? [VNRecognizedTextObservation]
-
-            let text = observations?
-                .compactMap { $0.topCandidates(1).first?.string }
-                .joined(separator: "\n")
-
-            completion(text)
+        guard indexSize > 0 else {
+            state = .error("Building card index, please wait…")
+            return
         }
 
-        request.recognitionLevel = .accurate
-        request.usesLanguageCorrection = true
+        guard let match = CardDatabaseService.shared.findCardByArtHash(liveHash) else {
+            print("[Scanner] ❌ No match")
+            return
+        }
 
-        let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+        print("[Scanner] ✅ \(match.card.name) distance=\(match.distance)")
+        guard !Task.isCancelled else { return }
+        guard match.card.name != lastFoundCardName else { return }
 
-        try? handler.perform([request])
+        lastFoundCardName = match.card.name
+
+        // Fetch ALL printings of this card name, newest first
+        let allPrintings = CardDatabaseService.shared.allPrintings(named: match.card.name)
+        print("[Scanner] Found \(allPrintings.count) printings for \(match.card.name)")
+
+        if allPrintings.count <= 1 {
+            // Only one printing — add directly, no picker needed
+            SessionStore.shared.addOrIncrement(card: match.card)
+            state = .found(match.card)
+        } else {
+            // Multiple printings — show set picker
+            state = .selectPrinting(allPrintings)
+        }
+
+        Task { await cacheArtHashIfNeeded(for: match.card) }
+
+        // Failsafe — reset if user ignores the picker for 30s
+        try? await Task.sleep(nanoseconds: 30_000_000_000)
+        guard !Task.isCancelled else { return }
+        if case .selectPrinting = state {
+            resetToScanning()
+        }
     }
 
-    func extractCardName(from text: String) -> String? {
-        let lines = text.components(separatedBy: "\n")
+    // MARK: - Art Hash Caching
 
-        // MTG card name is usually one of the first lines
-        return lines.first(where: { $0.count > 3 && $0.count < 40 })
+    func cacheArtHashIfNeeded(for card: MTGCard, hash: UInt64? = nil) async {
+        guard !CardDatabaseService.shared.hasArtHash(oracleId: card.id) else { return }
+
+        if let hash = hash {
+            CardDatabaseService.shared.storeArtHash(oracleId: card.id, hash: hash)
+            hashIndexCount = CardDatabaseService.shared.artHashCount
+            return
+        }
+
+        guard let url = card.imageUris?.artCrop ?? card.imageUris?.normal else { return }
+        if let hash = await ArtHashService.shared.downloadAndHash(imageURL: url) {
+            CardDatabaseService.shared.storeArtHash(oracleId: card.id, hash: hash)
+            hashIndexCount = CardDatabaseService.shared.artHashCount
+            print("[Scanner] Cached hash for \(card.name) — index: \(CardDatabaseService.shared.artHashCount)")
+        }
     }
 }

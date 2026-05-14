@@ -7,6 +7,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
+        Task {
+            await ScryfallBulkService.shared.refreshIfNeeded()
+        }
         return true
     }
 }

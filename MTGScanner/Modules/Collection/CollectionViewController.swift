@@ -294,55 +294,55 @@ final class CollectionCardCell: UITableViewCell {
     static let reuseID = "CollectionCardCell"
 
     private let thumbImageView: UIImageView = {
-        let iv = UIImageView()
-        iv.translatesAutoresizingMaskIntoConstraints = false
-        iv.contentMode        = .scaleAspectFill
-        iv.clipsToBounds      = true
-        iv.layer.cornerRadius = 4
-        iv.backgroundColor    = .secondarySystemBackground
-        return iv
+        let imageView = UIImageView()
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        imageView.contentMode        = .scaleAspectFill
+        imageView.clipsToBounds      = true
+        imageView.layer.cornerRadius = 4
+        imageView.backgroundColor    = .secondarySystemBackground
+        return imageView
     }()
 
     private let nameLabel: UILabel = {
-        let lbl = UILabel()
-        lbl.font          = .systemFont(ofSize: 15, weight: .semibold)
-        lbl.numberOfLines = 1
-        return lbl
+        let label = UILabel()
+        label.font          = .systemFont(ofSize: 15, weight: .semibold)
+        label.numberOfLines = 1
+        return label
     }()
 
     private let setLabel: UILabel = {
-        let lbl = UILabel()
-        lbl.font      = .systemFont(ofSize: 12)
-        lbl.textColor = .secondaryLabel
-        return lbl
+        let label = UILabel()
+        label.font      = .systemFont(ofSize: 12)
+        label.textColor = .secondaryLabel
+        return label
     }()
 
     private let countBadge: UILabel = {
-        let lbl = UILabel()
-        lbl.font                  = .systemFont(ofSize: 12, weight: .semibold)
-        lbl.textColor             = .white
-        lbl.backgroundColor       = .systemBlue
-        lbl.textAlignment         = .center
-        lbl.layer.cornerRadius    = 10
-        lbl.clipsToBounds         = true
-        lbl.translatesAutoresizingMaskIntoConstraints = false
-        lbl.widthAnchor.constraint(greaterThanOrEqualToConstant: 28).isActive = true
-        lbl.heightAnchor.constraint(equalToConstant: 20).isActive = true
-        return lbl
+        let label = UILabel()
+        label.font                  = .systemFont(ofSize: 12, weight: .semibold)
+        label.textColor             = .white
+        label.backgroundColor       = .systemBlue
+        label.textAlignment         = .center
+        label.layer.cornerRadius    = 10
+        label.clipsToBounds         = true
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.widthAnchor.constraint(greaterThanOrEqualToConstant: 28).isActive = true
+        label.heightAnchor.constraint(equalToConstant: 20).isActive = true
+        return label
     }()
 
     private let priceLabel: UILabel = {
-        let lbl = UILabel()
-        lbl.font      = .systemFont(ofSize: 12, weight: .medium)
-        lbl.textColor = .systemGreen
-        return lbl
+        let label = UILabel()
+        label.font      = .systemFont(ofSize: 12, weight: .medium)
+        label.textColor = .systemGreen
+        return label
     }()
 
     private let conditionLabel: UILabel = {
-        let lbl = UILabel()
-        lbl.font      = .systemFont(ofSize: 11)
-        lbl.textColor = .tertiaryLabel
-        return lbl
+        let label = UILabel()
+        label.font      = .systemFont(ofSize: 11)
+        label.textColor = .tertiaryLabel
+        return label
     }()
 
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {

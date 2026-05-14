@@ -1,10 +1,350 @@
 import UIKit
+import Combine
 
 final class MenuViewController: UIViewController {
+
+    private var cancellables = Set<AnyCancellable>()
+
+    // MARK: - UI
+
+    private lazy var tableView: UITableView = {
+        let tv = UITableView(frame: .zero, style: .insetGrouped)
+        tv.translatesAutoresizingMaskIntoConstraints = false
+        tv.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
+        tv.register(BulkDataCell.self, forCellReuseIdentifier: BulkDataCell.reuseID)
+        tv.dataSource = self
+        tv.delegate   = self
+        return tv
+    }()
+
+    // Download overlay
+    private lazy var downloadOverlay: UIView = {
+        let v = UIView()
+        v.translatesAutoresizingMaskIntoConstraints = false
+        v.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.95)
+        v.layer.cornerRadius = 20
+        v.layer.shadowColor  = UIColor.black.cgColor
+        v.layer.shadowOpacity = 0.15
+        v.layer.shadowRadius  = 12
+        v.isHidden = true
+        return v
+    }()
+
+    private lazy var downloadIconView: UIImageView = {
+        let iv = UIImageView(image: UIImage(systemName: "arrow.down.circle.fill"))
+        iv.translatesAutoresizingMaskIntoConstraints = false
+        iv.tintColor    = .systemBlue
+        iv.contentMode  = .scaleAspectFit
+        return iv
+    }()
+
+    private lazy var downloadTitleLabel: UILabel = {
+        let lbl = UILabel()
+        lbl.translatesAutoresizingMaskIntoConstraints = false
+        lbl.font          = .systemFont(ofSize: 17, weight: .semibold)
+        lbl.textAlignment = .center
+        lbl.text          = "Updating Card Database"
+        return lbl
+    }()
+
+    private lazy var downloadSubtitleLabel: UILabel = {
+        let lbl = UILabel()
+        lbl.translatesAutoresizingMaskIntoConstraints = false
+        lbl.font          = .systemFont(ofSize: 13)
+        lbl.textColor     = .secondaryLabel
+        lbl.textAlignment = .center
+        lbl.numberOfLines = 2
+        return lbl
+    }()
+
+    private lazy var progressView: UIProgressView = {
+        let pv = UIProgressView(progressViewStyle: .default)
+        pv.translatesAutoresizingMaskIntoConstraints = false
+        pv.layer.cornerRadius = 3
+        pv.clipsToBounds      = true
+        return pv
+    }()
+
+    private lazy var progressLabel: UILabel = {
+        let lbl = UILabel()
+        lbl.translatesAutoresizingMaskIntoConstraints = false
+        lbl.font          = .monospacedDigitSystemFont(ofSize: 13, weight: .regular)
+        lbl.textColor     = .secondaryLabel
+        lbl.textAlignment = .center
+        return lbl
+    }()
+
+    private lazy var activityIndicator: UIActivityIndicatorView = {
+        let ai = UIActivityIndicatorView(style: .medium)
+        ai.translatesAutoresizingMaskIntoConstraints = false
+        ai.hidesWhenStopped = true
+        return ai
+    }()
+
+    // MARK: - Lifecycle
 
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "Menu"
-        view.backgroundColor = .systemBackground
+        view.backgroundColor = .systemGroupedBackground
+        setupLayout()
+        observeDownloadState()
+    }
+
+    // MARK: - Layout
+
+    private func setupLayout() {
+        view.addSubview(tableView)
+        view.addSubview(downloadOverlay)
+
+        let stack = UIStackView(arrangedSubviews: [
+            downloadIconView,
+            downloadTitleLabel,
+            downloadSubtitleLabel,
+            progressView,
+            progressLabel
+        ])
+        stack.axis      = .vertical
+        stack.spacing   = 12
+        stack.alignment = .fill
+        stack.translatesAutoresizingMaskIntoConstraints = false
+
+        downloadOverlay.addSubview(stack)
+        downloadOverlay.addSubview(activityIndicator)
+
+        NSLayoutConstraint.activate([
+            tableView.topAnchor.constraint(equalTo: view.topAnchor),
+            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+
+            downloadOverlay.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            downloadOverlay.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            downloadOverlay.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.82),
+
+            stack.topAnchor.constraint(equalTo: downloadOverlay.topAnchor, constant: 28),
+            stack.leadingAnchor.constraint(equalTo: downloadOverlay.leadingAnchor, constant: 24),
+            stack.trailingAnchor.constraint(equalTo: downloadOverlay.trailingAnchor, constant: -24),
+            stack.bottomAnchor.constraint(equalTo: downloadOverlay.bottomAnchor, constant: -28),
+
+            downloadIconView.heightAnchor.constraint(equalToConstant: 48),
+            progressView.heightAnchor.constraint(equalToConstant: 6),
+
+            activityIndicator.topAnchor.constraint(equalTo: downloadOverlay.topAnchor, constant: 16),
+            activityIndicator.trailingAnchor.constraint(equalTo: downloadOverlay.trailingAnchor, constant: -16),
+        ])
+    }
+
+    // MARK: - Observe Download State
+
+    private func observeDownloadState() {
+        ScryfallBulkService.shared.$downloadState
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] state in self?.handleDownloadState(state) }
+            .store(in: &cancellables)
+    }
+
+    private func handleDownloadState(_ state: ScryfallBulkService.DownloadState) {
+        switch state {
+        case .idle:
+            hideOverlay()
+
+        case .fetchingManifest:
+            showOverlay()
+            downloadTitleLabel.text     = "Checking for Updates"
+            downloadSubtitleLabel.text  = "Fetching card database manifest…"
+            progressView.isHidden       = true
+            progressLabel.isHidden      = true
+            activityIndicator.startAnimating()
+
+        case .downloading(let progress, let totalBytes):
+            showOverlay()
+            activityIndicator.stopAnimating()
+            downloadTitleLabel.text    = "Downloading Card Database"
+            progressView.isHidden      = false
+            progressLabel.isHidden     = false
+            progressView.setProgress(Float(progress), animated: true)
+
+            let received = Int64(Double(totalBytes) * progress)
+            let total    = ByteCountFormatter.string(fromByteCount: totalBytes, countStyle: .file)
+            let done     = ByteCountFormatter.string(fromByteCount: received,   countStyle: .file)
+            downloadSubtitleLabel.text = "Downloading Scryfall oracle cards"
+            progressLabel.text         = "\(done) / \(total)  ·  \(Int(progress * 100))%"
+
+        case .importing(let cardCount):
+            showOverlay()
+            activityIndicator.startAnimating()
+            downloadTitleLabel.text    = "Importing Cards"
+            downloadSubtitleLabel.text = "Writing \(cardCount) cards to local database…"
+            progressView.isHidden      = true
+            progressLabel.isHidden     = true
+
+        case .done:
+            activityIndicator.stopAnimating()
+            hideOverlay()
+            tableView.reloadData()
+
+        case .failed(let message):
+            activityIndicator.stopAnimating()
+            hideOverlay()
+            let alert = UIAlertController(title: "Update Failed", message: message, preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            present(alert, animated: true)
+            
+        case .hashingArt(let done, let total):
+            showOverlay()
+            activityIndicator.stopAnimating()
+            downloadTitleLabel.text    = "Building Visual Index"
+            downloadSubtitleLabel.text = "Downloading and hashing card artwork.\nThis happens once and enables offline scanning."
+            progressView.isHidden      = false
+            progressLabel.isHidden     = false
+            let pct = total > 0 ? Double(done) / Double(total) : 0
+            progressView.setProgress(Float(pct), animated: true)
+            progressLabel.text = "\(done.formatted()) / \(total.formatted())  ·  \(Int(pct * 100))%"
+        }
+    }
+
+    private func showOverlay() {
+        guard downloadOverlay.isHidden else { return }
+        downloadOverlay.isHidden = false
+        downloadOverlay.alpha    = 0
+        UIView.animate(withDuration: 0.25) { self.downloadOverlay.alpha = 1 }
+    }
+
+    private func hideOverlay() {
+        UIView.animate(withDuration: 0.25, animations: {
+            self.downloadOverlay.alpha = 0
+        }) { _ in
+            self.downloadOverlay.isHidden = true
+        }
+    }
+}
+
+// MARK: - UITableViewDataSource
+
+extension MenuViewController: UITableViewDataSource {
+
+    func numberOfSections(in tableView: UITableView) -> Int { 2 }
+
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        section == 0 ? 1 : 1
+    }
+
+    func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+        section == 0 ? "Card Database" : "About"
+    }
+
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        if indexPath.section == 0 {
+            let cell = tableView.dequeueReusableCell(withIdentifier: BulkDataCell.reuseID, for: indexPath) as! BulkDataCell
+            cell.configure()
+            return cell
+        } else {
+            let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
+            var config = cell.defaultContentConfiguration()
+            config.text          = "MTG Scanner"
+            config.secondaryText = "Built with Scryfall data"
+            cell.contentConfiguration = config
+            cell.selectionStyle = .none
+            return cell
+        }
+    }
+}
+
+// MARK: - UITableViewDelegate
+
+extension MenuViewController: UITableViewDelegate {
+
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        tableView.deselectRow(at: indexPath, animated: true)
+
+        if indexPath.section == 0 {
+            let alert = UIAlertController(
+                title: "Update Card Database",
+                message: "This will re-download the full Scryfall oracle card database (~30–50 MB). Continue?",
+                preferredStyle: .actionSheet
+            )
+            alert.addAction(UIAlertAction(title: "Update Now", style: .default) { _ in
+                Task { await ScryfallBulkService.shared.forceRefresh() }
+            })
+            alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+            present(alert, animated: true)
+        }
+    }
+}
+
+// MARK: - BulkDataCell
+
+final class BulkDataCell: UITableViewCell {
+    static let reuseID = "BulkDataCell"
+
+    private let titleLabel: UILabel = {
+        let lbl = UILabel()
+        lbl.font = .systemFont(ofSize: 16)
+        lbl.text = "Scryfall Oracle Cards"
+        return lbl
+    }()
+
+    private let statusBadge: UILabel = {
+        let lbl = UILabel()
+        lbl.font              = .systemFont(ofSize: 12, weight: .semibold)
+        lbl.textColor         = .white
+        lbl.textAlignment     = .center
+        lbl.layer.cornerRadius = 8
+        lbl.clipsToBounds     = true
+        return lbl
+    }()
+
+    private let detailLabel: UILabel = {
+        let lbl = UILabel()
+        lbl.font      = .systemFont(ofSize: 12)
+        lbl.textColor = .secondaryLabel
+        return lbl
+    }()
+
+    override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
+        super.init(style: style, reuseIdentifier: reuseIdentifier)
+
+        let textStack = UIStackView(arrangedSubviews: [titleLabel, detailLabel])
+        textStack.axis    = .vertical
+        textStack.spacing = 3
+        textStack.translatesAutoresizingMaskIntoConstraints = false
+
+        statusBadge.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(textStack)
+        contentView.addSubview(statusBadge)
+
+        NSLayoutConstraint.activate([
+            textStack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            textStack.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
+            textStack.trailingAnchor.constraint(lessThanOrEqualTo: statusBadge.leadingAnchor, constant: -8),
+
+            statusBadge.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+            statusBadge.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
+            statusBadge.widthAnchor.constraint(greaterThanOrEqualToConstant: 60),
+            statusBadge.heightAnchor.constraint(equalToConstant: 24),
+        ])
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    func configure() {
+        let service = ScryfallBulkService.shared
+        if service.isDataPresent {
+            statusBadge.text            = " Present "
+            statusBadge.backgroundColor = .systemGreen
+            detailLabel.text            = "\(service.dataSizeOnDisk) on disk  ·  Updated \(service.lastUpdatedString)"
+        } else {
+            statusBadge.text            = " Missing "
+            statusBadge.backgroundColor = .systemOrange
+            detailLabel.text            = "Tap to download (~30–50 MB)"
+        }
+        accessoryType = .disclosureIndicator
+    }
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        detailLabel.text   = nil
+        statusBadge.text   = nil
     }
 }

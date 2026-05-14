@@ -13,15 +13,14 @@ final class CameraService: NSObject {
     private var isConfigured = false
 
     func configure(in view: UIView) {
-        queue.async {
-            guard !self.isConfigured else { return }
+        queue.async { [weak self] in
+            guard let self, !self.isConfigured else { return }
             self.setupSession()
-
             DispatchQueue.main.async {
                 self.attachPreview(to: view)
+                self.isConfigured = true
+                self.start() // start AFTER everything is wired up
             }
-
-            self.isConfigured = true
         }
     }
 

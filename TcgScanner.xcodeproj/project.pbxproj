@@ -30,6 +30,10 @@
 		9875E0DF2F97D4B8002929D0 /* GeminiService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9875E0DE2F97D4B8002929D0 /* GeminiService.swift */; };
 		9875E0E12F97D59B002929D0 /* KeyChainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9875E0E02F97D59B002929D0 /* KeyChainService.swift */; };
 		9875E0E32F97D5FA002929D0 /* CardConfirmationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9875E0E22F97D5FA002929D0 /* CardConfirmationViewController.swift */; };
+		98EEA85D2FA54A3300EFA5F8 /* CardDatabaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98EEA85C2FA54A3300EFA5F8 /* CardDatabaseService.swift */; };
+		98EEA85F2FA54A4800EFA5F8 /* ScryfallBulkService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98EEA85E2FA54A4800EFA5F8 /* ScryfallBulkService.swift */; };
+		98EEA8612FA54B7700EFA5F8 /* ArtHashService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98EEA8602FA54B7700EFA5F8 /* ArtHashService.swift */; };
+		98EEA8662FA97E0B00EFA5F8 /* StreamingJSONParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98EEA8652FA97E0B00EFA5F8 /* StreamingJSONParser.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -58,6 +62,10 @@
 		9875E0DE2F97D4B8002929D0 /* GeminiService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiService.swift; sourceTree = "<group>"; };
 		9875E0E02F97D59B002929D0 /* KeyChainService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyChainService.swift; sourceTree = "<group>"; };
 		9875E0E22F97D5FA002929D0 /* CardConfirmationViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardConfirmationViewController.swift; sourceTree = "<group>"; };
+		98EEA85C2FA54A3300EFA5F8 /* CardDatabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardDatabaseService.swift; sourceTree = "<group>"; };
+		98EEA85E2FA54A4800EFA5F8 /* ScryfallBulkService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScryfallBulkService.swift; sourceTree = "<group>"; };
+		98EEA8602FA54B7700EFA5F8 /* ArtHashService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtHashService.swift; sourceTree = "<group>"; };
+		98EEA8652FA97E0B00EFA5F8 /* StreamingJSONParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamingJSONParser.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -69,6 +77,11 @@
 		9875E0D82F96FAB0002929D0 /* Resources */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = Resources;
+			sourceTree = "<group>";
+		};
+		98EEA8642FA97C6900EFA5F8 /* SetPicker */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = SetPicker;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -192,7 +205,11 @@
 			children = (
 				986A78652F96E98800EAEBEC /* CollectionStore.swift */,
 				986A78B02F96EBFD00EAEBEC /* CameraService.swift */,
+				98EEA8602FA54B7700EFA5F8 /* ArtHashService.swift */,
 				986A78B22F96EC1400EAEBEC /* OCRService.swift */,
+				98EEA85C2FA54A3300EFA5F8 /* CardDatabaseService.swift */,
+				98EEA85E2FA54A4800EFA5F8 /* ScryfallBulkService.swift */,
+				98EEA8652FA97E0B00EFA5F8 /* StreamingJSONParser.swift */,
 				9875E0E02F97D59B002929D0 /* KeyChainService.swift */,
 				9875E0DE2F97D4B8002929D0 /* GeminiService.swift */,
 				986A78B42F96EC2300EAEBEC /* ScryfallService.swift */,
@@ -208,6 +225,7 @@
 				986A78532F96E98800EAEBEC /* App */,
 				986A78552F96E98800EAEBEC /* Models */,
 				986A78642F96E98800EAEBEC /* Modules */,
+				98EEA8642FA97C6900EFA5F8 /* SetPicker */,
 				986A78682F96E98800EAEBEC /* Services */,
 			);
 			path = MTGScanner;
@@ -227,6 +245,9 @@
 			buildRules = (
 			);
 			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				98EEA8642FA97C6900EFA5F8 /* SetPicker */,
 			);
 			name = TcgScanner;
 			packageProductDependencies = (
@@ -288,9 +309,12 @@
 				986A787F2F96EA1D00EAEBEC /* ScannerViewController.swift in Sources */,
 				986A78802F96EA1D00EAEBEC /* SearchViewController.swift in Sources */,
 				986A78B32F96EC1400EAEBEC /* OCRService.swift in Sources */,
+				98EEA85F2FA54A4800EFA5F8 /* ScryfallBulkService.swift in Sources */,
+				98EEA8612FA54B7700EFA5F8 /* ArtHashService.swift in Sources */,
 				986A78812F96EA1D00EAEBEC /* SessionViewController.swift in Sources */,
 				986A78B52F96EC2300EAEBEC /* ScryfallService.swift in Sources */,
 				986A78822F96EA1D00EAEBEC /* CollectionStore.swift in Sources */,
+				98EEA8662FA97E0B00EFA5F8 /* StreamingJSONParser.swift in Sources */,
 				9875E0E12F97D59B002929D0 /* KeyChainService.swift in Sources */,
 				986A78832F96EA1D00EAEBEC /* CSVService.swift in Sources */,
 				986A78842F96EA1D00EAEBEC /* SessionStore.swift in Sources */,
@@ -304,6 +328,7 @@
 				986A787A2F96E9FA00EAEBEC /* MTGCard.swift in Sources */,
 				9875E0DF2F97D4B8002929D0 /* GeminiService.swift in Sources */,
 				9875E0DD2F96FFF6002929D0 /* ScannedCardStore.swift in Sources */,
+				98EEA85D2FA54A3300EFA5F8 /* CardDatabaseService.swift in Sources */,
 				9875E0DA2F96FB0F002929D0 /* SceneDelegate.swift in Sources */,
 				986A78792F96E9F700EAEBEC /* MainTabBarController.swift in Sources */,
 				986A78782F96E9F300EAEBEC /* AppDelegate.swift in Sources */,
