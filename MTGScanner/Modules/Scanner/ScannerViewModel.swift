@@ -121,17 +121,17 @@ final class ScannerViewModel: ObservableObject {
     // MARK: - Art Hash Caching
 
     func cacheArtHashIfNeeded(for card: MTGCard, hash: UInt64? = nil) async {
-        guard !CardDatabaseService.shared.hasArtHash(oracleId: card.id) else { return }
+        guard !CardDatabaseService.shared.hasArtHash(cardId: card.id) else { return }
 
         if let hash = hash {
-            CardDatabaseService.shared.storeArtHash(oracleId: card.id, hash: hash)
+            CardDatabaseService.shared.storeArtHash(cardId: card.id, hash: hash)
             hashIndexCount = CardDatabaseService.shared.artHashCount
             return
         }
 
         guard let url = card.imageUris?.artCrop ?? card.imageUris?.normal else { return }
         if let hash = await ArtHashService.shared.downloadAndHash(imageURL: url) {
-            CardDatabaseService.shared.storeArtHash(oracleId: card.id, hash: hash)
+            CardDatabaseService.shared.storeArtHash(cardId: card.id, hash: hash)
             hashIndexCount = CardDatabaseService.shared.artHashCount
             print("[Scanner] Cached hash for \(card.name) — index: \(CardDatabaseService.shared.artHashCount)")
         }

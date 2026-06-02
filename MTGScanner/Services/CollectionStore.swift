@@ -13,22 +13,15 @@ final class CollectionStore {
 
     private(set) var entries: [CollectionEntry] = []
 
-    // Notifications
     static let didChangeNotification = Notification.Name("CollectionStoreDidChange")
 
-    // MARK: - Sorting
-
-    enum SortKey {
-        case name, set, price, date
-    }
+    enum SortKey { case name, set, price, date }
 
     private init() { load() }
 
     // MARK: - Query
 
-    var totalCards: Int {
-        entries.reduce(0) { $0 + $1.count }
-    }
+    var totalCards: Int { entries.reduce(0) { $0 + $1.count } }
 
     var estimatedValue: Double {
         entries.reduce(0) { $0 + ($1.priceValue * Double($1.count)) }
@@ -38,38 +31,39 @@ final class CollectionStore {
         entries.first { $0.cardID == cardID }
     }
 
+    func contains(cardID: String) -> Bool {
+        entries.contains { $0.cardID == cardID }
+    }
+
     // MARK: - Sorting
 
     func sort(by key: SortKey) {
         switch key {
-        case .name:
-            entries.sort { $0.name < $1.name }
-
-        case .set:
-            entries.sort { $0.setName < $1.setName }
-
-        case .price:
-            entries.sort { $0.priceValue > $1.priceValue }
-
-        case .date:
-            entries.sort { $0.dateAdded > $1.dateAdded }
+        case .name:  entries.sort { $0.name < $1.name }
+        case .set:   entries.sort { $0.setName < $1.setName }
+        case .price: entries.sort { $0.priceValue > $1.priceValue }
+        case .date:  entries.sort { $0.dateAdded > $1.dateAdded }
         }
-
         save()
         notifyChange()
     }
 
     // MARK: - Mutations
 
-    func addSessionEntries(_ sessionEntries: [SessionEntry], condition: CardCondition = .nearMint, isFoil: Bool = false) {
+    func addSessionEntries(
+        _ sessionEntries: [SessionEntry],
+        condition: CardCondition = .nearMint,
+        isFoil: Bool = false
+    ) {
         for session in sessionEntries {
             let card = session.card
-
             if let idx = entries.firstIndex(where: { $0.cardID == card.id }) {
                 entries[idx].count += session.count
             } else {
-                let entry = CollectionEntry(from: card, count: session.count, condition: condition, isFoil: isFoil)
-                entries.insert(entry, at: 0)
+                entries.insert(
+                    CollectionEntry(from: card, count: session.count, condition: condition, isFoil: isFoil),
+                    at: 0
+                )
             }
         }
         save()
@@ -137,8 +131,8 @@ final class CollectionStore {
     private func load() {
         guard FileManager.default.fileExists(atPath: fileURL.path) else { return }
         do {
-            let data = try Data(contentsOf: fileURL)
-            entries = try JSONDecoder().decode([CollectionEntry].self, from: data)
+            let data    = try Data(contentsOf: fileURL)
+            entries     = try JSONDecoder().decode([CollectionEntry].self, from: data)
         } catch {
             print("[CollectionStore] Load error: \(error)")
         }
@@ -152,7 +146,5 @@ final class CollectionStore {
 // MARK: - Helpers
 
 extension CollectionEntry {
-    var priceValue: Double {
-        usdPrice.flatMap { Double($0) } ?? 0
-    }
+    var priceValue: Double { usdPrice.flatMap { Double($0) } ?? 0 }
 }

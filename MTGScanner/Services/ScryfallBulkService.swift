@@ -1,15 +1,6 @@
 import Foundation
 import UIKit
-
-// MARK: - ScryfallBulkService
-// Downloads Scryfall unique_artwork bulk data and builds a local SQLite index.
-//
-// Memory strategy:
-// - JSON downloaded directly to a temp file (never in RAM)
-// - StreamingJSONParser reads one card at a time (one object in memory at once)
-// - Cards written to SQLite in batches of 100 then released
-// - Art images downloaded 10 at a time, hashed, and immediately released
-// - Peak RAM usage: ~10 art images (~1MB) + 100 card dicts (~500KB) = ~2MB max
+import Compression
 
 final class ScryfallBulkService: NSObject, ObservableObject {
 
@@ -17,9 +8,9 @@ final class ScryfallBulkService: NSObject, ObservableObject {
 
     private let bulkMetaURL    = URL(string: "https://api.scryfall.com/bulk-data")!
     private let lastUpdatedKey = "ScryfallBulkLastUpdated"
-    private let staleness: TimeInterval = 60 * 60 * 24 // 24 hours
+    private let staleness: TimeInterval = 60 * 60 * 24
 
-    // MARK: - Download State
+    // MARK: - State
 
     enum DownloadState: Equatable {
         case idle
@@ -33,7 +24,6 @@ final class ScryfallBulkService: NSObject, ObservableObject {
 
     @Published private(set) var downloadState: DownloadState = .idle
 
-    // URLSession download delegate plumbing
     private var downloadContinuation: CheckedContinuation<URL, Error>?
     private var expectedBytes: Int64 = 0
 
@@ -95,23 +85,30 @@ final class ScryfallBulkService: NSObject, ObservableObject {
 
     private func downloadAndImport() async {
         do {
-            // 1. Get the download URL from the manifest
             await setState(.fetchingManifest)
             let (uri, remoteSize) = try await fetchManifest(type: "unique_artwork")
 
-            // 2. Download JSON to a temp file — never touches RAM
             await setState(.downloading(progress: 0, totalBytes: remoteSize))
-            let tempFile = try await downloadToFile(from: uri, expectedSize: remoteSize)
-            defer { try? FileManager.default.removeItem(at: tempFile) }
+            let rawFile = try await downloadToFile(from: uri, expectedSize: remoteSize)
+            defer { try? FileManager.default.removeItem(at: rawFile) }
 
-            // 3. Stream-parse and import cards one at a time
-            let total = try await streamImport(from: tempFile)
+            // Decompress gzip if needed — Scryfall serves compressed files
+            let jsonFile = try decompressIfNeeded(rawFile)
+            defer { if jsonFile != rawFile { try? FileManager.default.removeItem(at: jsonFile) } }
 
-            // 4. Stream-parse again to hash art, 10 at a time
-            try await streamHashArt(from: tempFile, totalCards: total)
+            // Verify the file is valid JSON before streaming
+            try verifyIsJSON(jsonFile)
 
-            UserDefaults.standard.set(Date(), forKey: lastUpdatedKey)
+            _ = try await streamImport(from: jsonFile)
+
+            UserDefaults.standard.set(
+                Date(),
+                forKey: lastUpdatedKey
+            )
+
             await setState(.done)
+
+            print("[Bulk] Import complete.")
 
         } catch {
             await setState(.failed(error.localizedDescription))
@@ -119,16 +116,67 @@ final class ScryfallBulkService: NSObject, ObservableObject {
         }
     }
 
+    // MARK: - Gzip Detection + Decompression
+
+    private func decompressIfNeeded(_ fileURL: URL) throws -> URL {
+        guard let handle = FileHandle(forReadingAtPath: fileURL.path) else {
+            throw CocoaError(.fileReadNoSuchFile)
+        }
+        let magic = handle.readData(ofLength: 2)
+        handle.closeFile()
+
+        // Gzip magic bytes: 0x1F 0x8B
+        let isGzip = magic.count >= 2 && magic[0] == 0x1F && magic[1] == 0x8B
+
+        guard isGzip else {
+            print("[Bulk] File is plain JSON — no decompression needed.")
+            return fileURL
+        }
+
+        print("[Bulk] Gzip detected — decompressing…")
+        let compressedData = try Data(contentsOf: fileURL)
+        let decompressed   = try (compressedData as NSData).decompressed(using: .zlib) as Data
+
+        let destURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("scryfall_decompressed_\(UUID().uuidString).json")
+        try decompressed.write(to: destURL, options: .atomic)
+
+        print("[Bulk] Decompressed: \(ByteCountFormatter.string(fromByteCount: Int64(decompressed.count), countStyle: .file))")
+        return destURL
+    }
+
+    private func verifyIsJSON(_ fileURL: URL) throws {
+        guard let handle = FileHandle(forReadingAtPath: fileURL.path) else { return }
+        defer { handle.closeFile() }
+
+        let peek = handle.readData(ofLength: 64)
+        for byte in peek {
+            // Skip whitespace
+            if byte == 0x20 || byte == 0x0A || byte == 0x0D || byte == 0x09 { continue }
+            if byte == 0x5B { // [
+                print("[Bulk] ✅ File verified as JSON array.")
+                return
+            } else {
+                throw NSError(
+                    domain: "ScryfallBulkService",
+                    code: 1,
+                    userInfo: [NSLocalizedDescriptionKey: "File is not valid JSON (first byte: 0x\(String(byte, radix: 16)))"]
+                )
+            }
+        }
+    }
+
     // MARK: - Stream Import
-    // Reads one card at a time, batches 100 at a time into SQLite, then releases.
-    // Peak memory: ~100 card dicts at once (~500KB)
 
     private func streamImport(from fileURL: URL) async throws -> Int {
         await setState(.importing(done: 0, total: 0))
 
-        return try await Task.detached(priority: .userInitiated) {
+        return await Task.detached(priority: .userInitiated) {
             let parser = StreamingJSONParser(fileURL: fileURL)
-            try parser.open()
+            do { try parser.open() } catch {
+                print("[Bulk] Parser open failed: \(error)")
+                return 0
+            }
             defer { parser.close() }
 
             let db = CardDatabaseService.shared
@@ -136,8 +184,8 @@ final class ScryfallBulkService: NSObject, ObservableObject {
             batch.reserveCapacity(100)
             var total = 0
 
-            // Clear existing data before import
-            db.clearCards()
+            // Use clearCardsIfNeeded to match your CardDatabaseService
+            db.clearCardsIfNeeded()
 
             while let card = parser.nextCard() {
                 batch.append(card)
@@ -146,110 +194,151 @@ final class ScryfallBulkService: NSObject, ObservableObject {
                 if batch.count >= 100 {
                     db.importCards(batch)
                     batch.removeAll(keepingCapacity: true)
-
                     await MainActor.run {
                         self.downloadState = .importing(done: total, total: 0)
                     }
                 }
             }
 
-            // Flush remaining
             if !batch.isEmpty {
                 db.importCards(batch)
             }
 
-            print("[Bulk] Imported \(total) cards via streaming.")
+            db.checkpoint()
+            print("[Bulk] Imported \(total) cards.")
             return total
         }.value
     }
 
     // MARK: - Stream Hash Art
-    // Reads card IDs + art URLs from file, downloads 10 images at a time,
-    // hashes each, stores the UInt64, immediately releases image data.
-    // Peak memory: ~10 images * ~100KB each = ~1MB
 
-    private func streamHashArt(from fileURL: URL, totalCards: Int) async throws {
-        let db = CardDatabaseService.shared
-
-        // Pass 1: collect (id, artURL) pairs — just two strings per card, very cheap
-        let workList: [(id: String, url: URL)] = try await Task.detached(priority: .userInitiated) {
-            let parser = StreamingJSONParser(fileURL: fileURL)
-            try parser.open()
-            defer { parser.close() }
-
-            var result: [(String, URL)] = []
-            result.reserveCapacity(totalCards)
-
-            while let card = parser.nextCard() {
-                guard let id = card["id"] as? String,
-                      !db.hasArtHash(oracleId: id)
-                else { continue }
-
-                // Try top-level image_uris first, then card_faces for DFCs
-                let artURLString: String? = {
-                    if let uris = card["image_uris"] as? [String: String] {
-                        return uris["art_crop"] ?? uris["normal"]
-                    }
-                    if let faces = card["card_faces"] as? [[String: Any]],
-                       let uris  = faces.first?["image_uris"] as? [String: String] {
-                        return uris["art_crop"] ?? uris["normal"]
-                    }
-                    return nil
-                }()
-
-                if let raw = artURLString, let url = URL(string: raw) {
-                    result.append((id, url))
-                }
-            }
-            return result
-        }.value
-
-        let total = workList.count
-        guard total > 0 else {
-            print("[Bulk] All \(db.artHashCount) art hashes already present.")
-            return
-        }
-
-        print("[Bulk] Hashing \(total) artworks…")
-        await setState(.hashingArt(done: 0, total: total))
-
-        let artService = ArtHashService.shared
-        let batchSize  = 10  // low concurrency = low memory
-        var done       = 0
-
-        for batchStart in stride(from: 0, to: total, by: batchSize) {
-            let batch = Array(workList[batchStart ..< min(batchStart + batchSize, total)])
-
-            // All tasks in this group complete before we move to the next batch.
-            // Each UIImage + crop is released as soon as its task finishes.
-            await withTaskGroup(of: Void.self) { group in
-                for item in batch {
-                    group.addTask {
-                        // Entire pipeline in one closure — nothing escapes
-                        guard
-                            let (data, _) = try? await URLSession.shared.data(from: item.url),
-                            let image = UIImage(data: data),
-                            let crop  = artService.cropArtRegion(from: image),
-                            let hash  = artService.pHash(of: crop)
-                        else { return }
-
-                        // Store the 8-byte hash, release everything else
-                        db.storeArtHash(oracleId: item.id, hash: hash)
-                        // image, crop, data all go out of scope here
-                    }
-                }
-            }
-            // All 10 images fully released here before next batch
-
-            done = min(batchStart + batchSize, total)
-            await setState(.hashingArt(done: done, total: total))
-
-            // Yield to allow ARC/system to reclaim memory between batches
-            await Task.yield()
-        }
-
-        print("[Bulk] Hashing complete — \(db.artHashCount) hashes stored.")
-    }
+//    private func streamHashArt(from fileURL: URL, totalCards: Int) async throws {
+//        let db         = CardDatabaseService.shared
+//        let artService = ArtHashService.shared
+//
+//        let workList: [(id: String, url: URL)] = await Task.detached(priority: .userInitiated) {
+//            let parser = StreamingJSONParser(fileURL: fileURL)
+//
+//            do {
+//                try parser.open()
+//            } catch {
+//                print("[Bulk] Parser open failed for hashing: \(error)")
+//                return []
+//            }
+//
+//            defer { parser.close() }
+//
+//            var result: [(String, URL)] = []
+//            result.reserveCapacity(totalCards)
+//
+//            while let card = parser.nextCard() {
+//
+//                guard let id = card["id"] as? String,
+//                      !db.hasArtHash(cardId: id)
+//                else {
+//                    continue
+//                }
+//
+//                let artURLString: String? = {
+//
+//                    if let uris = card["image_uris"] as? [String: String] {
+//                        return uris["art_crop"] ?? uris["normal"]
+//                    }
+//
+//                    if let faces = card["card_faces"] as? [[String: Any]],
+//                       let uris = faces.first?["image_uris"] as? [String: String] {
+//                        return uris["art_crop"] ?? uris["normal"]
+//                    }
+//
+//                    return nil
+//                }()
+//
+//                if let raw = artURLString,
+//                   let url = URL(string: raw) {
+//                    result.append((id, url))
+//                }
+//            }
+//
+//            return result
+//        }.value
+//
+//        let total = workList.count
+//
+//        guard total > 0 else {
+//            print("[Bulk] All \(db.artHashCount) art hashes already present.")
+//            return
+//        }
+//
+//        print("[Bulk] Hashing \(total) artworks…")
+//
+//        await setState(.hashingArt(done: 0, total: total))
+//
+//        let batchSize = 10
+//        var done = 0
+//
+//        for batchStart in stride(from: 0, to: total, by: batchSize) {
+//
+//            let batch = Array(
+//                workList[
+//                    batchStart ..< min(batchStart + batchSize, total)
+//                ]
+//            )
+//
+//            let hashes: [(String, UInt64)] = await withTaskGroup(
+//                of: (String, UInt64)?.self,
+//                returning: [(String, UInt64)].self
+//            ) { group in
+//
+//                for item in batch {
+//
+//                    group.addTask {
+//
+//                        guard
+//                            let (data, _) = try? await URLSession.shared.data(from: item.url),
+//                            let image = UIImage(data: data),
+//                            let crop = artService.cropArtRegion(from: image),
+//                            let hash = artService.pHash(of: crop)
+//                        else {
+//                            return nil
+//                        }
+//
+//                        return (item.id, hash)
+//                    }
+//                }
+//
+//                var results: [(String, UInt64)] = []
+//
+//                for await result in group {
+//                    if let result {
+//                        results.append(result)
+//                    }
+//                }
+//
+//                return results
+//            }
+//
+//            // IMPORTANT:
+//            // SQLite writes happen here on ONE thread only.
+//            for (cardId, hash) in hashes {
+//                db.storeArtHash(cardId: cardId, hash: hash)
+//            }
+//
+//            done = min(batchStart + batchSize, total)
+//
+//            await setState(
+//                .hashingArt(
+//                    done: done,
+//                    total: total
+//                )
+//            )
+//
+//            await Task.yield()
+//        }
+//
+//        db.checkpoint()
+//
+//        print("[Bulk] Hashing complete — \(db.artHashCount) hashes stored.")
+//    }
 
     // MARK: - Manifest
 
@@ -271,8 +360,6 @@ final class ScryfallBulkService: NSObject, ObservableObject {
     }
 
     // MARK: - Download to File
-    // Uses URLSessionDownloadTask which writes directly to disk.
-    // The JSON data never enters RAM.
 
     private func downloadToFile(from url: URL, expectedSize: Int64) async throws -> URL {
         self.expectedBytes = expectedSize
@@ -280,7 +367,9 @@ final class ScryfallBulkService: NSObject, ObservableObject {
             self.downloadContinuation = continuation
             var req = URLRequest(url: url)
             req.setValue("MTGScanner-iOS/1.0", forHTTPHeaderField: "User-Agent")
-            req.timeoutInterval = 300 // 5 min timeout for large file
+            // Request uncompressed so we get raw bytes — we handle decompression ourselves
+            req.setValue("identity", forHTTPHeaderField: "Accept-Encoding")
+            req.timeoutInterval = 300
             let session = URLSession(configuration: .default, delegate: self, delegateQueue: nil)
             session.downloadTask(with: req).resume()
         }
@@ -300,9 +389,8 @@ extension ScryfallBulkService: URLSessionDownloadDelegate {
         downloadTask: URLSessionDownloadTask,
         didFinishDownloadingTo location: URL
     ) {
-        // Move from ephemeral temp location to a stable path we control
         let dest = FileManager.default.temporaryDirectory
-            .appendingPathComponent("scryfall_\(UUID().uuidString).json")
+            .appendingPathComponent("scryfall_raw_\(UUID().uuidString).bin")
         do {
             try FileManager.default.moveItem(at: location, to: dest)
             downloadContinuation?.resume(returning: dest)
@@ -321,12 +409,8 @@ extension ScryfallBulkService: URLSessionDownloadDelegate {
     ) {
         let expected = totalBytesExpectedToWrite > 0 ? totalBytesExpectedToWrite : expectedBytes
         let progress = expected > 0 ? Double(totalBytesWritten) / Double(expected) : 0
-
         Task { @MainActor in
-            self.downloadState = .downloading(
-                progress: min(progress, 1.0),
-                totalBytes: expected
-            )
+            self.downloadState = .downloading(progress: min(progress, 1.0), totalBytes: expected)
         }
     }
 

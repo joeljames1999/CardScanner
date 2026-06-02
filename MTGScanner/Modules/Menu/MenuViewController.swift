@@ -17,11 +17,10 @@ final class MenuViewController: UIViewController {
         return tv
     }()
 
-    // Download overlay
     private lazy var downloadOverlay: UIView = {
         let v = UIView()
         v.translatesAutoresizingMaskIntoConstraints = false
-        v.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.95)
+        v.backgroundColor    = UIColor.systemBackground.withAlphaComponent(0.95)
         v.layer.cornerRadius = 20
         v.layer.shadowColor  = UIColor.black.cgColor
         v.layer.shadowOpacity = 0.15
@@ -33,8 +32,8 @@ final class MenuViewController: UIViewController {
     private lazy var downloadIconView: UIImageView = {
         let iv = UIImageView(image: UIImage(systemName: "arrow.down.circle.fill"))
         iv.translatesAutoresizingMaskIntoConstraints = false
-        iv.tintColor    = .systemBlue
-        iv.contentMode  = .scaleAspectFit
+        iv.tintColor   = .systemBlue
+        iv.contentMode = .scaleAspectFit
         return iv
     }()
 
@@ -89,6 +88,12 @@ final class MenuViewController: UIViewController {
         view.backgroundColor = .systemGroupedBackground
         setupLayout()
         observeDownloadState()
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        // Refresh the cell every time the tab is shown so status is always current
+        tableView.reloadData()
     }
 
     // MARK: - Layout
@@ -151,10 +156,10 @@ final class MenuViewController: UIViewController {
 
         case .fetchingManifest:
             showOverlay()
-            downloadTitleLabel.text     = "Checking for Updates"
-            downloadSubtitleLabel.text  = "Fetching card database manifest…"
-            progressView.isHidden       = true
-            progressLabel.isHidden      = true
+            downloadTitleLabel.text    = "Checking for Updates"
+            downloadSubtitleLabel.text = "Fetching card database manifest…"
+            progressView.isHidden      = true
+            progressLabel.isHidden     = true
             activityIndicator.startAnimating()
 
         case .downloading(let progress, let totalBytes):
@@ -164,33 +169,23 @@ final class MenuViewController: UIViewController {
             progressView.isHidden      = false
             progressLabel.isHidden     = false
             progressView.setProgress(Float(progress), animated: true)
-
             let received = Int64(Double(totalBytes) * progress)
             let total    = ByteCountFormatter.string(fromByteCount: totalBytes, countStyle: .file)
             let done     = ByteCountFormatter.string(fromByteCount: received,   countStyle: .file)
             downloadSubtitleLabel.text = "Downloading Scryfall oracle cards"
             progressLabel.text         = "\(done) / \(total)  ·  \(Int(progress * 100))%"
 
-        case .importing(let cardCount):
+        case .importing(let done, _):
+            // Matches DownloadState.importing(done: Int, total: Int)
             showOverlay()
             activityIndicator.startAnimating()
             downloadTitleLabel.text    = "Importing Cards"
-            downloadSubtitleLabel.text = "Writing \(cardCount) cards to local database…"
             progressView.isHidden      = true
             progressLabel.isHidden     = true
+            downloadSubtitleLabel.text = done > 0
+                ? "Imported \(done.formatted()) cards…"
+                : "Writing cards to local database…"
 
-        case .done:
-            activityIndicator.stopAnimating()
-            hideOverlay()
-            tableView.reloadData()
-
-        case .failed(let message):
-            activityIndicator.stopAnimating()
-            hideOverlay()
-            let alert = UIAlertController(title: "Update Failed", message: message, preferredStyle: .alert)
-            alert.addAction(UIAlertAction(title: "OK", style: .default))
-            present(alert, animated: true)
-            
         case .hashingArt(let done, let total):
             showOverlay()
             activityIndicator.stopAnimating()
@@ -201,6 +196,22 @@ final class MenuViewController: UIViewController {
             let pct = total > 0 ? Double(done) / Double(total) : 0
             progressView.setProgress(Float(pct), animated: true)
             progressLabel.text = "\(done.formatted()) / \(total.formatted())  ·  \(Int(pct * 100))%"
+
+        case .done:
+            activityIndicator.stopAnimating()
+            hideOverlay()
+            // Small delay ensures CardDatabaseService has fully committed before we read isEmpty
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+                self?.tableView.reloadData()
+            }
+
+        case .failed(let message):
+            activityIndicator.stopAnimating()
+            hideOverlay()
+            tableView.reloadData()
+            let alert = UIAlertController(title: "Update Failed", message: message, preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            present(alert, animated: true)
         }
     }
 
@@ -226,9 +237,7 @@ extension MenuViewController: UITableViewDataSource {
 
     func numberOfSections(in tableView: UITableView) -> Int { 2 }
 
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        section == 0 ? 1 : 1
-    }
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { 1 }
 
     func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
         section == 0 ? "Card Database" : "About"
@@ -236,7 +245,10 @@ extension MenuViewController: UITableViewDataSource {
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         if indexPath.section == 0 {
-            let cell = tableView.dequeueReusableCell(withIdentifier: BulkDataCell.reuseID, for: indexPath) as! BulkDataCell
+            let cell = tableView.dequeueReusableCell(
+                withIdentifier: BulkDataCell.reuseID,
+                for: indexPath
+            ) as! BulkDataCell
             cell.configure()
             return cell
         } else {
@@ -245,7 +257,7 @@ extension MenuViewController: UITableViewDataSource {
             config.text          = "MTG Scanner"
             config.secondaryText = "Built with Scryfall data"
             cell.contentConfiguration = config
-            cell.selectionStyle = .none
+            cell.selectionStyle  = .none
             return cell
         }
     }
@@ -258,18 +270,18 @@ extension MenuViewController: UITableViewDelegate {
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
 
-        if indexPath.section == 0 {
-            let alert = UIAlertController(
-                title: "Update Card Database",
-                message: "This will re-download the full Scryfall oracle card database (~30–50 MB). Continue?",
-                preferredStyle: .actionSheet
-            )
-            alert.addAction(UIAlertAction(title: "Update Now", style: .default) { _ in
-                Task { await ScryfallBulkService.shared.forceRefresh() }
-            })
-            alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-            present(alert, animated: true)
-        }
+        guard indexPath.section == 0 else { return }
+
+        let alert = UIAlertController(
+            title: "Update Card Database",
+            message: "This will re-download the full Scryfall card database (~30–50 MB). Continue?",
+            preferredStyle: .actionSheet
+        )
+        alert.addAction(UIAlertAction(title: "Update Now", style: .default) { _ in
+            Task { await ScryfallBulkService.shared.forceRefresh() }
+        })
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        present(alert, animated: true)
     }
 }
 
@@ -287,11 +299,11 @@ final class BulkDataCell: UITableViewCell {
 
     private let statusBadge: UILabel = {
         let lbl = UILabel()
-        lbl.font              = .systemFont(ofSize: 12, weight: .semibold)
-        lbl.textColor         = .white
-        lbl.textAlignment     = .center
+        lbl.font               = .systemFont(ofSize: 12, weight: .semibold)
+        lbl.textColor          = .white
+        lbl.textAlignment      = .center
         lbl.layer.cornerRadius = 8
-        lbl.clipsToBounds     = true
+        lbl.clipsToBounds      = true
         return lbl
     }()
 
@@ -304,6 +316,7 @@ final class BulkDataCell: UITableViewCell {
 
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
+        accessoryType = .disclosureIndicator
 
         let textStack = UIStackView(arrangedSubviews: [titleLabel, detailLabel])
         textStack.axis    = .vertical
@@ -329,22 +342,26 @@ final class BulkDataCell: UITableViewCell {
     required init?(coder: NSCoder) { fatalError() }
 
     func configure() {
-        let service = ScryfallBulkService.shared
-        if service.isDataPresent {
+        let service      = ScryfallBulkService.shared
+        let hashCount    = CardDatabaseService.shared.artHashCount
+        let cardCount    = CardDatabaseService.shared.isEmpty
+
+        print("[Menu] isDataPresent=\(!cardCount) artHashCount=\(hashCount)")
+
+        if !cardCount {
             statusBadge.text            = " Present "
             statusBadge.backgroundColor = .systemGreen
-            detailLabel.text            = "\(service.dataSizeOnDisk) on disk  ·  Updated \(service.lastUpdatedString)"
+            detailLabel.text            = "\(service.dataSizeOnDisk) on disk  ·  \(hashCount.formatted()) art hashes  ·  Updated \(service.lastUpdatedString)"
         } else {
             statusBadge.text            = " Missing "
             statusBadge.backgroundColor = .systemOrange
             detailLabel.text            = "Tap to download (~30–50 MB)"
         }
-        accessoryType = .disclosureIndicator
     }
 
     override func prepareForReuse() {
         super.prepareForReuse()
-        detailLabel.text   = nil
-        statusBadge.text   = nil
+        detailLabel.text = nil
+        statusBadge.text = nil
     }
 }
