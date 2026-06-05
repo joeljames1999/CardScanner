@@ -141,6 +141,7 @@ final class ScannerViewController: UIViewController {
     }
 
     private func setupFrameCallback() {
+
         cameraService.onFrameCaptured = { [weak self] pixelBuffer in
             guard let self else { return }
             self.ocrService.processFrame(pixelBuffer)
@@ -148,13 +149,20 @@ final class ScannerViewController: UIViewController {
 
         ocrService.onCardImageCaptured = { [weak self] cardImage in
             guard let self else { return }
+
+            let recognisedName = self.ocrService.recognisedCardName
+
             Task { @MainActor in
-                self.viewModel.processCardImage(cardImage)
+                self.viewModel.processCardImage(
+                    cardImage,
+                    recognisedName: recognisedName
+                )
             }
         }
 
         ocrService.onRectangleDetected = { [weak self] rect in
             guard let self else { return }
+
             DispatchQueue.main.async {
                 self.overlayView.updateDetectedRect(
                     rect,

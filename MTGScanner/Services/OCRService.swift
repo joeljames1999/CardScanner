@@ -11,9 +11,10 @@ final class OCRService {
 
     // Stability — card must be held steady for N frames before capture
     private var stableFrameCount = 0
-    private let requiredStableFrames = 8
+    private let requiredStableFrames = 4
     private var lastRect: VNRectangleObservation?
     private var isLocked = false
+    private(set) var recognisedCardName: String?
 
     // Cache the working orientation once found
     private var workingOrientation: CGImagePropertyOrientation? = nil
@@ -29,6 +30,7 @@ final class OCRService {
         isLocked = false
         stableFrameCount = 0
         lastRect = nil
+        recognisedCardName = nil
     }
 
     func resetCooldown() {
@@ -38,101 +40,185 @@ final class OCRService {
     // MARK: - Rectangle Detection
 
     private func detectCard(in pixelBuffer: CVPixelBuffer) {
+
         let request = VNDetectRectanglesRequest { [weak self] req, error in
             guard let self else { return }
 
-            let allResults = req.results as? [VNRectangleObservation] ?? []
+            let allRects =
+                req.results as? [VNRectangleObservation] ?? []
 
-            if allResults.isEmpty {
-                DispatchQueue.main.async { self.onRectangleDetected?(nil) }
-                self.stableFrameCount = 0
-                return
-            }
+            if allRects.isEmpty {
 
-            guard let rect = allResults.first(where: { self.isCardAspectRatio($0) }) else {
-                print("[OCR] Rectangles found but none match card aspect ratio:")
-                for r in allResults {
-                    let aspect = r.boundingBox.width / r.boundingBox.height
-                    print("[OCR]   aspect=\(String(format: "%.3f", aspect)) conf=\(String(format: "%.2f", r.confidence))")
+                DispatchQueue.main.async {
+                    self.onRectangleDetected?(nil)
                 }
-                DispatchQueue.main.async { self.onRectangleDetected?(nil) }
-                self.stableFrameCount = 0
+
+                self.stableFrameCount = max(
+                    0,
+                    self.stableFrameCount - 1
+                )
+
                 return
             }
 
-            print("[OCR] ✅ Card rect found — aspect=\(String(format: "%.3f", rect.boundingBox.width/rect.boundingBox.height)) stable=\(self.stableFrameCount)")
+            let cardRects =
+                allRects.filter {
+                    self.isCardAspectRatio($0)
+                }
 
-            DispatchQueue.main.async { self.onRectangleDetected?(rect) }
+            guard let rect =
+                cardRects.max(
+                    by: {
+                        ($0.boundingBox.width * $0.boundingBox.height)
+                        <
+                        ($1.boundingBox.width * $1.boundingBox.height)
+                    }
+                )
+            else {
 
-            if let last = self.lastRect, self.isSameRect(rect, last) {
-                self.stableFrameCount += 1
-            } else {
-                self.stableFrameCount = 0
-                self.lastRect = rect
+                DispatchQueue.main.async {
+                    self.onRectangleDetected?(nil)
+                }
+
+                self.stableFrameCount = max(
+                    0,
+                    self.stableFrameCount - 1
+                )
+
+                return
             }
 
-            guard self.stableFrameCount >= self.requiredStableFrames else { return }
+            let area =
+                rect.boundingBox.width *
+                rect.boundingBox.height
 
-            self.captureFullCard(from: pixelBuffer, rect: rect)
+            print(
+                "[OCR] ✅ Card rect",
+                "area:",
+                String(format: "%.3f", area),
+                "stable:",
+                self.stableFrameCount
+            )
+
+            DispatchQueue.main.async {
+                self.onRectangleDetected?(rect)
+            }
+
+            if let last = self.lastRect {
+
+                if self.isSameRect(rect, last) {
+
+                    self.stableFrameCount += 1
+
+                } else {
+
+                    // Instead of resetting to zero,
+                    // slowly decay stability
+
+                    self.stableFrameCount = max(
+                        0,
+                        self.stableFrameCount - 1
+                    )
+                }
+
+            } else {
+
+                self.stableFrameCount = 1
+            }
+
+            self.lastRect = rect
+
+            guard
+                self.stableFrameCount >= self.requiredStableFrames
+            else {
+                return
+            }
+
+            print("[OCR] 📸 Stable card acquired")
+
+            self.captureFullCard(
+                from: pixelBuffer,
+                rect: rect
+            )
         }
 
-        request.maximumObservations = 5
-        request.minimumConfidence   = 0.5
-        request.minimumAspectRatio  = 0.5
-        request.maximumAspectRatio  = 0.9
-        request.minimumSize         = 0.1
-        request.quadratureTolerance = 45
+        request.maximumObservations = 10
+        request.minimumConfidence   = 0.45
+        request.minimumAspectRatio  = 0.60
+        request.maximumAspectRatio  = 0.80
+        request.minimumSize         = 0.08
+        request.quadratureTolerance = 30
 
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+        DispatchQueue.global(
+            qos: .userInitiated
+        ).async { [weak self] in
+
             guard let self else { return }
 
-            // If we already know the working orientation, use it directly
             if let known = self.workingOrientation {
+
                 let handler = VNImageRequestHandler(
                     cvPixelBuffer: pixelBuffer,
                     orientation: known,
                     options: [:]
                 )
+
                 try? handler.perform([request])
                 return
             }
 
-            // Otherwise try all orientations until one finds rectangles
-            let orientations: [CGImagePropertyOrientation] = [.right, .up, .left, .down, .rightMirrored, .upMirrored]
+            let orientations: [CGImagePropertyOrientation] = [
+                .right,
+                .up,
+                .left,
+                .down
+            ]
 
             for orientation in orientations {
-                // Reset results between attempts
+
                 let probe = VNDetectRectanglesRequest()
-                probe.maximumObservations = 3
-                probe.minimumConfidence   = 0.4
-                probe.minimumAspectRatio  = 0.4
-                probe.maximumAspectRatio  = 1.0
+
+                probe.maximumObservations = 5
+                probe.minimumConfidence   = 0.35
+                probe.minimumAspectRatio  = 0.50
+                probe.maximumAspectRatio  = 0.90
                 probe.minimumSize         = 0.05
-                probe.quadratureTolerance = 45
 
                 let handler = VNImageRequestHandler(
                     cvPixelBuffer: pixelBuffer,
                     orientation: orientation,
                     options: [:]
                 )
+
                 try? handler.perform([probe])
 
-                let found = probe.results as? [VNRectangleObservation] ?? []
+                let found =
+                    probe.results as? [VNRectangleObservation]
+                    ?? []
+
                 if !found.isEmpty {
-                    print("[OCR] 🎯 Working orientation found: \(orientation.debugName)")
-                    self.workingOrientation = orientation
-                    // Now run the real request with this orientation
-                    let realHandler = VNImageRequestHandler(
-                        cvPixelBuffer: pixelBuffer,
-                        orientation: orientation,
-                        options: [:]
+
+                    print(
+                        "[OCR] 🎯 Working orientation:",
+                        orientation.debugName
                     )
+
+                    self.workingOrientation = orientation
+
+                    let realHandler =
+                        VNImageRequestHandler(
+                            cvPixelBuffer: pixelBuffer,
+                            orientation: orientation,
+                            options: [:]
+                        )
+
                     try? realHandler.perform([request])
+
                     return
                 }
             }
 
-            print("[OCR] No rectangles found in any orientation")
+            print("[OCR] No rectangles found")
         }
     }
 
@@ -169,8 +255,16 @@ final class OCRService {
         let cardImage = UIImage(cgImage: cgImage)
         print("[OCR] ✅ Card captured — size: \(cardImage.size)")
 
-        DispatchQueue.main.async {
-            self.onCardImageCaptured?(cardImage)
+        recogniseCardName(from: cardImage) { [weak self] name in
+            guard let self else { return }
+
+            self.recognisedCardName = name
+
+            print("[OCR] Card name: \(name ?? "none")")
+
+            DispatchQueue.main.async {
+                self.onCardImageCaptured?(cardImage)
+            }
         }
     }
 
@@ -209,12 +303,61 @@ final class OCRService {
         return portraitMatch || landscapeMatch
     }
 
-    private func isSameRect(_ a: VNRectangleObservation, _ b: VNRectangleObservation) -> Bool {
-        let threshold: CGFloat = 0.04
-        return abs(a.topLeft.x     - b.topLeft.x)     < threshold &&
-               abs(a.topLeft.y     - b.topLeft.y)     < threshold &&
-               abs(a.bottomRight.x - b.bottomRight.x) < threshold &&
-               abs(a.bottomRight.y - b.bottomRight.y) < threshold
+    private func isSameRect(
+        _ a: VNRectangleObservation,
+        _ b: VNRectangleObservation
+    ) -> Bool {
+
+        let threshold: CGFloat = 0.08
+
+        return
+            abs(a.topLeft.x - b.topLeft.x) < threshold &&
+            abs(a.topLeft.y - b.topLeft.y) < threshold &&
+            abs(a.bottomRight.x - b.bottomRight.x) < threshold &&
+            abs(a.bottomRight.y - b.bottomRight.y) < threshold
+    }
+    
+    private func recogniseCardName(
+        from image: UIImage,
+        completion: @escaping (String?) -> Void
+    ) {
+        guard let cgImage = image.cgImage else {
+            completion(nil)
+            return
+        }
+
+        let request = VNRecognizeTextRequest { request, error in
+
+            guard error == nil else {
+                completion(nil)
+                return
+            }
+
+            let observations =
+                request.results as? [VNRecognizedTextObservation] ?? []
+
+            let strings = observations.compactMap {
+                $0.topCandidates(1).first?.string
+            }
+
+            // MTG card name is normally the first line
+            let cardName = strings.first?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+
+            completion(cardName)
+        }
+
+        request.recognitionLevel = .accurate
+        request.usesLanguageCorrection = false
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            let handler = VNImageRequestHandler(
+                cgImage: cgImage,
+                options: [:]
+            )
+
+            try? handler.perform([request])
+        }
     }
 }
 

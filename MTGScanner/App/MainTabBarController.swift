@@ -15,12 +15,13 @@ final class MainTabBarController: UITabBarController {
     private func setupTabs() {
         viewControllers = [
             makeNav(HomeViewController(),       title: "Home",       icon: "house",            tag: 0),
-            makeNav(SearchViewController(),     title: "Search",     icon: "magnifyingglass",  tag: 1),
+            makeNav(CardSearchViewController(),     title: "Search",     icon: "magnifyingglass",  tag: 1),
             makeScannerTab(),
             makeNav(CollectionViewController(), title: "Collection", icon: "rectangle.stack",  tag: 3),
             makeNav(MenuViewController(),       title: "Menu",       icon: "line.3.horizontal", tag: 4),
         ]
-        selectedIndex = 0
+        // opening screen
+        selectedIndex = 1
     }
 
     private func makeNav(_ root: UIViewController, title: String, icon: String, tag: Int) -> UINavigationController {

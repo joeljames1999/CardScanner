@@ -185,6 +185,72 @@ final class CardDatabaseService {
         query("SELECT * FROM cards WHERE name = ? COLLATE NOCASE LIMIT 1;", param: name)
         ?? query("SELECT * FROM cards WHERE name LIKE ? COLLATE NOCASE LIMIT 1;", param: "%\(name)%")
     }
+    
+    func findCards(fuzzyName search: String) -> [MTGCard] {
+
+        let cleaned = search
+            .replacingOccurrences(of: "0", with: "O")
+            .replacingOccurrences(of: "1", with: "I")
+            .replacingOccurrences(of: "|", with: "I")
+            .replacingOccurrences(of: "—", with: "-")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !cleaned.isEmpty else {
+            return []
+        }
+
+        // Exact match
+
+        let exact = queryCards(
+            """
+            SELECT *
+            FROM cards
+            WHERE name = ?
+            COLLATE NOCASE
+            ORDER BY rowid DESC;
+            """,
+            param: cleaned
+        )
+
+        if !exact.isEmpty {
+            return exact
+        }
+
+        // Contains match
+
+        let contains = queryCards(
+            """
+            SELECT *
+            FROM cards
+            WHERE name LIKE ?
+            COLLATE NOCASE
+            LIMIT 50;
+            """,
+            param: "%\(cleaned)%"
+        )
+
+        if !contains.isEmpty {
+            return contains
+        }
+
+        // First word match
+
+        let firstWord = cleaned
+            .split(separator: " ")
+            .first
+            .map(String.init) ?? cleaned
+
+        return queryCards(
+            """
+            SELECT *
+            FROM cards
+            WHERE name LIKE ?
+            COLLATE NOCASE
+            LIMIT 50;
+            """,
+            param: "\(firstWord)%"
+        )
+    }
 
     func findCard(byCardId cardId: String) -> MTGCard? {
         query("SELECT * FROM cards WHERE card_id = ? LIMIT 1;", param: cardId)
@@ -230,28 +296,61 @@ final class CardDatabaseService {
         return sqlite3_step(stmt) == SQLITE_ROW
     }
 
-    func findCardByArtHash(_ hash: UInt64) -> (card: MTGCard, distance: Int)? {
+    func findCardCandidatesByArtHash(
+        _ hash: UInt64,
+        limit: Int = 10
+    ) -> [(card: MTGCard, distance: Int)] {
+
         let sql = "SELECT card_id, phash FROM art_hashes;"
         var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return nil }
-        defer { sqlite3_finalize(stmt) }
 
-        var bestCardId: String?
-        var bestDistance = Int.max
-
-        while sqlite3_step(stmt) == SQLITE_ROW {
-            guard let ptr = sqlite3_column_text(stmt, 0) else { continue }
-            let cardId   = String(cString: ptr)
-            let stored   = UInt64(bitPattern: sqlite3_column_int64(stmt, 1))
-            let distance = ArtHashService.shared.hammingDistance(hash, stored)
-            if distance < bestDistance {
-                bestDistance = distance
-                bestCardId   = cardId
-            }
+        guard sqlite3_prepare_v2(
+            db,
+            sql,
+            -1,
+            &stmt,
+            nil
+        ) == SQLITE_OK else {
+            return []
         }
 
-        guard let id = bestCardId, let card = findCard(byCardId: id) else { return nil }
-        return (card, bestDistance)
+        defer {
+            sqlite3_finalize(stmt)
+        }
+
+        var matches: [(String, Int)] = []
+
+        while sqlite3_step(stmt) == SQLITE_ROW {
+
+            guard let ptr = sqlite3_column_text(stmt, 0) else {
+                continue
+            }
+
+            let cardId = String(cString: ptr)
+
+            let storedHash = UInt64(
+                bitPattern: sqlite3_column_int64(stmt, 1)
+            )
+
+            let distance = ArtHashService.shared.hammingDistance(
+                hash,
+                storedHash
+            )
+
+            matches.append((cardId, distance))
+        }
+
+        let bestMatches = matches
+            .sorted { $0.1 < $1.1 }
+            .prefix(limit)
+
+        return bestMatches.compactMap { cardId, distance in
+            guard let card = findCard(byCardId: cardId) else {
+                return nil
+            }
+
+            return (card, distance)
+        }
     }
 
     func ensureArtHash(
@@ -283,6 +382,93 @@ final class CardDatabaseService {
             cardId: cardId,
             hash: hash
         )
+    }
+    
+    // MARK: - Search
+    
+    func searchCards(query: String, limit: Int = 100) -> [MTGCard] {
+
+        let trimmed = query.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+
+        guard !trimmed.isEmpty else {
+            return []
+        }
+
+        let sql = """
+        SELECT *
+        FROM cards
+        WHERE name LIKE ?
+        COLLATE NOCASE
+        ORDER BY name ASC
+        LIMIT 500;
+        """
+
+        var stmt: OpaquePointer?
+
+        guard sqlite3_prepare_v2(
+            db,
+            sql,
+            -1,
+            &stmt,
+            nil
+        ) == SQLITE_OK else {
+
+            print("[CardDB] Search prepare failed:",
+                  String(cString: sqlite3_errmsg(db)))
+
+            return []
+        }
+
+        defer {
+            sqlite3_finalize(stmt)
+        }
+
+        let search = "%\(trimmed)%"
+
+        sqlite3_bind_text(
+            stmt,
+            1,
+            search,
+            -1,
+            unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+        )
+
+        sqlite3_bind_int(
+            stmt,
+            2,
+            Int32(limit)
+        )
+
+        var results: [MTGCard] = []
+
+        while sqlite3_step(stmt) == SQLITE_ROW {
+
+            if let card = rowToMTGCard(stmt) {
+                results.append(card)
+            }
+        }
+
+        print("[CardDB] Search '\(query)'")
+        print("[CardDB] Search '\(trimmed)' returned \(results.count) cards")
+
+        var uniqueCards: [MTGCard] = []
+        var seenNames = Set<String>()
+
+        for card in results {
+
+            let key = card.name.lowercased()
+
+            guard !seenNames.contains(key) else {
+                continue
+            }
+
+            seenNames.insert(key)
+            uniqueCards.append(card)
+        }
+
+        return uniqueCards
     }
     
     // MARK: - Stats
@@ -320,6 +506,46 @@ final class CardDatabaseService {
         return rowToMTGCard(stmt)
     }
 
+    private func queryCards(
+        _ sql: String,
+        param: String
+    ) -> [MTGCard] {
+
+        var stmt: OpaquePointer?
+
+        guard sqlite3_prepare_v2(
+            db,
+            sql,
+            -1,
+            &stmt,
+            nil
+        ) == SQLITE_OK else {
+            return []
+        }
+
+        defer {
+            sqlite3_finalize(stmt)
+        }
+
+        sqlite3_bind_text(
+            stmt,
+            1,
+            param,
+            -1,
+            unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+        )
+
+        var cards: [MTGCard] = []
+
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            if let card = rowToMTGCard(stmt) {
+                cards.append(card)
+            }
+        }
+
+        return cards
+    }
+    
     private func bind(_ stmt: OpaquePointer?, _ index: Int32, _ value: String?) {
         let TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
         if let value { sqlite3_bind_text(stmt, index, value, -1, TRANSIENT) }

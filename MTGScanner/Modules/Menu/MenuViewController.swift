@@ -12,6 +12,7 @@ final class MenuViewController: UIViewController {
         tv.translatesAutoresizingMaskIntoConstraints = false
         tv.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
         tv.register(BulkDataCell.self, forCellReuseIdentifier: BulkDataCell.reuseID)
+        tv.register(SettingsCell.self, forCellReuseIdentifier: SettingsCell.reuseID)
         tv.dataSource = self
         tv.delegate   = self
         return tv
@@ -235,12 +236,18 @@ final class MenuViewController: UIViewController {
 
 extension MenuViewController: UITableViewDataSource {
 
-    func numberOfSections(in tableView: UITableView) -> Int { 2 }
+    func numberOfSections(in tableView: UITableView) -> Int { 3 }
 
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { 1 }
 
     func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-        section == 0 ? "Card Database" : "About"
+        if section == 0 {
+            "Card Database"
+        } else if section == 1 {
+            "Settings"
+        } else {
+            "About"
+        }
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -250,6 +257,11 @@ extension MenuViewController: UITableViewDataSource {
                 for: indexPath
             ) as! BulkDataCell
             cell.configure()
+            return cell
+        } else if indexPath.section == 1 {
+            let cell = tableView.dequeueReusableCell(
+                withIdentifier: SettingsCell.reuseID,
+                for: indexPath) as! SettingsCell
             return cell
         } else {
             let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
@@ -269,19 +281,23 @@ extension MenuViewController: UITableViewDelegate {
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-
-        guard indexPath.section == 0 else { return }
-
-        let alert = UIAlertController(
-            title: "Update Card Database",
-            message: "This will re-download the full Scryfall card database (~30–50 MB). Continue?",
-            preferredStyle: .actionSheet
-        )
-        alert.addAction(UIAlertAction(title: "Update Now", style: .default) { _ in
-            Task { await ScryfallBulkService.shared.forceRefresh() }
-        })
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        present(alert, animated: true)
+        
+        if indexPath.section == 0 {
+            
+            let alert = UIAlertController(
+                title: "Update Card Database",
+                message: "This will re-download the full Scryfall card database (~30–50 MB). Continue?",
+                preferredStyle: .actionSheet
+            )
+            alert.addAction(UIAlertAction(title: "Update Now", style: .default) { _ in
+                Task { await ScryfallBulkService.shared.forceRefresh() }
+            })
+            alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+            present(alert, animated: true)
+        } else if indexPath.section == 1 {
+            let vc = SettingsViewController()
+            navigationController?.pushViewController(vc, animated: true)
+        }
     }
 }
 
@@ -358,6 +374,68 @@ final class BulkDataCell: UITableViewCell {
             detailLabel.text            = "Tap to download (~30–50 MB)"
         }
     }
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        detailLabel.text = nil
+        statusBadge.text = nil
+    }
+}
+
+
+final class SettingsCell: UITableViewCell {
+    static let reuseID = "SettingCell"
+
+    private let titleLabel: UILabel = {
+        let lbl = UILabel()
+        lbl.font = .systemFont(ofSize: 16)
+        lbl.text = "Settings"
+        return lbl
+    }()
+
+    private let statusBadge: UILabel = {
+        let lbl = UILabel()
+        lbl.font               = .systemFont(ofSize: 12, weight: .semibold)
+        lbl.textColor          = .white
+        lbl.textAlignment      = .center
+        lbl.layer.cornerRadius = 8
+        lbl.clipsToBounds      = true
+        return lbl
+    }()
+
+    private let detailLabel: UILabel = {
+        let lbl = UILabel()
+        lbl.font      = .systemFont(ofSize: 12)
+        lbl.textColor = .secondaryLabel
+        return lbl
+    }()
+
+    override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
+        super.init(style: style, reuseIdentifier: reuseIdentifier)
+        accessoryType = .disclosureIndicator
+
+        let textStack = UIStackView(arrangedSubviews: [titleLabel, detailLabel])
+        textStack.axis    = .vertical
+        textStack.spacing = 3
+        textStack.translatesAutoresizingMaskIntoConstraints = false
+
+        statusBadge.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(textStack)
+        contentView.addSubview(statusBadge)
+
+        NSLayoutConstraint.activate([
+            textStack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            textStack.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
+            textStack.trailingAnchor.constraint(lessThanOrEqualTo: statusBadge.leadingAnchor, constant: -8),
+
+            statusBadge.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+            statusBadge.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
+            statusBadge.widthAnchor.constraint(greaterThanOrEqualToConstant: 60),
+            statusBadge.heightAnchor.constraint(equalToConstant: 24),
+        ])
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
 
     override func prepareForReuse() {
         super.prepareForReuse()

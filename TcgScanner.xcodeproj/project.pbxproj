@@ -30,6 +30,9 @@
 		9875E0DF2F97D4B8002929D0 /* GeminiService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9875E0DE2F97D4B8002929D0 /* GeminiService.swift */; };
 		9875E0E12F97D59B002929D0 /* KeyChainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9875E0E02F97D59B002929D0 /* KeyChainService.swift */; };
 		9875E0E32F97D5FA002929D0 /* CardConfirmationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9875E0E22F97D5FA002929D0 /* CardConfirmationViewController.swift */; };
+		98CB316D2FD1875B0029CA7F /* SettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB316C2FD1875B0029CA7F /* SettingsViewController.swift */; };
+		98CB31702FD1E7D40029CA7F /* CardSearchViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB316F2FD1E7D40029CA7F /* CardSearchViewModel.swift */; };
+		98CB31722FD1E8740029CA7F /* CardSearchCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB31712FD1E8740029CA7F /* CardSearchCell.swift */; };
 		98EEA85D2FA54A3300EFA5F8 /* CardDatabaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98EEA85C2FA54A3300EFA5F8 /* CardDatabaseService.swift */; };
 		98EEA85F2FA54A4800EFA5F8 /* ScryfallBulkService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98EEA85E2FA54A4800EFA5F8 /* ScryfallBulkService.swift */; };
 		98EEA8612FA54B7700EFA5F8 /* ArtHashService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98EEA8602FA54B7700EFA5F8 /* ArtHashService.swift */; };
@@ -62,6 +65,9 @@
 		9875E0DE2F97D4B8002929D0 /* GeminiService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiService.swift; sourceTree = "<group>"; };
 		9875E0E02F97D59B002929D0 /* KeyChainService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyChainService.swift; sourceTree = "<group>"; };
 		9875E0E22F97D5FA002929D0 /* CardConfirmationViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardConfirmationViewController.swift; sourceTree = "<group>"; };
+		98CB316C2FD1875B0029CA7F /* SettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewController.swift; sourceTree = "<group>"; };
+		98CB316F2FD1E7D40029CA7F /* CardSearchViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSearchViewModel.swift; sourceTree = "<group>"; };
+		98CB31712FD1E8740029CA7F /* CardSearchCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSearchCell.swift; sourceTree = "<group>"; };
 		98EEA85C2FA54A3300EFA5F8 /* CardDatabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardDatabaseService.swift; sourceTree = "<group>"; };
 		98EEA85E2FA54A4800EFA5F8 /* ScryfallBulkService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScryfallBulkService.swift; sourceTree = "<group>"; };
 		98EEA8602FA54B7700EFA5F8 /* ArtHashService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtHashService.swift; sourceTree = "<group>"; };
@@ -154,6 +160,7 @@
 			isa = PBXGroup;
 			children = (
 				986A785C2F96E98800EAEBEC /* MenuViewController.swift */,
+				98CB316E2FD187660029CA7F /* Menu Options */,
 			);
 			path = Menu;
 			sourceTree = "<group>";
@@ -174,6 +181,8 @@
 			isa = PBXGroup;
 			children = (
 				986A78602F96E98800EAEBEC /* SearchViewController.swift */,
+				98CB31712FD1E8740029CA7F /* CardSearchCell.swift */,
+				98CB316F2FD1E7D40029CA7F /* CardSearchViewModel.swift */,
 			);
 			path = Search;
 			sourceTree = "<group>";
@@ -229,6 +238,14 @@
 				986A78682F96E98800EAEBEC /* Services */,
 			);
 			path = MTGScanner;
+			sourceTree = "<group>";
+		};
+		98CB316E2FD187660029CA7F /* Menu Options */ = {
+			isa = PBXGroup;
+			children = (
+				98CB316C2FD1875B0029CA7F /* SettingsViewController.swift */,
+			);
+			path = "Menu Options";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -323,10 +340,13 @@
 				986A787D2F96EA1600EAEBEC /* HomeViewController.swift in Sources */,
 				986A787C2F96EA0300EAEBEC /* CollectionViewController.swift in Sources */,
 				986A78AF2F96EBEA00EAEBEC /* ScannerOverlayView.swift in Sources */,
+				98CB31702FD1E7D40029CA7F /* CardSearchViewModel.swift in Sources */,
 				9875E0E32F97D5FA002929D0 /* CardConfirmationViewController.swift in Sources */,
 				986A787B2F96E9FD00EAEBEC /* CardDetailViewController.swift in Sources */,
+				98CB31722FD1E8740029CA7F /* CardSearchCell.swift in Sources */,
 				986A787A2F96E9FA00EAEBEC /* MTGCard.swift in Sources */,
 				9875E0DF2F97D4B8002929D0 /* GeminiService.swift in Sources */,
+				98CB316D2FD1875B0029CA7F /* SettingsViewController.swift in Sources */,
 				9875E0DD2F96FFF6002929D0 /* ScannedCardStore.swift in Sources */,
 				98EEA85D2FA54A3300EFA5F8 /* CardDatabaseService.swift in Sources */,
 				9875E0DA2F96FB0F002929D0 /* SceneDelegate.swift in Sources */,

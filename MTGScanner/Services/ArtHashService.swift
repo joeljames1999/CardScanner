@@ -21,13 +21,16 @@ final class ArtHashService {
 
         // 2D DCT — we only need the top-left 8x8 of the 32x32 result
         let dct = dct2D(grey, size: 32)
-        let topLeft = Array(dct.prefix(64)) // 8x8 = 64 values
+        let coefficients = Array(dct.prefix(64))
 
-        let median = topLeft.sorted()[32]
+        let values = Array(coefficients.dropFirst())
+
+        let median = values.sorted()[values.count / 2]
 
         var hash: UInt64 = 0
-        for (i, val) in topLeft.enumerated() {
-            if val > median {
+
+        for (i, value) in values.enumerated() {
+            if value > median {
                 hash |= (1 << i)
             }
         }
