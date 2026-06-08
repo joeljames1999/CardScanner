@@ -41,18 +41,28 @@ final class CardSearchViewController: UIViewController {
     }()
 
     private let searchController = UISearchController()
-
-    // MARK: - Filter Button Badge
-
+    
+    // Filter badge
+    private lazy var filterButton: UIBarButtonItem = {
+        UIBarButtonItem(
+            image: UIImage(systemName: "line.3.horizontal.decrease.circle"),
+            style: .plain,
+            target: self,
+            action: #selector(openFilters)
+        )
+    }()
+    
     private lazy var filterBadge: UILabel = {
         let lbl = UILabel()
         lbl.translatesAutoresizingMaskIntoConstraints = false
-        lbl.font = .systemFont(ofSize: 11, weight: .bold)
+        lbl.font = .systemFont(ofSize: 10, weight: .bold)
         lbl.textColor = .white
-        lbl.backgroundColor = .systemRed
         lbl.textAlignment = .center
+        lbl.backgroundColor = .systemRed
         lbl.layer.cornerRadius = 8
         lbl.clipsToBounds = true
+        lbl.widthAnchor.constraint(equalToConstant: 16).isActive = true
+        lbl.heightAnchor.constraint(equalToConstant: 16).isActive = true
         lbl.isHidden = true
         return lbl
     }()
@@ -73,46 +83,38 @@ final class CardSearchViewController: UIViewController {
         searchController.obscuresBackgroundDuringPresentation = false
         searchController.searchBar.placeholder = "Search cards"
 
-        // Add filter button
-        let filterButton = UIBarButtonItem(
-            image: UIImage(systemName: "line.3.horizontal.decrease.circle"),
-            style: .plain,
-            target: self,
-            action: #selector(openFilters)
-        )
-
+        // Add filter button with badge
         navigationItem.rightBarButtonItem = filterButton
+        view.addSubview(filterBadge)
+        
+        NSLayoutConstraint.activate([
+            filterBadge.rightAnchor.constraint(equalTo: view.rightAnchor, constant: -16),
+            filterBadge.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
+        ])
 
         view.addSubview(collectionView)
-        view.addSubview(filterBadge)
 
         NSLayoutConstraint.activate([
             collectionView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 12),
             collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -12),
-            collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-
-            filterBadge.topAnchor.constraint(equalTo: filterButton.customView?.topAnchor ?? view.topAnchor),
-            filterBadge.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -8),
-            filterBadge.widthAnchor.constraint(equalToConstant: 18),
-            filterBadge.heightAnchor.constraint(equalToConstant: 18),
+            collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
 
         bindViewModel()
     }
 
-    // MARK: - ViewModel Binding
-
     private func bindViewModel() {
-
+        
+        // Update collection view when cards change
         viewModel.$cards
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.collectionView.reloadData()
             }
             .store(in: &cancellables)
-
-        // Update filter badge
+        
+        // Update badge when filter changes
         viewModel.$filter
             .receive(on: DispatchQueue.main)
             .sink { [weak self] filter in
@@ -120,45 +122,40 @@ final class CardSearchViewController: UIViewController {
             }
             .store(in: &cancellables)
     }
-
-    // MARK: - Filter Badge
-
+    
     private func updateFilterBadge(_ filter: SearchFilter) {
-        if filter.hasActiveFilters {
-            // Count active filters
-            var activeCount = 0
-            activeCount += filter.selectedRarities.count
-            activeCount += filter.selectedSets.count
-            activeCount += filter.selectedManaCosts.count
-            activeCount += filter.selectedManaColors.count
-
+        let activeCount = filter.selectedRarities.count +
+                         filter.selectedSets.count +
+                         filter.selectedManaCosts.count +
+                         filter.selectedManaColors.count
+        
+        if activeCount > 0 {
             filterBadge.text = "\(activeCount)"
             filterBadge.isHidden = false
         } else {
             filterBadge.isHidden = true
         }
     }
-
-    // MARK: - Filter Action
-
+    
     @objc private func openFilters() {
         let filterVC = CardFilterViewController()
         filterVC.currentFilter = viewModel.filter
+        
+        // When filter changes, update view model
         filterVC.onFilterChange = { [weak self] newFilter in
             self?.viewModel.updateFilter(newFilter)
         }
-
+        
         let nav = UINavigationController(rootViewController: filterVC)
         if let sheet = nav.sheetPresentationController {
             sheet.detents = [.medium(), .large()]
             sheet.prefersGrabberVisible = true
-            sheet.prefersScrollingExpandsWhenScrolledToEdge = true
         }
         present(nav, animated: true)
     }
 }
 
-// MARK: - Search
+// MARK: Search
 
 extension CardSearchViewController: UISearchResultsUpdating {
 
@@ -170,7 +167,7 @@ extension CardSearchViewController: UISearchResultsUpdating {
     }
 }
 
-// MARK: - Collection View
+// MARK: Collection View
 
 extension CardSearchViewController:
 UICollectionViewDataSource,
@@ -180,6 +177,7 @@ UICollectionViewDelegate {
         _ collectionView: UICollectionView,
         numberOfItemsInSection section: Int
     ) -> Int {
+
         viewModel.cards.count
     }
 

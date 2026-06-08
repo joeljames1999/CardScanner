@@ -1,6 +1,13 @@
 import Foundation
 import UIKit
 
+// MARK: - Color Filter Mode
+
+enum ColorFilterMode: String, CaseIterable {
+    case includesOnlyThese = "Includes Only These Colors"
+    case includesAnyOfThese = "Includes Any of These Colors"
+}
+
 // MARK: - SearchFilter
 
 struct SearchFilter: Equatable {
@@ -12,16 +19,16 @@ struct SearchFilter: Equatable {
     var selectedManaCosts: Set<Int> = []
     var selectedManaColors: Set<ManaColor> = []
     var selectedArtists: Set<String> = []
+    var colorFilterMode: ColorFilterMode = .includesAnyOfThese
     
     // MARK: - Mana Colors
     
-    enum ManaColor: String, CaseIterable, Codable {
+    enum ManaColor: String, CaseIterable, Codable, Hashable {
         case white = "W"
         case blue = "U"
         case black = "B"
         case red = "R"
         case green = "G"
-        case colorless = "C"
         
         var displayName: String {
             switch self {
@@ -30,7 +37,16 @@ struct SearchFilter: Equatable {
             case .black: return "Black"
             case .red: return "Red"
             case .green: return "Green"
-            case .colorless: return "Colorless"
+            }
+        }
+        
+        var symbol: String {
+            switch self {
+            case .white: return "⚪"
+            case .blue: return "🔵"
+            case .black: return "⚫"
+            case .red: return "🔴"
+            case .green: return "🟢"
             }
         }
         
@@ -41,7 +57,6 @@ struct SearchFilter: Equatable {
             case .black: return UIColor(red: 0.2, green: 0.2, blue: 0.2, alpha: 1)
             case .red: return UIColor(red: 0.95, green: 0.3, blue: 0.2, alpha: 1)
             case .green: return UIColor(red: 0.2, green: 0.7, blue: 0.3, alpha: 1)
-            case .colorless: return UIColor(red: 0.5, green: 0.5, blue: 0.5, alpha: 1)
             }
         }
     }
@@ -62,10 +77,11 @@ struct SearchFilter: Equatable {
         selectedManaCosts.removeAll()
         selectedManaColors.removeAll()
         selectedArtists.removeAll()
+        colorFilterMode = .includesAnyOfThese
     }
 }
 
-// MARK: - Mana Cost Representation
+// MARK: - Color Matching Logic
 
 extension SearchFilter {
     
@@ -76,22 +92,36 @@ extension SearchFilter {
         return bucket > 6 ? 6 : bucket
     }
     
-    /// Parses mana colors from mana cost string (e.g., "{U}{B}{R}" -> [.blue, .black, .red])
-    static func extractManaColors(from manaCost: String?) -> Set<ManaColor> {
-        guard let manaCost = manaCost else { return [] }
+    /// Convert color string codes to ManaColor enum
+    /// Expects strings like ["R", "U", "B", "G", "W"]
+    static func extractManaColors(from colorArray: [String]?) -> Set<ManaColor> {
+        guard let colors = colorArray, !colors.isEmpty else { return [] }
         
-        var colors: Set<ManaColor> = []
-        for char in manaCost.uppercased() {
-            switch char {
-            case "W": colors.insert(.white)
-            case "U": colors.insert(.blue)
-            case "B": colors.insert(.black)
-            case "R": colors.insert(.red)
-            case "G": colors.insert(.green)
-            case "C": colors.insert(.colorless)
-            default: break
+        var result: Set<ManaColor> = []
+        for colorCode in colors {
+            if let manaColor = ManaColor(rawValue: colorCode) {
+                result.insert(manaColor)
             }
         }
-        return colors
+        return result
+    }
+    
+    /// Check if card colors match filter based on mode
+    static func cardColorsMatch(
+        _ cardColors: Set<ManaColor>,
+        selectedColors: Set<ManaColor>,
+        mode: ColorFilterMode
+    ) -> Bool {
+        guard !selectedColors.isEmpty else { return true }
+        
+        switch mode {
+        case .includesOnlyThese:
+            // Card must have EXACTLY the selected colors (no more, no less)
+            return cardColors == selectedColors
+            
+        case .includesAnyOfThese:
+            // Card must have AT LEAST ONE of the selected colors
+            return !cardColors.intersection(selectedColors).isEmpty
+        }
     }
 }
