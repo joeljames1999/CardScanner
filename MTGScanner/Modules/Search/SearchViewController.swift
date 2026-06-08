@@ -42,6 +42,21 @@ final class CardSearchViewController: UIViewController {
 
     private let searchController = UISearchController()
 
+    // MARK: - Filter Button Badge
+
+    private lazy var filterBadge: UILabel = {
+        let lbl = UILabel()
+        lbl.translatesAutoresizingMaskIntoConstraints = false
+        lbl.font = .systemFont(ofSize: 11, weight: .bold)
+        lbl.textColor = .white
+        lbl.backgroundColor = .systemRed
+        lbl.textAlignment = .center
+        lbl.layer.cornerRadius = 8
+        lbl.clipsToBounds = true
+        lbl.isHidden = true
+        return lbl
+    }()
+
     // MARK: Lifecycle
 
     override func viewDidLoad() {
@@ -58,17 +73,35 @@ final class CardSearchViewController: UIViewController {
         searchController.obscuresBackgroundDuringPresentation = false
         searchController.searchBar.placeholder = "Search cards"
 
+        // Add filter button
+        let filterButton = UIBarButtonItem(
+            image: UIImage(systemName: "line.3.horizontal.decrease.circle"),
+            style: .plain,
+            target: self,
+            action: #selector(openFilters)
+        )
+
+        navigationItem.rightBarButtonItem = filterButton
+
         view.addSubview(collectionView)
+        view.addSubview(filterBadge)
 
         NSLayoutConstraint.activate([
             collectionView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 12),
             collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -12),
-            collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+            collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+
+            filterBadge.topAnchor.constraint(equalTo: filterButton.customView?.topAnchor ?? view.topAnchor),
+            filterBadge.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -8),
+            filterBadge.widthAnchor.constraint(equalToConstant: 18),
+            filterBadge.heightAnchor.constraint(equalToConstant: 18),
         ])
 
         bindViewModel()
     }
+
+    // MARK: - ViewModel Binding
 
     private func bindViewModel() {
 
@@ -78,10 +111,54 @@ final class CardSearchViewController: UIViewController {
                 self?.collectionView.reloadData()
             }
             .store(in: &cancellables)
+
+        // Update filter badge
+        viewModel.$filter
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] filter in
+                self?.updateFilterBadge(filter)
+            }
+            .store(in: &cancellables)
+    }
+
+    // MARK: - Filter Badge
+
+    private func updateFilterBadge(_ filter: SearchFilter) {
+        if filter.hasActiveFilters {
+            // Count active filters
+            var activeCount = 0
+            activeCount += filter.selectedRarities.count
+            activeCount += filter.selectedSets.count
+            activeCount += filter.selectedManaCosts.count
+            activeCount += filter.selectedManaColors.count
+
+            filterBadge.text = "\(activeCount)"
+            filterBadge.isHidden = false
+        } else {
+            filterBadge.isHidden = true
+        }
+    }
+
+    // MARK: - Filter Action
+
+    @objc private func openFilters() {
+        let filterVC = CardFilterViewController()
+        filterVC.currentFilter = viewModel.filter
+        filterVC.onFilterChange = { [weak self] newFilter in
+            self?.viewModel.updateFilter(newFilter)
+        }
+
+        let nav = UINavigationController(rootViewController: filterVC)
+        if let sheet = nav.sheetPresentationController {
+            sheet.detents = [.medium(), .large()]
+            sheet.prefersGrabberVisible = true
+            sheet.prefersScrollingExpandsWhenScrolledToEdge = true
+        }
+        present(nav, animated: true)
     }
 }
 
-// MARK: Search
+// MARK: - Search
 
 extension CardSearchViewController: UISearchResultsUpdating {
 
@@ -89,14 +166,11 @@ extension CardSearchViewController: UISearchResultsUpdating {
         for searchController: UISearchController
     ) {
         let text = searchController.searchBar.text ?? ""
-
-        print("[Search] \(text)")
-
         viewModel.searchText = text
     }
 }
 
-// MARK: Collection View
+// MARK: - Collection View
 
 extension CardSearchViewController:
 UICollectionViewDataSource,
@@ -106,7 +180,6 @@ UICollectionViewDelegate {
         _ collectionView: UICollectionView,
         numberOfItemsInSection section: Int
     ) -> Int {
-
         viewModel.cards.count
     }
 

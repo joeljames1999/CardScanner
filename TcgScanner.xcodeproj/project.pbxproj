@@ -33,6 +33,8 @@
 		98CB316D2FD1875B0029CA7F /* SettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB316C2FD1875B0029CA7F /* SettingsViewController.swift */; };
 		98CB31702FD1E7D40029CA7F /* CardSearchViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB316F2FD1E7D40029CA7F /* CardSearchViewModel.swift */; };
 		98CB31722FD1E8740029CA7F /* CardSearchCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB31712FD1E8740029CA7F /* CardSearchCell.swift */; };
+		98CB31762FD45F120029CA7F /* SearchFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB31752FD45F120029CA7F /* SearchFilter.swift */; };
+		98CB31782FD45F4C0029CA7F /* CardFilterViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB31772FD45F4C0029CA7F /* CardFilterViewController.swift */; };
 		98EEA85D2FA54A3300EFA5F8 /* CardDatabaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98EEA85C2FA54A3300EFA5F8 /* CardDatabaseService.swift */; };
 		98EEA85F2FA54A4800EFA5F8 /* ScryfallBulkService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98EEA85E2FA54A4800EFA5F8 /* ScryfallBulkService.swift */; };
 		98EEA8612FA54B7700EFA5F8 /* ArtHashService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98EEA8602FA54B7700EFA5F8 /* ArtHashService.swift */; };
@@ -68,15 +70,30 @@
 		98CB316C2FD1875B0029CA7F /* SettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewController.swift; sourceTree = "<group>"; };
 		98CB316F2FD1E7D40029CA7F /* CardSearchViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSearchViewModel.swift; sourceTree = "<group>"; };
 		98CB31712FD1E8740029CA7F /* CardSearchCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSearchCell.swift; sourceTree = "<group>"; };
+		98CB31752FD45F120029CA7F /* SearchFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchFilter.swift; sourceTree = "<group>"; };
+		98CB31772FD45F4C0029CA7F /* CardFilterViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardFilterViewController.swift; sourceTree = "<group>"; };
 		98EEA85C2FA54A3300EFA5F8 /* CardDatabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardDatabaseService.swift; sourceTree = "<group>"; };
 		98EEA85E2FA54A4800EFA5F8 /* ScryfallBulkService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScryfallBulkService.swift; sourceTree = "<group>"; };
 		98EEA8602FA54B7700EFA5F8 /* ArtHashService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtHashService.swift; sourceTree = "<group>"; };
 		98EEA8652FA97E0B00EFA5F8 /* StreamingJSONParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamingJSONParser.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		98CB31742FD3A3C00029CA7F /* Exceptions for "Supporting" folder in "TcgScanner" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Assets.xcassets,
+			);
+			target = 984A434E2F7F26D600640EE8 /* TcgScanner */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		986A78B82F96EC4F00EAEBEC /* Supporting */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				98CB31742FD3A3C00029CA7F /* Exceptions for "Supporting" folder in "TcgScanner" target */,
+			);
 			path = Supporting;
 			sourceTree = "<group>";
 		};
@@ -182,6 +199,8 @@
 			children = (
 				986A78602F96E98800EAEBEC /* SearchViewController.swift */,
 				98CB31712FD1E8740029CA7F /* CardSearchCell.swift */,
+				98CB31752FD45F120029CA7F /* SearchFilter.swift */,
+				98CB31772FD45F4C0029CA7F /* CardFilterViewController.swift */,
 				98CB316F2FD1E7D40029CA7F /* CardSearchViewModel.swift */,
 			);
 			path = Search;
@@ -331,6 +350,7 @@
 				986A78812F96EA1D00EAEBEC /* SessionViewController.swift in Sources */,
 				986A78B52F96EC2300EAEBEC /* ScryfallService.swift in Sources */,
 				986A78822F96EA1D00EAEBEC /* CollectionStore.swift in Sources */,
+				98CB31762FD45F120029CA7F /* SearchFilter.swift in Sources */,
 				98EEA8662FA97E0B00EFA5F8 /* StreamingJSONParser.swift in Sources */,
 				9875E0E12F97D59B002929D0 /* KeyChainService.swift in Sources */,
 				986A78832F96EA1D00EAEBEC /* CSVService.swift in Sources */,
@@ -339,6 +359,7 @@
 				986A78B12F96EBFD00EAEBEC /* CameraService.swift in Sources */,
 				986A787D2F96EA1600EAEBEC /* HomeViewController.swift in Sources */,
 				986A787C2F96EA0300EAEBEC /* CollectionViewController.swift in Sources */,
+				98CB31782FD45F4C0029CA7F /* CardFilterViewController.swift in Sources */,
 				986A78AF2F96EBEA00EAEBEC /* ScannerOverlayView.swift in Sources */,
 				98CB31702FD1E7D40029CA7F /* CardSearchViewModel.swift in Sources */,
 				9875E0E32F97D5FA002929D0 /* CardConfirmationViewController.swift in Sources */,
@@ -374,11 +395,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 4A9NA3SLD6;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Resources/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIStatusBarStyle = "";
@@ -402,11 +425,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 4A9NA3SLD6;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Resources/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIStatusBarStyle = "";
