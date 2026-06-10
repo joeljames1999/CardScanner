@@ -130,6 +130,53 @@ final class CardDetailViewController: UIViewController {
         return button
     }()
 
+    private var printings: [MTGCard] = []
+    private var filteredPrintings: [MTGCard] = []
+
+    private lazy var printingsCollectionView: UICollectionView = {
+
+        let layout = UICollectionViewFlowLayout()
+
+        layout.scrollDirection = .horizontal
+        layout.minimumLineSpacing = 12
+
+        layout.itemSize = CGSize(
+            width: 120,
+            height: 170
+        )
+
+        let cv = UICollectionView(
+            frame: .zero,
+            collectionViewLayout: layout
+        )
+
+        cv.translatesAutoresizingMaskIntoConstraints = false
+        cv.backgroundColor = .clear
+        cv.showsHorizontalScrollIndicator = false
+
+        cv.register(
+            CardDetailPrintingCell.self,
+            forCellWithReuseIdentifier: CardDetailPrintingCell.reuseIdentifier
+        )
+
+        cv.delegate = self
+        cv.dataSource = self
+
+        return cv
+    }()
+    
+    private lazy var printingsSearchField: UISearchBar = {
+
+        let searchBar = UISearchBar()
+
+        searchBar.translatesAutoresizingMaskIntoConstraints = false
+        searchBar.placeholder = "Filter by set name, code or collector number"
+        searchBar.searchBarStyle = .minimal
+        searchBar.delegate = self
+
+        return searchBar
+    }()
+    
     // MARK: - Init
 
     init(card: MTGCard) {
@@ -159,6 +206,7 @@ final class CardDetailViewController: UIViewController {
         setupLayout()
         populateData()
         loadImage()
+        loadPrintings()
         updateSessionButton()
 
         loadRulings()
@@ -222,10 +270,10 @@ final class CardDetailViewController: UIViewController {
                 equalTo: scrollView.frameLayoutGuide.widthAnchor
             ),
 
-            // MTG card aspect ratio (63 × 88 mm)
+            // MTG card aspect ratio (63 × 88 mm) 66% aspect ratio
             cardImageView.heightAnchor.constraint(
                 equalTo: cardImageView.widthAnchor,
-                multiplier: 88.0 / 63.0
+                multiplier: 58.08 / 41.58
             ),
 
             sessionStatusLabel.bottomAnchor.constraint(
@@ -256,26 +304,47 @@ final class CardDetailViewController: UIViewController {
         ])
 
         let textStack = UIStackView(arrangedSubviews: [
+
             nameLabel,
             manaCostLabel,
             typeLabel,
+
             makeDivider(),
+
             makeSectionTitle("Card Information"),
             infoLabel,
+
             makeDivider(),
+
+            makeSectionTitle("Other Printings"),
+            printingsSearchField,
+            printingsCollectionView,
+
+            makeDivider(),
+
             makeSectionTitle("Oracle Text"),
             oracleLabel,
+
             makeDivider(),
+
             makeSectionTitle("Rulings"),
             rulingsLabel,
+
             makeDivider(),
+
             scryfallButton
         ])
 
         textStack.axis = .vertical
         textStack.spacing = 12
         textStack.translatesAutoresizingMaskIntoConstraints = false
-
+        printingsCollectionView.heightAnchor.constraint(
+            equalToConstant: 170
+        ).isActive = true
+        printingsSearchField.heightAnchor.constraint(
+            equalToConstant: 44
+        ).isActive = true
+        
         paddedContent.addSubview(textStack)
 
         NSLayoutConstraint.activate([
@@ -336,7 +405,57 @@ final class CardDetailViewController: UIViewController {
             }
         }
     }
+    
+    private func loadPrintings() {
 
+        Task.detached { [weak self] in
+
+            guard let self else { return }
+
+            let printings =
+                CardDatabaseService.shared
+                    .allPrintings(named: self.card.name)
+
+            await MainActor.run {
+
+                self.printings = printings
+                self.filteredPrintings = printings
+
+                self.printingsCollectionView.reloadData()
+            }
+        }
+    }
+    
+    private func filterPrintings(
+        searchText: String
+    ) {
+
+        let text = searchText
+            .trimmingCharacters(
+                in: .whitespacesAndNewlines
+            )
+            .lowercased()
+
+        guard !text.isEmpty else {
+
+            filteredPrintings = printings
+
+            printingsCollectionView.reloadData()
+            return
+        }
+
+        filteredPrintings = printings.filter {
+
+            $0.set.lowercased().contains(text)
+            ||
+            $0.setName.lowercased().contains(text)
+            ||
+            $0.collectorNumber.lowercased().contains(text)
+        }
+
+        printingsCollectionView.reloadData()
+    }
+    
     // MARK: - Rulings
 
     private func loadRulings() {
@@ -359,7 +478,7 @@ final class CardDetailViewController: UIViewController {
         config?.title =
             count > 0
             ? "Add Another"
-            : "Add to Session"
+            : "Add to collection"
 
         addToSessionButton.configuration = config
 
@@ -419,5 +538,64 @@ final class CardDetailViewController: UIViewController {
         ).isActive = true
 
         return divider
+    }
+}
+extension CardDetailViewController:
+UICollectionViewDataSource,
+UICollectionViewDelegate {
+
+    func collectionView(
+        _ collectionView: UICollectionView,
+        numberOfItemsInSection section: Int
+    ) -> Int {
+
+        filteredPrintings.count
+    }
+
+    func collectionView(
+        _ collectionView: UICollectionView,
+        cellForItemAt indexPath: IndexPath
+    ) -> UICollectionViewCell {
+
+        let cell = collectionView.dequeueReusableCell(
+            withReuseIdentifier: CardDetailPrintingCell.reuseIdentifier,
+            for: indexPath
+        ) as! CardDetailPrintingCell
+
+        cell.configure(
+            with: filteredPrintings[indexPath.item]
+        )
+
+        return cell
+    }
+
+    func collectionView(
+        _ collectionView: UICollectionView,
+        didSelectItemAt indexPath: IndexPath
+    ) {
+
+        let selectedCard = printings[indexPath.item]
+
+        let vc = CardDetailViewController(
+            card: selectedCard
+        )
+
+        navigationController?.pushViewController(
+            vc,
+            animated: true
+        )
+    }
+}
+
+extension CardDetailViewController: UISearchBarDelegate {
+
+    func searchBar(
+        _ searchBar: UISearchBar,
+        textDidChange searchText: String
+    ) {
+
+        filterPrintings(
+            searchText: searchText
+        )
     }
 }

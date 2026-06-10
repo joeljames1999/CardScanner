@@ -21,6 +21,9 @@ struct SearchFilter: Equatable {
     var selectedArtists: Set<String> = []
     var colorFilterMode: ColorFilterMode = .includesAnyOfThese
     
+    var legalCardsOnly = true
+     var groupPrintings = true
+    
     // MARK: - Mana Colors
     
     enum ManaColor: String, CaseIterable, Codable, Hashable {
@@ -29,6 +32,7 @@ struct SearchFilter: Equatable {
         case black = "B"
         case red = "R"
         case green = "G"
+        case colorless = ""
         
         var displayName: String {
             switch self {
@@ -37,6 +41,7 @@ struct SearchFilter: Equatable {
             case .black: return "Black"
             case .red: return "Red"
             case .green: return "Green"
+            case .colorless: return "Colorless"
             }
         }
         
@@ -47,6 +52,7 @@ struct SearchFilter: Equatable {
             case .black: return "⚫"
             case .red: return "🔴"
             case .green: return "🟢"
+            case .colorless: return "🔘"
             }
         }
         
@@ -57,6 +63,7 @@ struct SearchFilter: Equatable {
             case .black: return UIColor(red: 0.2, green: 0.2, blue: 0.2, alpha: 1)
             case .red: return UIColor(red: 0.95, green: 0.3, blue: 0.2, alpha: 1)
             case .green: return UIColor(red: 0.2, green: 0.7, blue: 0.3, alpha: 1)
+            case .colorless: return UIColor(red: 211, green: 211, blue: 211, alpha: 1)
             }
         }
     }

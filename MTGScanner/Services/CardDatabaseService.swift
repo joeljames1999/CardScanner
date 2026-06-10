@@ -8,13 +8,14 @@ final class CardDatabaseService {
     
     private var db: OpaquePointer?
     private var insertStmt: OpaquePointer?
+    var groupPrintings = true
     
     private let databaseQueue = DispatchQueue(
         label: "com.tcgcompanion.database"
     )
     
     // Bump this when the schema changes — triggers automatic wipe + re-download
-    private let schemaVersion = 4
+    private let schemaVersion = 6
     
     private enum CardColumn {
         static let cardID: Int32 = 0
@@ -36,6 +37,8 @@ final class CardDatabaseService {
         static let priceUsd: Int32 = 16
         static let priceUsdFoil: Int32 = 17
         static let scryfallUri: Int32 = 18
+        static let cardLayout: Int32 = 19
+        static let setType: Int32 = 20
     }
     
     private let dbURL: URL = {
@@ -102,7 +105,10 @@ final class CardDatabaseService {
             image_uri_normal TEXT,
             price_usd        TEXT,
             price_usd_foil   TEXT,
-            scryfall_uri     TEXT
+            scryfall_uri     TEXT,
+            layout           TEXT,
+            set_type         TEXT
+        
         );
         
         CREATE INDEX IF NOT EXISTS idx_cards_name
@@ -193,6 +199,16 @@ final class CardDatabaseService {
     }
     
     private func insertCard(_ card: [String: Any]) {
+        
+        let setType = card["set_type"] as? String
+        let setTypeLowercased = setType?.lowercased()
+        
+        let collectorNumber = card["collector_number"] as? String
+
+        if setTypeLowercased == "alchemy" || setTypeLowercased == "arena" || ((collectorNumber?.hasSuffix("a")) != nil) {
+            return
+        }
+        
         guard let stmt = insertStmt else {
             print("[CardDB] insertStmt nil — cannot insert")
             return
@@ -215,6 +231,7 @@ final class CardDatabaseService {
         let priceUsd   = prices?["usd"] as? String
         let priceUsdF  = prices?["usd_foil"] as? String
         let scryfUri   = card["scryfall_uri"] as? String
+        let cardLayout = card["layout"] as? String
         let colors =
         (card["colors"] as? [String])?
             .sorted()
@@ -255,6 +272,9 @@ final class CardDatabaseService {
         bind(stmt, 17, priceUsd)
         bind(stmt, 18, priceUsdF)
         bind(stmt, 19, scryfUri)
+        bind(stmt, 20, cardLayout)
+        bind(stmt, 21, setType)
+        
         
         if sqlite3_step(stmt) != SQLITE_DONE {
             print("[CardDB] Insert error: \(String(cString: sqlite3_errmsg(db)))")
@@ -490,113 +510,202 @@ final class CardDatabaseService {
     }
     // MARK: - Search
     
-    // MARK: - Search
+    func searchCards(
+        query: String,
+        filter: SearchFilter
+    ) -> [MTGCard] {
         
-        /// Unified search method - handles text query AND filters
-        /// - Parameters:
-        ///   - query: Text search query (can be empty string)
-        ///   - filter: SearchFilter with rarity, set, cost, color selections
-        /// - Returns: Filtered and sorted [MTGCard] array
-        func searchCards(
-            query: String = "",
-            filter: SearchFilter = SearchFilter()
-        ) -> [MTGCard] {
-
-            databaseQueue.sync {
-                let trimmed = query.trimmingCharacters(
-                    in: .whitespacesAndNewlines
+        databaseQueue.sync {
+            
+            print("========== SEARCH ==========")
+            print("Query: \(query)")
+            print("Selected colours: \(filter.selectedManaColors)")
+            print("Selected rarities: \(filter.selectedRarities)")
+            print("Selected sets: \(filter.selectedSets)")
+            print("Selected mana costs: \(filter.selectedManaCosts)")
+            print("============================")
+            
+            let trimmed = query.trimmingCharacters(
+                in: .whitespacesAndNewlines
+            )
+            
+            guard !trimmed.isEmpty || filter.hasActiveFilters else {
+                return []
+            }
+            
+            var whereClauses: [String] = []
+            var params: [String] = []
+            
+            // Text search
+            if !trimmed.isEmpty {
+                
+                let cleaned = trimmed
+                    .replacingOccurrences(of: "0", with: "O")
+                    .replacingOccurrences(of: "1", with: "I")
+                    .replacingOccurrences(of: "|", with: "I")
+                
+                whereClauses.append(
+                    "name LIKE ? COLLATE NOCASE"
                 )
-
-                // If no search text AND no active filters, return empty
-                guard !trimmed.isEmpty || filter.hasActiveFilters else {
-                    return []
-                }
-
-                var whereClauses: [String] = []
-                var params: [String] = []
-
-                // Text search clause
-                if !trimmed.isEmpty {
-                    let cleaned = trimmed
-                        .replacingOccurrences(of: "0", with: "O")
-                        .replacingOccurrences(of: "1", with: "I")
-                        .replacingOccurrences(of: "|", with: "I")
-
-                    whereClauses.append("name LIKE ? COLLATE NOCASE")
-                    params.append("%\(cleaned)%")
-                }
-
-                // Rarity filter
-                if !filter.selectedRarities.isEmpty {
-                    let rarities = filter.selectedRarities
-                        .map { "'\($0)'" }
-                        .joined(separator: ",")
-                    whereClauses.append("rarity IN (\(rarities))")
-                }
-
-                // Set filter
-                if !filter.selectedSets.isEmpty {
-                    let sets = filter.selectedSets
-                        .map { "'\($0)'" }
-                        .joined(separator: ",")
-                    whereClauses.append("set_name IN (\(sets))")
-                }
-
-                // Mana cost filter
-                if !filter.selectedManaCosts.isEmpty {
-                    let costs = filter.selectedManaCosts.map { cost in
+                
+                params.append("%\(cleaned)%")
+            }
+            
+            // Rarity filter
+            if !filter.selectedRarities.isEmpty {
+                
+                let rarities = filter.selectedRarities
+                    .map { "'\($0)'" }
+                    .joined(separator: ",")
+                
+                whereClauses.append(
+                    "rarity IN (\(rarities))"
+                )
+            }
+            
+            // Set filter
+            if !filter.selectedSets.isEmpty {
+                
+                let sets = filter.selectedSets
+                    .map { "'\($0)'" }
+                    .joined(separator: ",")
+                
+                whereClauses.append(
+                    "set_name IN (\(sets))"
+                )
+            }
+            
+            // Mana cost filter
+            if !filter.selectedManaCosts.isEmpty {
+                
+                let costs = filter.selectedManaCosts
+                    .map { cost in
+                        
                         if cost == 6 {
                             return "cmc >= 6"
-                        } else {
-                            return "cmc = \(cost)"
                         }
-                    }.joined(separator: " OR ")
-                    whereClauses.append("(\(costs))")
-                }
-
-                // Build final query
-                var sql = """
-                SELECT *
-                FROM cards
-                """
-
-                if !whereClauses.isEmpty {
-                    sql += " WHERE " + whereClauses.joined(separator: " AND ")
-                }
-
-                sql += " ORDER BY name ASC LIMIT 500;"
-
-                var results = self.executeFilteredQuery(sql, params: params)
-
-                // Filter by mana color in Swift (using MTGCard.colors array)
-                if !filter.selectedManaColors.isEmpty {
-                    results = results.filter { card in
-                        // Extract colors from the card's colors array
-                        let cardColors = SearchFilter.extractManaColors(from: card.colors)
                         
-                        // Apply the color filter logic
-                        return SearchFilter.cardColorsMatch(
-                            cardColors,
-                            selectedColors: filter.selectedManaColors,
-                            mode: filter.colorFilterMode
-                        )
+                        return "cmc = \(cost)"
                     }
+                    .joined(separator: " OR ")
+                
+                whereClauses.append(
+                    "(\(costs))"
+                )
+            }
+            
+            var sql = """
+            SELECT *
+            FROM cards
+            """
+            
+            if !whereClauses.isEmpty {
+                sql += " WHERE "
+                sql += whereClauses.joined(separator: " AND ")
+            }
+            
+            sql += " ORDER BY name ASC LIMIT 500;"
+            
+            print("SQL:")
+            print(sql)
+            
+            print("Params:")
+            print(params)
+            
+            var results = executeFilteredQuery(
+                sql,
+                params: params
+            )
+            
+            print("SQL Results Before Colour Filter: \(results.count)")
+            
+            if filter.legalCardsOnly {
+                
+                results = results.filter {
+                    
+                    let layout = $0.cardLayout ?? ""
+                    
+                    return ![
+                        "token",
+                        "emblem",
+                        "art_series",
+                        "planar",
+                        "scheme",
+                        "vanguard",
+                        "double_faced_token"
+                    ].contains(layout)
                 }
-
-                // Remove duplicate cards by name
+            }
+            
+            if !filter.selectedManaColors.isEmpty {
+                
+                results = results.filter { card in
+                    
+                    let cardColors = Set(
+                        (card.colors ?? []).compactMap {
+                            SearchFilter.ManaColor(rawValue: $0)
+                        }
+                    )
+                    
+                    let wantsColorless =
+                    filter.selectedManaColors.contains(.colorless)
+                    
+                    let selectedNonColorless =
+                    filter.selectedManaColors.subtracting([.colorless])
+                    
+                    let matchesColorless =
+                    wantsColorless && cardColors.isEmpty
+                    
+                    let matchesColour =
+                    !selectedNonColorless.isEmpty &&
+                    !cardColors.isDisjoint(
+                        with: selectedNonColorless
+                    )
+                    
+                    let matches =
+                    matchesColorless || matchesColour
+                    
+                    print(
+                        "[Colour Filter]",
+                        card.name,
+                        "cardColors:",
+                        cardColors,
+                        "matches:",
+                        matches
+                    )
+                    
+                    return matches
+                }
+                
+                print(
+                    "Results After Colour Filter:",
+                    results.count
+                )
+            }
+            
+            if filter.groupPrintings {
+                
                 var uniqueCards: [MTGCard] = []
                 var seenNames = Set<String>()
-
+                
                 for card in results {
+                    
                     let key = card.name.lowercased()
-                    guard !seenNames.contains(key) else { continue }
+                    
+                    guard !seenNames.contains(key) else {
+                        continue
+                    }
+                    
                     seenNames.insert(key)
                     uniqueCards.append(card)
                 }
-
+                
                 return uniqueCards
             }
+            
+            return results
         }
+    }
 
         /// Internal helper to execute filtered queries (already inside databaseQueue.sync)
         private func executeFilteredQuery(_ sql: String, params: [String]) -> [MTGCard] {
@@ -954,7 +1063,11 @@ final class CardDatabaseService {
             scryfallUri: col(
                 stmt,
                 CardColumn.scryfallUri
-            ).flatMap(URL.init(string:))
+            ).flatMap(URL.init(string:)),
+            
+            cardLayout: col(stmt, CardColumn.cardLayout),
+            
+            setType: col(stmt, CardColumn.setType)
         )
     }
 }

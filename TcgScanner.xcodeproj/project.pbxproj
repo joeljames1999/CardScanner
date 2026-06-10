@@ -35,6 +35,7 @@
 		98CB31722FD1E8740029CA7F /* CardSearchCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB31712FD1E8740029CA7F /* CardSearchCell.swift */; };
 		98CB31762FD45F120029CA7F /* SearchFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB31752FD45F120029CA7F /* SearchFilter.swift */; };
 		98CB31782FD45F4C0029CA7F /* CardFilterViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB31772FD45F4C0029CA7F /* CardFilterViewController.swift */; };
+		98CB317C2FD78E460029CA7F /* CardDetailPrintingCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB317B2FD78E460029CA7F /* CardDetailPrintingCell.swift */; };
 		98EEA85D2FA54A3300EFA5F8 /* CardDatabaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98EEA85C2FA54A3300EFA5F8 /* CardDatabaseService.swift */; };
 		98EEA85F2FA54A4800EFA5F8 /* ScryfallBulkService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98EEA85E2FA54A4800EFA5F8 /* ScryfallBulkService.swift */; };
 		98EEA8612FA54B7700EFA5F8 /* ArtHashService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98EEA8602FA54B7700EFA5F8 /* ArtHashService.swift */; };
@@ -72,6 +73,7 @@
 		98CB31712FD1E8740029CA7F /* CardSearchCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSearchCell.swift; sourceTree = "<group>"; };
 		98CB31752FD45F120029CA7F /* SearchFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchFilter.swift; sourceTree = "<group>"; };
 		98CB31772FD45F4C0029CA7F /* CardFilterViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardFilterViewController.swift; sourceTree = "<group>"; };
+		98CB317B2FD78E460029CA7F /* CardDetailPrintingCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardDetailPrintingCell.swift; sourceTree = "<group>"; };
 		98EEA85C2FA54A3300EFA5F8 /* CardDatabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardDatabaseService.swift; sourceTree = "<group>"; };
 		98EEA85E2FA54A4800EFA5F8 /* ScryfallBulkService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScryfallBulkService.swift; sourceTree = "<group>"; };
 		98EEA8602FA54B7700EFA5F8 /* ArtHashService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtHashService.swift; sourceTree = "<group>"; };
@@ -153,6 +155,7 @@
 			isa = PBXGroup;
 			children = (
 				986A78562F96E98800EAEBEC /* CardDetailViewController.swift */,
+				98CB317B2FD78E460029CA7F /* CardDetailPrintingCell.swift */,
 			);
 			path = CardDetail;
 			sourceTree = "<group>";
@@ -354,6 +357,7 @@
 				98EEA8662FA97E0B00EFA5F8 /* StreamingJSONParser.swift in Sources */,
 				9875E0E12F97D59B002929D0 /* KeyChainService.swift in Sources */,
 				986A78832F96EA1D00EAEBEC /* CSVService.swift in Sources */,
+				98CB317C2FD78E460029CA7F /* CardDetailPrintingCell.swift in Sources */,
 				986A78842F96EA1D00EAEBEC /* SessionStore.swift in Sources */,
 				986A78AD2F96EBD900EAEBEC /* ScannerViewModel.swift in Sources */,
 				986A78B12F96EBFD00EAEBEC /* CameraService.swift in Sources */,

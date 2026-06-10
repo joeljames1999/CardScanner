@@ -28,7 +28,9 @@ struct MTGCard: Decodable {
     let imageUris: ImageUris?
     let prices: Prices?
     let scryfallUri: URL?
-
+    let cardLayout: String?
+    let setType: String?
+    
     struct ImageUris: Decodable {
         let small: URL?
         let normal: URL?
@@ -77,6 +79,9 @@ struct MTGCard: Decodable {
 
         case imageUris = "image_uris"
         case scryfallUri = "scryfall_uri"
+        
+        case cardLayout
+        case setType = "set_type"
     }
 }
 

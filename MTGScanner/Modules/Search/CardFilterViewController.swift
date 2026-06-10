@@ -87,22 +87,97 @@ final class CardFilterViewController: UIViewController {
 
 extension CardFilterViewController: UITableViewDataSource {
     
-    func numberOfSections(in tableView: UITableView) -> Int { 5 }
+    func numberOfSections(in tableView: UITableView) -> Int { 6 }
     
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+    func tableView(
+        _ tableView: UITableView,
+        numberOfRowsInSection section: Int
+    ) -> Int {
+
         switch section {
-        case 0: return SearchFilter.ManaColor.allCases.count  // Mana colors
-        case 1: return 7  // Mana costs (0-6+)
-        case 2: return 5  // Rarities
-        case 3: return 1  // Set search
-        case 4: return setSearchText.isEmpty ? allSets.count : allSets.filter { $0.localizedCaseInsensitiveContains(setSearchText) }.count
-        default: return 0
+
+        case 0:
+            return 2 // Legal Cards + Group Printings
+
+        case 1:
+            return SearchFilter.ManaColor.allCases.count
+
+        case 2:
+            return 7
+
+        case 3:
+            return 5
+
+        case 4:
+            return 1
+
+        case 5:
+            let filteredSets =
+                setSearchText.isEmpty
+                ? allSets
+                : allSets.filter {
+                    $0.localizedCaseInsensitiveContains(
+                        setSearchText
+                    )
+                }
+
+            return filteredSets.count
+
+        default:
+            return 0
         }
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         switch indexPath.section {
-        case 0:  // Mana Colors
+        case 0:
+
+            let cell = tableView.dequeueReusableCell(
+                withIdentifier: FilterCheckboxCell.reuseID,
+                for: indexPath
+            ) as! FilterCheckboxCell
+
+            if indexPath.row == 0 {
+
+                cell.configure(
+                    title: "Legal Cards Only",
+                    isSelected: currentFilter.legalCardsOnly
+                ) { [weak self] in
+
+                    guard let self else { return }
+
+                    self.currentFilter.legalCardsOnly.toggle()
+
+                    self.updateFilter()
+
+                    tableView.reloadRows(
+                        at: [indexPath],
+                        with: .none
+                    )
+                }
+
+            } else {
+
+                cell.configure(
+                    title: "Group Printings",
+                    isSelected: currentFilter.groupPrintings
+                ) { [weak self] in
+
+                    guard let self else { return }
+
+                    self.currentFilter.groupPrintings.toggle()
+
+                    self.updateFilter()
+
+                    tableView.reloadRows(
+                        at: [indexPath],
+                        with: .none
+                    )
+                }
+            }
+
+            return cell
+        case 1:  // Mana Colors
             let cell = tableView.dequeueReusableCell(withIdentifier: FilterColorCell.reuseID, for: indexPath) as! FilterColorCell
             let color = SearchFilter.ManaColor.allCases[indexPath.row]
             let isSelected = currentFilter.selectedManaColors.contains(color)
@@ -118,7 +193,7 @@ extension CardFilterViewController: UITableViewDataSource {
             }
             return cell
             
-        case 1:  // Mana Costs
+        case 2:  // Mana Costs
             let cell = tableView.dequeueReusableCell(withIdentifier: FilterCheckboxCell.reuseID, for: indexPath) as! FilterCheckboxCell
             let cost = indexPath.row
             let label = cost == 6 ? "6+" : "\(cost)"
@@ -135,7 +210,7 @@ extension CardFilterViewController: UITableViewDataSource {
             }
             return cell
             
-        case 2:  // Rarities
+        case 3:  // Rarities
             let cell = tableView.dequeueReusableCell(withIdentifier: FilterCheckboxCell.reuseID, for: indexPath) as! FilterCheckboxCell
             let rarities = ["common", "uncommon", "rare", "mythic", "special"]
             let rarity = rarities[indexPath.row]
@@ -153,7 +228,7 @@ extension CardFilterViewController: UITableViewDataSource {
             }
             return cell
             
-        case 3:  // Set Search
+        case 4:  // Set Search
             let cell = tableView.dequeueReusableCell(withIdentifier: FilterSetSearchCell.reuseID, for: indexPath) as! FilterSetSearchCell
             cell.configure(placeholder: "Search sets...") { [weak self] text in
                 self?.setSearchText = text
@@ -161,7 +236,7 @@ extension CardFilterViewController: UITableViewDataSource {
             }
             return cell
             
-        case 4:  // Set List Results
+        case 5:  // Set List Results
             let cell = tableView.dequeueReusableCell(withIdentifier: FilterCheckboxCell.reuseID, for: indexPath) as! FilterCheckboxCell
             let filteredSets = setSearchText.isEmpty ? allSets : allSets.filter { $0.localizedCaseInsensitiveContains(setSearchText) }
             let setName = filteredSets[indexPath.row]
@@ -183,13 +258,30 @@ extension CardFilterViewController: UITableViewDataSource {
         }
     }
     
-    func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+    func tableView(
+        _ tableView: UITableView,
+        titleForHeaderInSection section: Int
+    ) -> String? {
+
         switch section {
-        case 0: return "Mana Colors"
-        case 1: return "Mana Cost"
-        case 2: return "Rarity"
-        case 3: return "Sets"
-        default: return nil
+
+        case 0:
+            return "Display Options"
+
+        case 1:
+            return "Mana Colors"
+
+        case 2:
+            return "Mana Cost"
+
+        case 3:
+            return "Rarity"
+
+        case 4:
+            return "Sets"
+
+        default:
+            return nil
         }
     }
 }
@@ -198,7 +290,7 @@ extension CardFilterViewController: UITableViewDataSource {
 
 extension CardFilterViewController: UITableViewDelegate {
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        indexPath.section == 0 ? 50 : UITableView.automaticDimension
+        indexPath.section == 1 ? 50 : UITableView.automaticDimension
     }
 }
 

@@ -10,6 +10,10 @@ final class SessionViewController: UIViewController {
 
     private let store = SessionStore.shared
     var onCommit: (() -> Void)?
+    private var searchResults: [MTGCard] = []
+    private var isSearching: Bool {
+        !(searchField.text?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+    }
 
     // MARK: UI
 
@@ -20,6 +24,14 @@ final class SessionViewController: UIViewController {
         tv.dataSource = self
         tv.delegate   = self
         return tv
+    }()
+    
+    private lazy var searchField: UISearchBar = {
+        let sb = UISearchBar()
+        sb.translatesAutoresizingMaskIntoConstraints = false
+        sb.placeholder = "Add card to session..."
+        sb.delegate = self
+        return sb
     }()
 
     private lazy var emptyStateLabel: UILabel = {
@@ -83,6 +95,7 @@ final class SessionViewController: UIViewController {
 
     private func setupLayout() {
         view.backgroundColor = .systemGroupedBackground
+        view.addSubview(searchField)
         view.addSubview(tableView)
         view.addSubview(emptyStateLabel)
         view.addSubview(summaryBar)
@@ -91,6 +104,7 @@ final class SessionViewController: UIViewController {
         summaryBar.addSubview(commitButton)
 
         NSLayoutConstraint.activate([
+
             summaryBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             summaryBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             summaryBar.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
@@ -103,7 +117,22 @@ final class SessionViewController: UIViewController {
             commitButton.centerYAnchor.constraint(equalTo: summaryBar.centerYAnchor),
             commitButton.heightAnchor.constraint(equalToConstant: 44),
 
-            tableView.topAnchor.constraint(equalTo: view.topAnchor),
+            searchField.topAnchor.constraint(
+                equalTo: view.safeAreaLayoutGuide.topAnchor
+            ),
+
+            searchField.leadingAnchor.constraint(
+                equalTo: view.leadingAnchor
+            ),
+
+            searchField.trailingAnchor.constraint(
+                equalTo: view.trailingAnchor
+            ),
+
+            tableView.topAnchor.constraint(
+                equalTo: searchField.bottomAnchor
+            ),
+
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: summaryBar.topAnchor),
@@ -111,7 +140,7 @@ final class SessionViewController: UIViewController {
             emptyStateLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             emptyStateLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor, constant: -40),
             emptyStateLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 32),
-            emptyStateLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -32),
+            emptyStateLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -32)
         ])
     }
 
@@ -119,7 +148,7 @@ final class SessionViewController: UIViewController {
 
     private func reload() {
         let entries = store.entries
-        emptyStateLabel.isHidden = !entries.isEmpty
+        emptyStateLabel.isHidden = !entries.isEmpty || !(searchField.text?.isEmpty ?? true)
         clearButton.isEnabled    = !entries.isEmpty
         commitButton.isEnabled   = !entries.isEmpty
         summaryLabel.text        = entries.isEmpty ? "No cards" : "\(store.totalCards) card\(store.totalCards == 1 ? "" : "s")"
@@ -151,6 +180,27 @@ final class SessionViewController: UIViewController {
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
         present(alert, animated: true)
     }
+    
+    private func performSearch(_ text: String) {
+
+        let trimmed = text.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+
+        guard !trimmed.isEmpty else {
+            searchResults.removeAll()
+            tableView.reloadData()
+            return
+        }
+
+        searchResults = CardDatabaseService.shared.searchCards(
+            query: trimmed,
+            filter: SearchFilter()
+        )
+
+        tableView.reloadData()
+        reload()
+    }
 
     @objc private func clearTapped() {
         guard !store.isEmpty else { return }
@@ -168,19 +218,77 @@ final class SessionViewController: UIViewController {
 // MARK: - UITableViewDataSource
 
 extension SessionViewController: UITableViewDataSource {
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        store.entries.count
+    func tableView(
+        _ tableView: UITableView,
+        numberOfRowsInSection section: Int
+    ) -> Int {
+
+        if isSearching {
+            return searchResults.count
+        }
+
+        return store.entries.count
     }
 
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: SessionCardCell.reuseID, for: indexPath) as! SessionCardCell
+    func tableView(
+        _ tableView: UITableView,
+        cellForRowAt indexPath: IndexPath
+    ) -> UITableViewCell {
+
+        let cell = tableView.dequeueReusableCell(
+            withIdentifier: SessionCardCell.reuseID,
+            for: indexPath
+        ) as! SessionCardCell
+
+        if isSearching {
+
+            let card = searchResults[indexPath.row]
+
+            let entry = SessionEntry(
+                card: card,
+                count: 1
+            )
+
+            cell.configure(with: entry)
+
+            return cell
+        }
+
         let entry = store.entries[indexPath.row]
+
         cell.configure(with: entry)
+
         cell.onCountChange = { [weak self] newCount in
-            self?.store.setCount(id: entry.id, count: newCount)
+            self?.store.setCount(
+                id: entry.id,
+                count: newCount
+            )
             self?.reload()
         }
+
         return cell
+    }
+    
+    func tableView(
+        _ tableView: UITableView,
+        didSelectRowAt indexPath: IndexPath
+    ) {
+
+        guard isSearching else {
+            return
+        }
+
+        let card = searchResults[indexPath.row]
+
+        SessionStore.shared.addOrIncrement(card: card)
+
+        searchField.text = ""
+
+        searchResults.removeAll()
+
+        searchField.resignFirstResponder()
+
+        reload()
     }
 
     func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
@@ -324,5 +432,21 @@ final class SessionCardCell: UITableViewCell {
         super.prepareForReuse()
         thumbImageView.image = nil
         onCountChange = nil
+    }
+}
+
+extension SessionViewController: UISearchBarDelegate {
+
+    func searchBar(
+        _ searchBar: UISearchBar,
+        textDidChange searchText: String
+    ) {
+        performSearch(searchText)
+    }
+
+    func searchBarSearchButtonClicked(
+        _ searchBar: UISearchBar
+    ) {
+        searchBar.resignFirstResponder()
     }
 }
