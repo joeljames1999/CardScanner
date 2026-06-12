@@ -20,6 +20,9 @@ final class CardFilterViewController: UIViewController {
         tv.register(FilterCheckboxCell.self, forCellReuseIdentifier: FilterCheckboxCell.reuseID)
         tv.register(FilterColorCell.self, forCellReuseIdentifier: FilterColorCell.reuseID)
         tv.register(FilterSetSearchCell.self, forCellReuseIdentifier: FilterSetSearchCell.reuseID)
+        tv.register(FilterManaCostRowCell.self, forCellReuseIdentifier: FilterManaCostRowCell.reuseID)
+        tv.register(FilterColorModeCell.self, forCellReuseIdentifier: FilterColorModeCell.reuseID
+        )
         tv.dataSource = self
         tv.delegate = self
         return tv
@@ -100,10 +103,10 @@ extension CardFilterViewController: UITableViewDataSource {
             return 2 // Legal Cards + Group Printings
 
         case 1:
-            return SearchFilter.ManaColor.allCases.count
+            return 2
 
         case 2:
-            return 7
+            return 1
 
         case 3:
             return 5
@@ -177,37 +180,94 @@ extension CardFilterViewController: UITableViewDataSource {
             }
 
             return cell
-        case 1:  // Mana Colors
-            let cell = tableView.dequeueReusableCell(withIdentifier: FilterColorCell.reuseID, for: indexPath) as! FilterColorCell
-            let color = SearchFilter.ManaColor.allCases[indexPath.row]
-            let isSelected = currentFilter.selectedManaColors.contains(color)
-            cell.configure(color: color, isSelected: isSelected) { [weak self] in
+            
+        case 1:
+
+            if indexPath.row == 0 {
+
+                let cell = tableView.dequeueReusableCell(
+                    withIdentifier: FilterColorModeCell.reuseID,
+                    for: indexPath
+                ) as! FilterColorModeCell
+
+                cell.configure(
+                    mode: currentFilter.colorFilterMode
+                ) { [weak self] mode in
+
+                    guard let self else { return }
+
+                    self.currentFilter.colorFilterMode = mode
+                    self.updateFilter()
+                }
+
+                return cell
+            }
+
+            let cell = tableView.dequeueReusableCell(
+                withIdentifier: FilterColorCell.reuseID,
+                for: indexPath
+            ) as! FilterColorCell
+
+            cell.configure(
+                selectedColors: currentFilter.selectedManaColors
+            ) { [weak self] color in
+
                 guard let self else { return }
-                if isSelected {
+
+                if self.currentFilter.selectedManaColors.contains(color) {
                     self.currentFilter.selectedManaColors.remove(color)
                 } else {
                     self.currentFilter.selectedManaColors.insert(color)
                 }
+
                 self.updateFilter()
-                tableView.reloadRows(at: [indexPath], with: .none)
+
+                tableView.reloadRows(
+                    at: [indexPath],
+                    with: .none
+                )
             }
+
             return cell
             
         case 2:  // Mana Costs
-            let cell = tableView.dequeueReusableCell(withIdentifier: FilterCheckboxCell.reuseID, for: indexPath) as! FilterCheckboxCell
-            let cost = indexPath.row
-            let label = cost == 6 ? "6+" : "\(cost)"
-            let isSelected = currentFilter.selectedManaCosts.contains(cost)
-            cell.configure(title: label, isSelected: isSelected) { [weak self] in
+
+            let cell = tableView.dequeueReusableCell(
+                withIdentifier:
+                    FilterManaCostRowCell.reuseID,
+                for: indexPath
+            ) as! FilterManaCostRowCell
+
+            cell.configure(
+                selectedCosts:
+                    currentFilter.selectedManaCosts
+            ) { [weak self] cost in
+
                 guard let self else { return }
-                if isSelected {
-                    self.currentFilter.selectedManaCosts.remove(cost)
+
+                if self.currentFilter
+                    .selectedManaCosts
+                    .contains(cost) {
+
+                    self.currentFilter
+                        .selectedManaCosts
+                        .remove(cost)
+
                 } else {
-                    self.currentFilter.selectedManaCosts.insert(cost)
+
+                    self.currentFilter
+                        .selectedManaCosts
+                        .insert(cost)
                 }
+
                 self.updateFilter()
-                tableView.reloadRows(at: [indexPath], with: .none)
+
+                tableView.reloadRows(
+                    at: [indexPath],
+                    with: .none
+                )
             }
+
             return cell
             
         case 3:  // Rarities
@@ -232,7 +292,7 @@ extension CardFilterViewController: UITableViewDataSource {
             let cell = tableView.dequeueReusableCell(withIdentifier: FilterSetSearchCell.reuseID, for: indexPath) as! FilterSetSearchCell
             cell.configure(placeholder: "Search sets...") { [weak self] text in
                 self?.setSearchText = text
-                self?.tableView.reloadSections([4], with: .automatic)
+                self?.tableView.reloadSections([5], with: .automatic)
             }
             return cell
             
@@ -289,8 +349,24 @@ extension CardFilterViewController: UITableViewDataSource {
 // MARK: - UITableViewDelegate
 
 extension CardFilterViewController: UITableViewDelegate {
-    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        indexPath.section == 1 ? 50 : UITableView.automaticDimension
+    func tableView(
+        _ tableView: UITableView,
+        heightForRowAt indexPath: IndexPath
+    ) -> CGFloat {
+        
+        if indexPath.section == 1 {
+
+            if indexPath.row == 0 {
+                return 52
+            }
+
+            return 72
+        }
+        if indexPath.section == 1 {
+            return 72
+        }
+
+        return UITableView.automaticDimension
     }
 }
 
@@ -342,82 +418,6 @@ final class FilterCheckboxCell: UITableViewCell {
     func configure(title: String, isSelected: Bool, onTap: @escaping () -> Void) {
         titleLabel.text = title
         checkboxImageView.image = UIImage(systemName: isSelected ? "checkmark.square.fill" : "square")
-        self.onTap = onTap
-    }
-    
-    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
-        super.touchesEnded(touches, with: event)
-        onTap?()
-    }
-}
-
-// MARK: - FilterColorCell
-
-final class FilterColorCell: UITableViewCell {
-    static let reuseID = "FilterColorCell"
-    
-    private var onTap: (() -> Void)?
-    
-    private let colorView: UIView = {
-        let v = UIView()
-        v.translatesAutoresizingMaskIntoConstraints = false
-        v.layer.cornerRadius = 12
-        v.layer.borderWidth = 2
-        return v
-    }()
-    
-    private let colorNameLabel: UILabel = {
-        let lbl = UILabel()
-        lbl.font = .systemFont(ofSize: 16, weight: .semibold)
-        return lbl
-    }()
-    
-    private let checkmarkImageView: UIImageView = {
-        let iv = UIImageView()
-        iv.translatesAutoresizingMaskIntoConstraints = false
-        iv.tintColor = .systemBlue
-        iv.contentMode = .scaleAspectFit
-        return iv
-    }()
-    
-    override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
-        super.init(style: style, reuseIdentifier: reuseIdentifier)
-        setupLayout()
-    }
-    
-    required init?(coder: NSCoder) { fatalError() }
-    
-    private func setupLayout() {
-        let labelStack = UIStackView(arrangedSubviews: [colorNameLabel])
-        labelStack.translatesAutoresizingMaskIntoConstraints = false
-        labelStack.axis = .vertical
-        labelStack.spacing = 4
-        
-        contentView.addSubview(colorView)
-        contentView.addSubview(labelStack)
-        contentView.addSubview(checkmarkImageView)
-        
-        NSLayoutConstraint.activate([
-            colorView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-            colorView.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
-            colorView.widthAnchor.constraint(equalToConstant: 32),
-            colorView.heightAnchor.constraint(equalToConstant: 32),
-            
-            labelStack.leadingAnchor.constraint(equalTo: colorView.trailingAnchor, constant: 12),
-            labelStack.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
-            
-            checkmarkImageView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-            checkmarkImageView.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
-            checkmarkImageView.widthAnchor.constraint(equalToConstant: 24),
-            checkmarkImageView.heightAnchor.constraint(equalToConstant: 24),
-        ])
-    }
-    
-    func configure(color: SearchFilter.ManaColor, isSelected: Bool, onTap: @escaping () -> Void) {
-        colorNameLabel.text = color.displayName
-        colorView.backgroundColor = color.color
-        colorView.layer.borderColor = isSelected ? UIColor.systemBlue.cgColor : UIColor.separator.cgColor
-        checkmarkImageView.image = isSelected ? UIImage(systemName: "checkmark.circle.fill") : nil
         self.onTap = onTap
     }
     

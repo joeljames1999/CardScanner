@@ -36,6 +36,10 @@
 		98CB31762FD45F120029CA7F /* SearchFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB31752FD45F120029CA7F /* SearchFilter.swift */; };
 		98CB31782FD45F4C0029CA7F /* CardFilterViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB31772FD45F4C0029CA7F /* CardFilterViewController.swift */; };
 		98CB317C2FD78E460029CA7F /* CardDetailPrintingCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB317B2FD78E460029CA7F /* CardDetailPrintingCell.swift */; };
+		98CB31832FDA04B60029CA7F /* SplashViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB31822FDA04B60029CA7F /* SplashViewController.swift */; };
+		98CB31872FDC47190029CA7F /* FilterManaCostRowCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB31862FDC47190029CA7F /* FilterManaCostRowCell.swift */; };
+		98CB318A2FDC5A6E0029CA7F /* FilterColorCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB31892FDC5A6E0029CA7F /* FilterColorCell.swift */; };
+		98CB318C2FDC5E0C0029CA7F /* FilterColorModeCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB318B2FDC5E0C0029CA7F /* FilterColorModeCell.swift */; };
 		98EEA85D2FA54A3300EFA5F8 /* CardDatabaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98EEA85C2FA54A3300EFA5F8 /* CardDatabaseService.swift */; };
 		98EEA85F2FA54A4800EFA5F8 /* ScryfallBulkService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98EEA85E2FA54A4800EFA5F8 /* ScryfallBulkService.swift */; };
 		98EEA8612FA54B7700EFA5F8 /* ArtHashService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98EEA8602FA54B7700EFA5F8 /* ArtHashService.swift */; };
@@ -74,6 +78,10 @@
 		98CB31752FD45F120029CA7F /* SearchFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchFilter.swift; sourceTree = "<group>"; };
 		98CB31772FD45F4C0029CA7F /* CardFilterViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardFilterViewController.swift; sourceTree = "<group>"; };
 		98CB317B2FD78E460029CA7F /* CardDetailPrintingCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardDetailPrintingCell.swift; sourceTree = "<group>"; };
+		98CB31822FDA04B60029CA7F /* SplashViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashViewController.swift; sourceTree = "<group>"; };
+		98CB31862FDC47190029CA7F /* FilterManaCostRowCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilterManaCostRowCell.swift; sourceTree = "<group>"; };
+		98CB31892FDC5A6E0029CA7F /* FilterColorCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilterColorCell.swift; sourceTree = "<group>"; };
+		98CB318B2FDC5E0C0029CA7F /* FilterColorModeCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilterColorModeCell.swift; sourceTree = "<group>"; };
 		98EEA85C2FA54A3300EFA5F8 /* CardDatabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardDatabaseService.swift; sourceTree = "<group>"; };
 		98EEA85E2FA54A4800EFA5F8 /* ScryfallBulkService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScryfallBulkService.swift; sourceTree = "<group>"; };
 		98EEA8602FA54B7700EFA5F8 /* ArtHashService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtHashService.swift; sourceTree = "<group>"; };
@@ -139,6 +147,7 @@
 				986A78512F96E98800EAEBEC /* AppDelegate.swift */,
 				9875E0D92F96FB0F002929D0 /* SceneDelegate.swift */,
 				986A78522F96E98800EAEBEC /* MainTabBarController.swift */,
+				98CB31822FDA04B60029CA7F /* SplashViewController.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -204,6 +213,7 @@
 				98CB31712FD1E8740029CA7F /* CardSearchCell.swift */,
 				98CB31752FD45F120029CA7F /* SearchFilter.swift */,
 				98CB31772FD45F4C0029CA7F /* CardFilterViewController.swift */,
+				98CB31882FDC5A5D0029CA7F /* FilterCells */,
 				98CB316F2FD1E7D40029CA7F /* CardSearchViewModel.swift */,
 			);
 			path = Search;
@@ -268,6 +278,16 @@
 				98CB316C2FD1875B0029CA7F /* SettingsViewController.swift */,
 			);
 			path = "Menu Options";
+			sourceTree = "<group>";
+		};
+		98CB31882FDC5A5D0029CA7F /* FilterCells */ = {
+			isa = PBXGroup;
+			children = (
+				98CB31862FDC47190029CA7F /* FilterManaCostRowCell.swift */,
+				98CB31892FDC5A6E0029CA7F /* FilterColorCell.swift */,
+				98CB318B2FDC5E0C0029CA7F /* FilterColorModeCell.swift */,
+			);
+			path = FilterCells;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -354,6 +374,7 @@
 				986A78B52F96EC2300EAEBEC /* ScryfallService.swift in Sources */,
 				986A78822F96EA1D00EAEBEC /* CollectionStore.swift in Sources */,
 				98CB31762FD45F120029CA7F /* SearchFilter.swift in Sources */,
+				98CB31872FDC47190029CA7F /* FilterManaCostRowCell.swift in Sources */,
 				98EEA8662FA97E0B00EFA5F8 /* StreamingJSONParser.swift in Sources */,
 				9875E0E12F97D59B002929D0 /* KeyChainService.swift in Sources */,
 				986A78832F96EA1D00EAEBEC /* CSVService.swift in Sources */,
@@ -362,6 +383,7 @@
 				986A78AD2F96EBD900EAEBEC /* ScannerViewModel.swift in Sources */,
 				986A78B12F96EBFD00EAEBEC /* CameraService.swift in Sources */,
 				986A787D2F96EA1600EAEBEC /* HomeViewController.swift in Sources */,
+				98CB31832FDA04B60029CA7F /* SplashViewController.swift in Sources */,
 				986A787C2F96EA0300EAEBEC /* CollectionViewController.swift in Sources */,
 				98CB31782FD45F4C0029CA7F /* CardFilterViewController.swift in Sources */,
 				986A78AF2F96EBEA00EAEBEC /* ScannerOverlayView.swift in Sources */,
@@ -371,10 +393,12 @@
 				98CB31722FD1E8740029CA7F /* CardSearchCell.swift in Sources */,
 				986A787A2F96E9FA00EAEBEC /* MTGCard.swift in Sources */,
 				9875E0DF2F97D4B8002929D0 /* GeminiService.swift in Sources */,
+				98CB318C2FDC5E0C0029CA7F /* FilterColorModeCell.swift in Sources */,
 				98CB316D2FD1875B0029CA7F /* SettingsViewController.swift in Sources */,
 				9875E0DD2F96FFF6002929D0 /* ScannedCardStore.swift in Sources */,
 				98EEA85D2FA54A3300EFA5F8 /* CardDatabaseService.swift in Sources */,
 				9875E0DA2F96FB0F002929D0 /* SceneDelegate.swift in Sources */,
+				98CB318A2FDC5A6E0029CA7F /* FilterColorCell.swift in Sources */,
 				986A78792F96E9F700EAEBEC /* MainTabBarController.swift in Sources */,
 				986A78782F96E9F300EAEBEC /* AppDelegate.swift in Sources */,
 			);

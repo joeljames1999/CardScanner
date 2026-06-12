@@ -362,7 +362,7 @@ final class BulkDataCell: UITableViewCell {
         let hashCount    = CardDatabaseService.shared.artHashCount
         let cardCount    = CardDatabaseService.shared.isEmpty
 
-        print("[Menu] isDataPresent=\(!cardCount) artHashCount=\(hashCount)")
+        print("[Menu] isDataPresent=\(!cardCount)")
 
         if !cardCount {
             statusBadge.text            = " Present "

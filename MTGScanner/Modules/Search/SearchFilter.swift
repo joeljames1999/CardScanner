@@ -63,7 +63,18 @@ struct SearchFilter: Equatable {
             case .black: return UIColor(red: 0.2, green: 0.2, blue: 0.2, alpha: 1)
             case .red: return UIColor(red: 0.95, green: 0.3, blue: 0.2, alpha: 1)
             case .green: return UIColor(red: 0.2, green: 0.7, blue: 0.3, alpha: 1)
-            case .colorless: return UIColor(red: 211, green: 211, blue: 211, alpha: 1)
+            case .colorless: return UIColor(red: 211/255, green: 211/255, blue: 211/255, alpha: 1)
+            }
+        }
+        
+        var image: UIImage? {
+            switch self {
+            case .white: return UIImage.whiteManaSymbol
+            case .blue: return UIImage.blueManaSymbol
+            case .black: return UIImage.blackManaSymbol
+            case .red: return UIImage.redManaSymbol
+            case .green: return UIImage.greenManaSymbol
+            case .colorless: return UIImage.colourlessManaSymbol
             }
         }
     }
@@ -113,22 +124,56 @@ extension SearchFilter {
         return result
     }
     
-    /// Check if card colors match filter based on mode
     static func cardColorsMatch(
         _ cardColors: Set<ManaColor>,
         selectedColors: Set<ManaColor>,
         mode: ColorFilterMode
     ) -> Bool {
-        guard !selectedColors.isEmpty else { return true }
-        
+
+        guard !selectedColors.isEmpty else {
+            return true
+        }
+
         switch mode {
+
         case .includesOnlyThese:
-            // Card must have EXACTLY the selected colors (no more, no less)
-            return cardColors == selectedColors
-            
+
+            let wantsColorless =
+                selectedColors.contains(.colorless)
+
+            let selectedNonColorless =
+                selectedColors.subtracting([.colorless])
+
+            if wantsColorless {
+
+                if selectedNonColorless.isEmpty {
+                    return cardColors.isEmpty
+                }
+
+                return false
+            }
+
+            return cardColors == selectedNonColorless
+
         case .includesAnyOfThese:
-            // Card must have AT LEAST ONE of the selected colors
-            return !cardColors.intersection(selectedColors).isEmpty
+
+            let wantsColorless =
+                selectedColors.contains(.colorless)
+
+            let selectedNonColorless =
+                selectedColors.subtracting([.colorless])
+
+            let matchesColorless =
+                wantsColorless &&
+                cardColors.isEmpty
+
+            let matchesColours =
+                !selectedNonColorless.isEmpty &&
+                !cardColors.isDisjoint(
+                    with: selectedNonColorless
+                )
+
+            return matchesColorless || matchesColours
         }
     }
 }

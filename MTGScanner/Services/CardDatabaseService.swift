@@ -205,7 +205,9 @@ final class CardDatabaseService {
         
         let collectorNumber = card["collector_number"] as? String
 
-        if setTypeLowercased == "alchemy" || setTypeLowercased == "arena" || ((collectorNumber?.hasSuffix("a")) != nil) {
+        if setTypeLowercased == "alchemy" ||
+           setTypeLowercased == "arena" ||
+            collectorNumber?.lowercased().hasPrefix("a") == true {
             return
         }
         
@@ -604,7 +606,7 @@ final class CardDatabaseService {
                 sql += whereClauses.joined(separator: " AND ")
             }
             
-            sql += " ORDER BY name ASC LIMIT 500;"
+            sql += " ORDER BY name ASC;"
             
             print("SQL:")
             print(sql)
@@ -638,45 +640,20 @@ final class CardDatabaseService {
             }
             
             if !filter.selectedManaColors.isEmpty {
-                
+
                 results = results.filter { card in
-                    
-                    let cardColors = Set(
-                        (card.colors ?? []).compactMap {
-                            SearchFilter.ManaColor(rawValue: $0)
-                        }
+
+                    let cardColors = SearchFilter.extractManaColors(
+                        from: card.colors
                     )
-                    
-                    let wantsColorless =
-                    filter.selectedManaColors.contains(.colorless)
-                    
-                    let selectedNonColorless =
-                    filter.selectedManaColors.subtracting([.colorless])
-                    
-                    let matchesColorless =
-                    wantsColorless && cardColors.isEmpty
-                    
-                    let matchesColour =
-                    !selectedNonColorless.isEmpty &&
-                    !cardColors.isDisjoint(
-                        with: selectedNonColorless
-                    )
-                    
-                    let matches =
-                    matchesColorless || matchesColour
-                    
-                    print(
-                        "[Colour Filter]",
-                        card.name,
-                        "cardColors:",
+
+                    return SearchFilter.cardColorsMatch(
                         cardColors,
-                        "matches:",
-                        matches
+                        selectedColors: filter.selectedManaColors,
+                        mode: filter.colorFilterMode
                     )
-                    
-                    return matches
                 }
-                
+
                 print(
                     "Results After Colour Filter:",
                     results.count
@@ -807,17 +784,57 @@ final class CardDatabaseService {
     
     // MARK: - Stats
     
+//    var isEmpty: Bool {
+//        var stmt: OpaquePointer?
+//        guard sqlite3_prepare_v2(
+//            db, "SELECT COUNT(*) FROM cards;", -1, &stmt, nil
+//        ) == SQLITE_OK else { return true }
+//        defer { sqlite3_finalize(stmt) }
+//        guard sqlite3_step(stmt) == SQLITE_ROW else { return true }
+//        let count = sqlite3_column_int(stmt, 0)
+//        return count == 0
+//    }
+//
     var isEmpty: Bool {
+
+        print("[DB] Checking isEmpty")
+
+        guard db != nil else {
+            print("[DB] db is nil")
+            return true
+        }
+
         var stmt: OpaquePointer?
+
         guard sqlite3_prepare_v2(
-            db, "SELECT COUNT(*) FROM cards;", -1, &stmt, nil
-        ) == SQLITE_OK else { return true }
+            db,
+            "SELECT COUNT(*) FROM cards;",
+            -1,
+            &stmt,
+            nil
+        ) == SQLITE_OK else {
+
+            print(
+                "[DB] COUNT query failed:",
+                String(cString: sqlite3_errmsg(db))
+            )
+
+            return true
+        }
+
         defer { sqlite3_finalize(stmt) }
-        guard sqlite3_step(stmt) == SQLITE_ROW else { return true }
+
+        guard sqlite3_step(stmt) == SQLITE_ROW else {
+            print("[DB] COUNT query returned no row")
+            return true
+        }
+
         let count = sqlite3_column_int(stmt, 0)
+
+        print("[DB] Card count =", count)
+
         return count == 0
     }
-    
     var artHashCount: Int {
         var stmt: OpaquePointer?
         guard sqlite3_prepare_v2(
