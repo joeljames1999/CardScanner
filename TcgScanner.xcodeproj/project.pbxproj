@@ -210,11 +210,11 @@
 			isa = PBXGroup;
 			children = (
 				986A78602F96E98800EAEBEC /* SearchViewController.swift */,
+				98CB316F2FD1E7D40029CA7F /* CardSearchViewModel.swift */,
 				98CB31712FD1E8740029CA7F /* CardSearchCell.swift */,
 				98CB31752FD45F120029CA7F /* SearchFilter.swift */,
 				98CB31772FD45F4C0029CA7F /* CardFilterViewController.swift */,
 				98CB31882FDC5A5D0029CA7F /* FilterCells */,
-				98CB316F2FD1E7D40029CA7F /* CardSearchViewModel.swift */,
 			);
 			path = Search;
 			sourceTree = "<group>";

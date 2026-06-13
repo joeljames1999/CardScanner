@@ -103,6 +103,18 @@ final class CardSearchViewController: UIViewController {
 
         bindViewModel()
     }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+
+        let tf = UITextField(frame: .zero)
+        view.addSubview(tf)
+
+        tf.becomeFirstResponder()
+        tf.resignFirstResponder()
+
+        tf.removeFromSuperview()
+    }
 
     private func bindViewModel() {
         

@@ -316,7 +316,7 @@ final class CardDetailViewController: UIViewController {
 
             makeDivider(),
 
-            makeSectionTitle("Other Printings"),
+            makeSectionTitle("All Printings"),
             printingsSearchField,
             printingsCollectionView,
 
@@ -357,11 +357,19 @@ final class CardDetailViewController: UIViewController {
 
     // MARK: - Data
 
+    private func convertManaCost(_ manaCost: String?) -> String? {
+        var newManaCost = manaCost?.replacingOccurrences(of: "{B}", with: "B ")
+        newManaCost = newManaCost?.replacingOccurrences(of: "{G}", with: "G ")
+        newManaCost = newManaCost?.replacingOccurrences(of: "{W}", with: "W ")
+        newManaCost = newManaCost?.replacingOccurrences(of: "{U}", with: "U ")
+        newManaCost = newManaCost?.replacingOccurrences(of: "{R}", with: "R ")
+        return newManaCost
+    }
     
     private func populateData() {
-
+    
         nameLabel.text = card.name
-        manaCostLabel.text = card.manaCost
+        manaCostLabel.text = convertManaCost(card.manaCost) ??  card.manaCost
         typeLabel.text = card.typeLine
 
         infoLabel.text =
@@ -478,7 +486,7 @@ final class CardDetailViewController: UIViewController {
         config?.title =
             count > 0
             ? "Add Another"
-            : "Add to collection"
+            : "Add to session"
 
         addToSessionButton.configuration = config
 

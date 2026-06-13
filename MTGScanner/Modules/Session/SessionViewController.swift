@@ -193,10 +193,19 @@ final class SessionViewController: UIViewController {
             return
         }
 
-        searchResults = CardDatabaseService.shared.searchCards(
-            query: trimmed,
+        let start = CFAbsoluteTimeGetCurrent()
+
+        let results = CardDatabaseService.shared.searchCards(
+            query: text,
             filter: SearchFilter()
         )
+
+        print("Search took \(CFAbsoluteTimeGetCurrent() - start)s")
+        
+//        searchResults = CardDatabaseService.shared.searchCards(
+//            query: trimmed,
+//            filter: SearchFilter()
+//        )
 
         tableView.reloadData()
         reload()

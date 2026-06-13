@@ -68,7 +68,7 @@ final class CardDetailPrintingCell: UICollectionViewCell {
     func configure(with card: MTGCard) {
 
         setLabel.text =
-            "\(card.set.uppercased()) #\(card.collectorNumber)"
+        "\(card.set.uppercased()) #\(card.collectorNumber)"
 
         imageView.image = nil
 

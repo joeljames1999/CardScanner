@@ -130,11 +130,11 @@ final class CardDatabaseService {
             name,
             mana_cost,
             cmc,
-        
+
             colors,
             color_identity,
             artist,
-        
+
             type_line,
             oracle_text,
             power,
@@ -146,12 +146,30 @@ final class CardDatabaseService {
             image_uri_normal,
             price_usd,
             price_usd_foil,
-            scryfall_uri
+            scryfall_uri,
+            layout,
+            set_type
         )
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);
+        VALUES (
+            ?,?,?,?,?,?,
+            ?,?,?,?,?,?,
+            ?,?,?,?,?,?,
+            ?,?,?
+        );
         """
-        if sqlite3_prepare_v2(db, sql, -1, &insertStmt, nil) != SQLITE_OK {
-            print("[CardDB] Failed to prepare insert: \(String(cString: sqlite3_errmsg(db)))")
+
+        if sqlite3_prepare_v2(
+            db,
+            sql,
+            -1,
+            &insertStmt,
+            nil
+        ) != SQLITE_OK {
+
+            print(
+                "[CardDB] Failed to prepare insert:",
+                String(cString: sqlite3_errmsg(db))
+            )
         }
     }
     
@@ -202,12 +220,14 @@ final class CardDatabaseService {
         
         let setType = card["set_type"] as? String
         let setTypeLowercased = setType?.lowercased()
-        
+        let setname  = card["set_name"] as? String
         let collectorNumber = card["collector_number"] as? String
-
+        
         if setTypeLowercased == "alchemy" ||
            setTypeLowercased == "arena" ||
-            collectorNumber?.lowercased().hasPrefix("a") == true {
+            setname?.lowercased().contains("playtest") == true ||
+            setname?.lowercased().contains("through the omenpaths") == true || //Hide Arena spiderman set
+            collectorNumber?.lowercased().hasPrefix("a-") == true {
             return
         }
         
@@ -279,7 +299,16 @@ final class CardDatabaseService {
         
         
         if sqlite3_step(stmt) != SQLITE_DONE {
-            print("[CardDB] Insert error: \(String(cString: sqlite3_errmsg(db)))")
+            let result = sqlite3_step(stmt)
+
+            if result != SQLITE_DONE {
+
+                print(
+                    "[CardDB] Insert error:",
+                    result,
+                    String(cString: sqlite3_errmsg(db))
+                )
+            }
         }
         sqlite3_reset(stmt)
         
@@ -622,20 +651,35 @@ final class CardDatabaseService {
             print("SQL Results Before Colour Filter: \(results.count)")
             
             if filter.legalCardsOnly {
-                
-                results = results.filter {
-                    
-                    let layout = $0.cardLayout ?? ""
-                    
-                    return ![
+
+                results = results.filter { card in
+
+                    let layout = card.cardLayout?.lowercased() ?? ""
+                    let typeLine = card.typeLine.lowercased()
+                    let setName = card.setName.lowercased()
+
+                    if [
                         "token",
                         "emblem",
                         "art_series",
                         "planar",
                         "scheme",
                         "vanguard",
-                        "double_faced_token"
-                    ].contains(layout)
+                        "double_faced_token",
+                        "playtest"
+                    ].contains(layout) {
+                        return false
+                    }
+
+                    if typeLine.contains("token") {
+                        return false
+                    }
+
+                    if setName.contains("tokens") {
+                        return false
+                    }
+
+                    return true
                 }
             }
             
