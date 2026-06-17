@@ -56,6 +56,11 @@ final class ScannerViewModel: ObservableObject {
         lookupTask?.cancel()
         state = .scanning
         lastFoundCardName = ""
+        
+        Task {
+            try? await Task.sleep(for: .seconds(2))
+            lastAcceptedCardID = nil
+        }
     }
 
     func processCardImage(
