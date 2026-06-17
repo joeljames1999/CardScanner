@@ -53,8 +53,6 @@ final class ScryfallBulkService: NSObject, ObservableObject {
         return f.localizedString(for: date, relativeTo: Date())
     }
 
-    var artHashCount: Int { CardDatabaseService.shared.artHashCount }
-
     func refreshIfNeeded() async {
         guard !isDownloading else { return }
         if CardDatabaseService.shared.isEmpty || isStale {
@@ -209,137 +207,7 @@ final class ScryfallBulkService: NSObject, ObservableObject {
             return total
         }.value
     }
-
-    // MARK: - Stream Hash Art
-
-//    private func streamHashArt(from fileURL: URL, totalCards: Int) async throws {
-//        let db         = CardDatabaseService.shared
-//        let artService = ArtHashService.shared
-//
-//        let workList: [(id: String, url: URL)] = await Task.detached(priority: .userInitiated) {
-//            let parser = StreamingJSONParser(fileURL: fileURL)
-//
-//            do {
-//                try parser.open()
-//            } catch {
-//                print("[Bulk] Parser open failed for hashing: \(error)")
-//                return []
-//            }
-//
-//            defer { parser.close() }
-//
-//            var result: [(String, URL)] = []
-//            result.reserveCapacity(totalCards)
-//
-//            while let card = parser.nextCard() {
-//
-//                guard let id = card["id"] as? String,
-//                      !db.hasArtHash(cardId: id)
-//                else {
-//                    continue
-//                }
-//
-//                let artURLString: String? = {
-//
-//                    if let uris = card["image_uris"] as? [String: String] {
-//                        return uris["art_crop"] ?? uris["normal"]
-//                    }
-//
-//                    if let faces = card["card_faces"] as? [[String: Any]],
-//                       let uris = faces.first?["image_uris"] as? [String: String] {
-//                        return uris["art_crop"] ?? uris["normal"]
-//                    }
-//
-//                    return nil
-//                }()
-//
-//                if let raw = artURLString,
-//                   let url = URL(string: raw) {
-//                    result.append((id, url))
-//                }
-//            }
-//
-//            return result
-//        }.value
-//
-//        let total = workList.count
-//
-//        guard total > 0 else {
-//            print("[Bulk] All \(db.artHashCount) art hashes already present.")
-//            return
-//        }
-//
-//        print("[Bulk] Hashing \(total) artworks…")
-//
-//        await setState(.hashingArt(done: 0, total: total))
-//
-//        let batchSize = 10
-//        var done = 0
-//
-//        for batchStart in stride(from: 0, to: total, by: batchSize) {
-//
-//            let batch = Array(
-//                workList[
-//                    batchStart ..< min(batchStart + batchSize, total)
-//                ]
-//            )
-//
-//            let hashes: [(String, UInt64)] = await withTaskGroup(
-//                of: (String, UInt64)?.self,
-//                returning: [(String, UInt64)].self
-//            ) { group in
-//
-//                for item in batch {
-//
-//                    group.addTask {
-//
-//                        guard
-//                            let (data, _) = try? await URLSession.shared.data(from: item.url),
-//                            let image = UIImage(data: data),
-//                            let crop = artService.cropArtRegion(from: image),
-//                            let hash = artService.pHash(of: crop)
-//                        else {
-//                            return nil
-//                        }
-//
-//                        return (item.id, hash)
-//                    }
-//                }
-//
-//                var results: [(String, UInt64)] = []
-//
-//                for await result in group {
-//                    if let result {
-//                        results.append(result)
-//                    }
-//                }
-//
-//                return results
-//            }
-//
-//            // IMPORTANT:
-//            // SQLite writes happen here on ONE thread only.
-//            for (cardId, hash) in hashes {
-//                db.storeArtHash(cardId: cardId, hash: hash)
-//            }
-//
-//            done = min(batchStart + batchSize, total)
-//
-//            await setState(
-//                .hashingArt(
-//                    done: done,
-//                    total: total
-//                )
-//            )
-//
-//            await Task.yield()
-//        }
-//
-//        db.checkpoint()
-//
-//        print("[Bulk] Hashing complete — \(db.artHashCount) hashes stored.")
-//    }
-
+    
     // MARK: - Manifest
 
     private func fetchManifest(type: String) async throws -> (URL, Int64) {

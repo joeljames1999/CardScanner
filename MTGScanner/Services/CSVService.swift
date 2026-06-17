@@ -94,6 +94,7 @@ final class CSVService {
             let isFoil    = cols.count > 6 ? cols[6].lowercased().contains("foil") : false
             let collectorNumber = cols.count > 9 ? cols[9].trimmingCharacters(in: .whitespaces) : ""
             let purchasePrice   = cols.count > 12 ? Double(cols[12].trimmingCharacters(in: .whitespaces)) : nil
+            let isAltered = cols.count > 13 ? cols[13].lowercased().contains("altered") : false
 
             guard !name.isEmpty else {
                 skipped += 1
@@ -116,7 +117,8 @@ final class CSVService {
                 purchasePrice: purchasePrice,
                 usdPrice: purchasePrice.map { String($0) },
                 imageURL: nil,
-                dateAdded: Date()
+                dateAdded: Date(),
+                isAltered: isAltered
             )
             entries.append(entry)
         }
@@ -180,11 +182,11 @@ final class CSVService {
 private extension CardCondition {
     static func fromMoxfield(_ code: String) -> CardCondition {
         switch code.trimmingCharacters(in: .whitespaces).uppercased() {
+        case "MI": return .mint
         case "NM": return .nearMint
         case "LP": return .lightlyPlayed
-        case "MP": return .moderatelyPlayed
-        case "HP": return .heavilyPlayed
-        case "D":  return .damaged
+        case "GO": return .good
+        case "PO": return .poor
         default:   return .nearMint
         }
     }
@@ -195,7 +197,7 @@ private extension CardCondition {
 extension CollectionEntry {
     init(id: UUID, count: Int, cardID: String, name: String, setCode: String, setName: String,
          collectorNumber: String, rarity: String, condition: CardCondition, isFoil: Bool,
-         language: String, purchasePrice: Double?, usdPrice: String?, imageURL: URL?, dateAdded: Date) {
+         language: String, purchasePrice: Double?, usdPrice: String?, imageURL: URL?, dateAdded: Date, isAltered: Bool) {
         self.id              = id
         self.count           = count
         self.cardID          = cardID
@@ -211,5 +213,6 @@ extension CollectionEntry {
         self.usdPrice        = usdPrice
         self.imageURL        = imageURL
         self.dateAdded       = dateAdded
+        self.isAltered       = isAltered
     }
 }

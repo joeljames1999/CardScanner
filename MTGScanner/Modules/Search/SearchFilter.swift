@@ -8,6 +8,27 @@ enum ColorFilterMode: String, CaseIterable {
     case includesAnyOfThese = "Includes Any of These Colors"
 }
 
+
+//MARK: - Format filter
+enum FormatFilter: String, CaseIterable, Codable {
+
+    case standard
+    case pioneer
+    case modern
+    case legacy
+    case vintage
+    case commander
+    case pauper
+    case brawl
+    case historic
+    case timeless
+    case explorer
+
+    var displayName: String {
+        rawValue.capitalized
+    }
+}
+
 // MARK: - SearchFilter
 
 struct SearchFilter: Equatable {
@@ -20,6 +41,7 @@ struct SearchFilter: Equatable {
     var selectedManaColors: Set<ManaColor> = []
     var selectedArtists: Set<String> = []
     var colorFilterMode: ColorFilterMode = .includesAnyOfThese
+    var selectedFormats: Set<FormatFilter> = []
     
     var legalCardsOnly = true
      var groupPrintings = true
@@ -86,7 +108,8 @@ struct SearchFilter: Equatable {
         !selectedSets.isEmpty ||
         !selectedManaCosts.isEmpty ||
         !selectedManaColors.isEmpty ||
-        !selectedArtists.isEmpty
+        !selectedArtists.isEmpty ||
+        !selectedFormats.isEmpty
     }
     
     mutating func reset() {
@@ -96,6 +119,7 @@ struct SearchFilter: Equatable {
         selectedManaColors.removeAll()
         selectedArtists.removeAll()
         colorFilterMode = .includesAnyOfThese
+        selectedFormats.removeAll()
     }
 }
 
@@ -174,6 +198,48 @@ extension SearchFilter {
                 )
 
             return matchesColorless || matchesColours
+        }
+    }
+}
+
+extension Legalities {
+
+    func isLegal(in format: FormatFilter) -> Bool {
+
+        switch format {
+
+        case .standard:
+            return standard == "legal"
+
+        case .pioneer:
+            return pioneer == "legal"
+
+        case .modern:
+            return modern == "legal"
+
+        case .legacy:
+            return legacy == "legal"
+
+        case .vintage:
+            return vintage == "legal" || vintage == "restricted"
+
+        case .commander:
+            return commander == "legal"
+
+        case .pauper:
+            return pauper == "legal"
+
+        case .brawl:
+            return brawl == "legal"
+
+        case .historic:
+            return historic == "legal"
+
+        case .timeless:
+            return timeless == "legal"
+
+        case .explorer:
+            return explorer == "legal"
         }
     }
 }

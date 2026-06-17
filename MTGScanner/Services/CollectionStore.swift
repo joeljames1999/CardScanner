@@ -51,21 +51,41 @@ final class CollectionStore {
     // MARK: - Mutations
 
     func addSessionEntries(
-        _ sessionEntries: [SessionEntry],
-        condition: CardCondition = .nearMint,
-        isFoil: Bool = false
+        _ sessionEntries: [SessionEntry]
     ) {
+
         for session in sessionEntries {
+
             let card = session.card
-            if let idx = entries.firstIndex(where: { $0.cardID == card.id }) {
+
+            if let idx = entries.firstIndex(where: {
+
+                $0.cardID == card.id &&
+                $0.condition == session.condition &&
+                $0.isFoil == session.isFoil &&
+                $0.isAltered == session.isAltered &&
+                $0.language == session.language
+
+            }) {
+
                 entries[idx].count += session.count
+
             } else {
+
                 entries.insert(
-                    CollectionEntry(from: card, count: session.count, condition: condition, isFoil: isFoil),
+                    CollectionEntry(
+                        from: card,
+                        count: session.count,
+                        condition: session.condition,
+                        isFoil: session.isFoil,
+                        isAltered: session.isAltered,
+                        language: session.language
+                    ),
                     at: 0
                 )
             }
         }
+
         save()
         notifyChange()
     }

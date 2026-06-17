@@ -90,7 +90,7 @@ final class CardFilterViewController: UIViewController {
 
 extension CardFilterViewController: UITableViewDataSource {
     
-    func numberOfSections(in tableView: UITableView) -> Int { 6 }
+    func numberOfSections(in tableView: UITableView) -> Int { 7 }
     
     func tableView(
         _ tableView: UITableView,
@@ -112,9 +112,12 @@ extension CardFilterViewController: UITableViewDataSource {
             return 5
 
         case 4:
-            return 1
+            return FormatFilter.allCases.count
 
         case 5:
+            return 1
+
+        case 6:
             let filteredSets =
                 setSearchText.isEmpty
                 ? allSets
@@ -287,16 +290,53 @@ extension CardFilterViewController: UITableViewDataSource {
                 tableView.reloadRows(at: [indexPath], with: .none)
             }
             return cell
-            
-        case 4:  // Set Search
+        case 4: //filter
+
+            let cell = tableView.dequeueReusableCell(
+                withIdentifier: FilterCheckboxCell.reuseID,
+                for: indexPath
+            ) as! FilterCheckboxCell
+
+            let format =
+                FormatFilter.allCases[indexPath.row]
+
+            let isSelected =
+                currentFilter.selectedFormats.contains(format)
+
+            cell.configure(
+                title: format.displayName,
+                isSelected: isSelected
+            ) { [weak self] in
+
+                guard let self else { return }
+
+                if self.currentFilter.selectedFormats.contains(format) {
+
+                    self.currentFilter.selectedFormats.remove(format)
+
+                } else {
+
+                    self.currentFilter.selectedFormats.insert(format)
+                }
+
+                self.updateFilter()
+
+                tableView.reloadRows(
+                    at: [indexPath],
+                    with: .none
+                )
+            }
+
+            return cell
+        case 5:  // Set Search
             let cell = tableView.dequeueReusableCell(withIdentifier: FilterSetSearchCell.reuseID, for: indexPath) as! FilterSetSearchCell
             cell.configure(placeholder: "Search sets...") { [weak self] text in
                 self?.setSearchText = text
-                self?.tableView.reloadSections([5], with: .automatic)
+                self?.tableView.reloadSections([6], with: .automatic)
             }
             return cell
             
-        case 5:  // Set List Results
+        case 6:  // Set List Results
             let cell = tableView.dequeueReusableCell(withIdentifier: FilterCheckboxCell.reuseID, for: indexPath) as! FilterCheckboxCell
             let filteredSets = setSearchText.isEmpty ? allSets : allSets.filter { $0.localizedCaseInsensitiveContains(setSearchText) }
             let setName = filteredSets[indexPath.row]
@@ -336,8 +376,9 @@ extension CardFilterViewController: UITableViewDataSource {
 
         case 3:
             return "Rarity"
-
         case 4:
+            return "Legal Formats"
+        case 5:
             return "Sets"
 
         default:

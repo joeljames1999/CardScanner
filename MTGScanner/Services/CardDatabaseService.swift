@@ -1,4 +1,5 @@
 import Foundation
+import Vision
 import UIKit
 import SQLite3
 
@@ -8,6 +9,7 @@ final class CardDatabaseService {
     
     private var db: OpaquePointer?
     private var insertStmt: OpaquePointer?
+    var legalitiesJSON = ""
     var groupPrintings = true
     
     private let databaseQueue = DispatchQueue(
@@ -15,7 +17,7 @@ final class CardDatabaseService {
     )
     
     // Bump this when the schema changes — triggers automatic wipe + re-download
-    private let schemaVersion = 6
+    private let schemaVersion = 1
     
     private enum CardColumn {
         static let cardID: Int32 = 0
@@ -33,12 +35,14 @@ final class CardDatabaseService {
         static let setCode: Int32 = 12
         static let setName: Int32 = 13
         static let collectorNumber: Int32 = 14
-        static let imageUri: Int32 = 15
-        static let priceUsd: Int32 = 16
-        static let priceUsdFoil: Int32 = 17
-        static let scryfallUri: Int32 = 18
-        static let cardLayout: Int32 = 19
-        static let setType: Int32 = 20
+        static let imageUriNormal: Int32 = 15
+        static let imageUriArtCrop: Int32 = 16
+        static let priceUsd: Int32 = 17
+        static let priceUsdFoil: Int32 = 18
+        static let scryfallUri: Int32 = 19
+        static let cardLayout: Int32 = 20
+        static let setType: Int32 = 21
+        static let legalities: Int32 = 22
     }
     
     private let dbURL: URL = {
@@ -75,11 +79,48 @@ final class CardDatabaseService {
         if stored != schemaVersion {
             print("[CardDB] Schema mismatch (\(stored) → \(schemaVersion)) — rebuilding tables.")
             sqlite3_exec(db, "DROP TABLE IF EXISTS cards;", nil, nil, nil)
-            sqlite3_exec(db, "DROP TABLE IF EXISTS art_hashes;", nil, nil, nil)
             UserDefaults.standard.removeObject(forKey: "ScryfallBulkLastUpdated")
             UserDefaults.standard.set(schemaVersion, forKey: "CardDBSchemaVersion")
         }
         createTablesIfNeeded()
+    }
+    
+    func allCards() -> [MTGCard] {
+
+        databaseQueue.sync {
+
+            let sql = """
+            SELECT *
+            FROM cards;
+            """
+
+            var stmt: OpaquePointer?
+
+            guard sqlite3_prepare_v2(
+                db,
+                sql,
+                -1,
+                &stmt,
+                nil
+            ) == SQLITE_OK else {
+                return []
+            }
+
+            defer {
+                sqlite3_finalize(stmt)
+            }
+
+            var cards: [MTGCard] = []
+
+            while sqlite3_step(stmt) == SQLITE_ROW {
+
+                if let card = rowToMTGCard(stmt) {
+                    cards.append(card)
+                }
+            }
+
+            return cards
+        }
     }
     
     private func createTablesIfNeeded() {
@@ -103,26 +144,30 @@ final class CardDatabaseService {
             set_name         TEXT,
             collector_number TEXT,
             image_uri_normal TEXT,
+                    image_uri_art_crop TEXT,
             price_usd        TEXT,
             price_usd_foil   TEXT,
             scryfall_uri     TEXT,
             layout           TEXT,
-            set_type         TEXT
+            set_type         TEXT,
+            legalities       TEXT
         
         );
         
         CREATE INDEX IF NOT EXISTS idx_cards_name
         ON cards(name COLLATE NOCASE);
         
-        CREATE TABLE IF NOT EXISTS art_hashes (
+        CREATE TABLE IF NOT EXISTS feature_prints
+        (
             card_id TEXT PRIMARY KEY,
-            phash   INTEGER NOT NULL
+            feature_print BLOB NOT NULL
         );
         """
         sqlite3_exec(db, sql, nil, nil, nil)
     }
     
     private func prepareInsertStatement() {
+
         let sql = """
         INSERT OR REPLACE INTO cards
         (
@@ -130,11 +175,9 @@ final class CardDatabaseService {
             name,
             mana_cost,
             cmc,
-
             colors,
             color_identity,
             artist,
-
             type_line,
             oracle_text,
             power,
@@ -144,17 +187,20 @@ final class CardDatabaseService {
             set_name,
             collector_number,
             image_uri_normal,
+            image_uri_art_crop,
             price_usd,
             price_usd_foil,
             scryfall_uri,
             layout,
-            set_type
+            set_type,
+            legalities
         )
-        VALUES (
+        VALUES
+        (
             ?,?,?,?,?,?,
             ?,?,?,?,?,?,
             ?,?,?,?,?,?,
-            ?,?,?
+            ?,?,?,?,?
         );
         """
 
@@ -170,6 +216,8 @@ final class CardDatabaseService {
                 "[CardDB] Failed to prepare insert:",
                 String(cString: sqlite3_errmsg(db))
             )
+        } else {
+            print("[CardDB] Insert statement prepared")
         }
     }
     
@@ -178,7 +226,6 @@ final class CardDatabaseService {
     /// Always clears — call once before streaming import begins.
     func clearCards() {
         sqlite3_exec(db, "DELETE FROM cards;", nil, nil, nil)
-        sqlite3_exec(db, "DELETE FROM art_hashes;", nil, nil, nil)
         print("[CardDB] Cleared all cards and hashes.")
     }
     
@@ -216,6 +263,70 @@ final class CardDatabaseService {
         }
     }
     
+    func featurePrint(
+        for cardId: String
+    ) -> VNFeaturePrintObservation? {
+
+        let sql = """
+        SELECT feature_print
+        FROM feature_prints
+        WHERE card_id = ?
+        LIMIT 1;
+        """
+
+        var stmt: OpaquePointer?
+
+        guard sqlite3_prepare_v2(
+            db,
+            sql,
+            -1,
+            &stmt,
+            nil
+        ) == SQLITE_OK else {
+            return nil
+        }
+
+        defer {
+            sqlite3_finalize(stmt)
+        }
+
+        sqlite3_bind_text(
+            stmt,
+            1,
+            cardId,
+            -1,
+            unsafeBitCast(
+                -1,
+                to: sqlite3_destructor_type.self
+            )
+        )
+
+        guard sqlite3_step(stmt) == SQLITE_ROW else {
+            return nil
+        }
+
+        guard
+            let blob =
+                sqlite3_column_blob(stmt, 0)
+        else {
+            return nil
+        }
+
+        let size =
+            sqlite3_column_bytes(stmt, 0)
+
+        let data = Data(
+            bytes: blob,
+            count: Int(size)
+        )
+
+        return try? NSKeyedUnarchiver
+            .unarchivedObject(
+                ofClass: VNFeaturePrintObservation.self,
+                from: data
+            )
+    }
+    
     private func insertCard(_ card: [String: Any]) {
         
         let setType = card["set_type"] as? String
@@ -225,9 +336,8 @@ final class CardDatabaseService {
         
         if setTypeLowercased == "alchemy" ||
            setTypeLowercased == "arena" ||
-            setname?.lowercased().contains("playtest") == true ||
             setname?.lowercased().contains("through the omenpaths") == true || //Hide Arena spiderman set
-            collectorNumber?.lowercased().hasPrefix("a-") == true {
+            collectorNumber?.lowercased().hasPrefix("a-") == true { //hide all alchemy only cards
             return
         }
         
@@ -267,12 +377,52 @@ final class CardDatabaseService {
         let artist =
         card["artist"] as? String
         
-        let imageUri: String? = {
-            if let uris = card["image_uris"] as? [String: String] { return uris["normal"] }
+        let imageUriNormal: String? = {
+
+            if let uris = card["image_uris"] as? [String: String] {
+                return uris["normal"]
+            }
+
             if let faces = card["card_faces"] as? [[String: Any]],
-               let uris  = faces.first?["image_uris"] as? [String: String] { return uris["normal"] }
+               let uris = faces.first?["image_uris"] as? [String: String] {
+                return uris["normal"]
+            }
+
             return nil
         }()
+
+        let imageUriArtCrop: String? = {
+
+            if let uris = card["image_uris"] as? [String: String] {
+                return uris["art_crop"]
+            }
+
+            if let faces = card["card_faces"] as? [[String: Any]],
+               let uris = faces.first?["image_uris"] as? [String: String] {
+                return uris["art_crop"]
+            }
+
+            return nil
+        }()
+        
+        let legalitiesJSON: String? = {
+            guard let legalities = card["legalities"] else {
+                return nil
+            }
+
+            guard let data = try? JSONSerialization.data(
+                withJSONObject: legalities
+            ) else {
+                return nil
+            }
+
+            return String(
+                data: data,
+                encoding: .utf8
+            )
+        }()
+        
+        self.legalitiesJSON = legalitiesJSON ?? ""
         
         sqlite3_bind_text(stmt, 1, cardId, -1, TRANSIENT)
         sqlite3_bind_text(stmt, 2, name,   -1, TRANSIENT)
@@ -290,12 +440,14 @@ final class CardDatabaseService {
         bind(stmt, 13, setCode)
         bind(stmt, 14, setName)
         bind(stmt, 15, colNum)
-        bind(stmt, 16, imageUri)
-        bind(stmt, 17, priceUsd)
-        bind(stmt, 18, priceUsdF)
-        bind(stmt, 19, scryfUri)
-        bind(stmt, 20, cardLayout)
-        bind(stmt, 21, setType)
+        bind(stmt, 16, imageUriNormal)
+        bind(stmt, 17, imageUriArtCrop)
+        bind(stmt, 18, priceUsd)
+        bind(stmt, 19, priceUsdF)
+        bind(stmt, 20, scryfUri)
+        bind(stmt, 21, cardLayout)
+        bind(stmt, 22, setType)
+        bind(stmt, 23, legalitiesJSON)
         
         
         if sqlite3_step(stmt) != SQLITE_DONE {
@@ -311,7 +463,6 @@ final class CardDatabaseService {
             }
         }
         sqlite3_reset(stmt)
-        
     }
     
     // MARK: - Queries
@@ -421,44 +572,162 @@ final class CardDatabaseService {
         }
     }
     
-    // MARK: - Art Hashes
+    // MARK: - Vision feature print
     
-    func storeArtHash(cardId: String, hash: UInt64) {
-        databaseQueue.sync {
-           
-            let sql = "INSERT OR REPLACE INTO art_hashes (card_id, phash) VALUES (?, ?);"
-            var stmt: OpaquePointer?
-            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return }
-            defer { sqlite3_finalize(stmt) }
-            sqlite3_bind_text(stmt, 1, cardId, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
-            sqlite3_bind_int64(stmt, 2, Int64(bitPattern: hash))
-            sqlite3_step(stmt)
+    func storeFeaturePrint(
+        cardId: String,
+        data: Data
+    ) {
+
+        print("[Vision] Attempting save:", cardId)
+
+        let sql = """
+        INSERT OR REPLACE INTO feature_prints
+        (card_id, feature_print)
+        VALUES (?, ?);
+        """
+
+        var stmt: OpaquePointer?
+
+        guard sqlite3_prepare_v2(
+            db,
+            sql,
+            -1,
+            &stmt,
+            nil
+        ) == SQLITE_OK else {
+
+            print(
+                "[Vision] Prepare failed:",
+                String(cString: sqlite3_errmsg(db))
+            )
+
+            return
+        }
+
+        defer {
+            sqlite3_finalize(stmt)
+        }
+
+        let TRANSIENT =
+            unsafeBitCast(
+                -1,
+                to: sqlite3_destructor_type.self
+            )
+
+        sqlite3_bind_text(
+            stmt,
+            1,
+            cardId,
+            -1,
+            TRANSIENT
+        )
+
+        data.withUnsafeBytes { buffer in
+            sqlite3_bind_blob(
+                stmt,
+                2,
+                buffer.baseAddress,
+                Int32(data.count),
+                TRANSIENT
+            )
+        }
+
+        let result = sqlite3_step(stmt)
+
+        if result == SQLITE_DONE {
+
+            print(
+                "[Vision] Saved:",
+                cardId
+            )
+
+        } else {
+
+            print(
+                "[Vision] Save failed:",
+                result,
+                String(cString: sqlite3_errmsg(db))
+            )
         }
     }
     
-    func hasArtHash(cardId: String) -> Bool {
-        databaseQueue.sync {
-           
-            var stmt: OpaquePointer?
-            guard sqlite3_prepare_v2(
-                db, "SELECT 1 FROM art_hashes WHERE card_id = ?;",
-                -1, &stmt, nil
-            ) == SQLITE_OK else { return false }
-            defer { sqlite3_finalize(stmt) }
-            sqlite3_bind_text(stmt, 1, cardId, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
-            return sqlite3_step(stmt) == SQLITE_ROW
+    func allFeaturePrints()
+    -> [(String, Data)] {
+
+        var results: [(String, Data)] = []
+
+        let sql =
+        """
+        SELECT card_id, feature_print
+        FROM feature_prints
+        """
+
+        var stmt: OpaquePointer?
+
+        guard sqlite3_prepare_v2(
+            db,
+            sql,
+            -1,
+            &stmt,
+            nil
+        ) == SQLITE_OK else {
+            return []
         }
+
+        defer {
+            sqlite3_finalize(stmt)
+        }
+
+        while sqlite3_step(stmt) == SQLITE_ROW {
+
+            guard
+                let idPtr = sqlite3_column_text(stmt, 0)
+            else {
+                continue
+            }
+
+            let cardID =
+                String(cString: idPtr)
+
+            let bytes =
+                sqlite3_column_blob(stmt, 1)
+
+            let size =
+                sqlite3_column_bytes(stmt, 1)
+
+            let data =
+                Data(
+                    bytes: bytes!,
+                    count: Int(size)
+                )
+
+            results.append(
+                (cardID, data)
+            )
+        }
+
+        return results
     }
     
-    func findCardCandidatesByArtHash(
-        _ hash: UInt64,
-        limit: Int = 10
-    ) -> [(card: MTGCard, distance: Int)] {
+    func generateFeaturePrint(from observation: VNFeaturePrintObservation) throws -> Data {
+        return try NSKeyedArchiver.archivedData(
+            withRootObject: observation,
+            requiringSecureCoding: true
+        )
+    }
+    
+    func featurePrintCount() -> Int {
+
         databaseQueue.sync {
-           
-            let sql = "SELECT card_id, phash FROM art_hashes;"
+
             var stmt: OpaquePointer?
-            
+
+            let sql = """
+            SELECT COUNT(*)
+            FROM feature_prints;
+            """
+
             guard sqlite3_prepare_v2(
                 db,
                 sql,
@@ -466,79 +735,30 @@ final class CardDatabaseService {
                 &stmt,
                 nil
             ) == SQLITE_OK else {
-                return []
+
+                print(
+                    "[CardDB] featurePrintCount failed:",
+                    String(cString: sqlite3_errmsg(db))
+                )
+
+                return 0
             }
-            
+
             defer {
                 sqlite3_finalize(stmt)
             }
-            
-            var matches: [(String, Int)] = []
-            
-            while sqlite3_step(stmt) == SQLITE_ROW {
-                
-                guard let ptr = sqlite3_column_text(stmt, 0) else {
-                    continue
-                }
-                
-                let cardId = String(cString: ptr)
-                
-                let storedHash = UInt64(
-                    bitPattern: sqlite3_column_int64(stmt, 1)
-                )
-                
-                let distance = ArtHashService.shared.hammingDistance(
-                    hash,
-                    storedHash
-                )
-                
-                matches.append((cardId, distance))
+
+            guard sqlite3_step(stmt) == SQLITE_ROW else {
+                return 0
             }
-            
-            let bestMatches = matches
-                .sorted { $0.1 < $1.1 }
-                .prefix(limit)
-            
-            return bestMatches.compactMap { cardId, distance in
-                guard let card = findCard(byCardId: cardId) else {
-                    return nil
-                }
-                
-                return (card, distance)
-            }
+
+            return Int(
+                sqlite3_column_int64(stmt, 0)
+            )
         }
     }
     
-    func ensureArtHash(
-        cardId: String,
-        imageURL: URL
-    ) async {
-        
-        if hasArtHash(cardId: cardId) {
-            return
-        }
-        
-        guard
-            let (data, _) = try? await URLSession.shared.data(from: imageURL),
-            let image = UIImage(data: data)
-        else {
-            return
-        }
-        
-        let artService = ArtHashService.shared
-        
-        guard
-            let crop = artService.cropArtRegion(from: image),
-            let hash = artService.pHash(of: crop)
-        else {
-            return
-        }
-        
-        storeArtHash(
-            cardId: cardId,
-            hash: hash
-        )
-    }
+    
     // MARK: - Search
     
     func searchCards(
@@ -651,9 +871,9 @@ final class CardDatabaseService {
             print("SQL Results Before Colour Filter: \(results.count)")
             
             if filter.legalCardsOnly {
-
+                
                 results = results.filter { card in
-
+                    
                     let layout = card.cardLayout?.lowercased() ?? ""
                     let typeLine = card.typeLine.lowercased()
                     let setName = card.setName.lowercased()
@@ -670,15 +890,22 @@ final class CardDatabaseService {
                     ].contains(layout) {
                         return false
                     }
-
+                    
                     if typeLine.contains("token") {
                         return false
                     }
-
+                    
                     if setName.contains("tokens") {
                         return false
                     }
-
+                    
+                    if setName.contains("playtest") {
+                        return false
+                    }
+                    if !(card.legalities?.isLegalSomewhere ?? false) {
+                        return false
+                    }
+                    
                     return true
                 }
             }
@@ -700,6 +927,25 @@ final class CardDatabaseService {
 
                 print(
                     "Results After Colour Filter:",
+                    results.count
+                )
+            }
+            
+            if !filter.selectedFormats.isEmpty {
+
+                results = results.filter { card in
+
+                    guard let legalities = card.legalities else {
+                        return false
+                    }
+
+                    return filter.selectedFormats.contains { format in
+                        legalities.isLegal(in: format)
+                    }
+                }
+
+                print(
+                    "Results After Format Filter:",
                     results.count
                 )
             }
@@ -825,20 +1071,38 @@ final class CardDatabaseService {
             }
         }
 
+    func cardCount() -> Int {
+
+        databaseQueue.sync {
+
+            var stmt: OpaquePointer?
+
+            guard sqlite3_prepare_v2(
+                db,
+                "SELECT COUNT(*) FROM cards;",
+                -1,
+                &stmt,
+                nil
+            ) == SQLITE_OK else {
+                return 0
+            }
+
+            defer {
+                sqlite3_finalize(stmt)
+            }
+
+            guard sqlite3_step(stmt) == SQLITE_ROW else {
+                return 0
+            }
+
+            return Int(
+                sqlite3_column_int64(stmt, 0)
+            )
+        }
+    }
     
     // MARK: - Stats
     
-//    var isEmpty: Bool {
-//        var stmt: OpaquePointer?
-//        guard sqlite3_prepare_v2(
-//            db, "SELECT COUNT(*) FROM cards;", -1, &stmt, nil
-//        ) == SQLITE_OK else { return true }
-//        defer { sqlite3_finalize(stmt) }
-//        guard sqlite3_step(stmt) == SQLITE_ROW else { return true }
-//        let count = sqlite3_column_int(stmt, 0)
-//        return count == 0
-//    }
-//
     var isEmpty: Bool {
 
         print("[DB] Checking isEmpty")
@@ -878,15 +1142,6 @@ final class CardDatabaseService {
         print("[DB] Card count =", count)
 
         return count == 0
-    }
-    var artHashCount: Int {
-        var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(
-            db, "SELECT COUNT(*) FROM art_hashes;", -1, &stmt, nil
-        ) == SQLITE_OK else { return 0 }
-        defer { sqlite3_finalize(stmt) }
-        guard sqlite3_step(stmt) == SQLITE_ROW else { return 0 }
-        return Int(sqlite3_column_int(stmt, 0))
     }
     
     // MARK: - Helpers
@@ -996,20 +1251,17 @@ final class CardDatabaseService {
         
         let imageUris: MTGCard.ImageUris? = {
             
-            guard
-                let imageURL = col(
-                    stmt,
-                    CardColumn.imageUri
-                )
-            else {
-                return nil
-            }
-            
+            let normalURL =
+                col(stmt, CardColumn.imageUriNormal)
+
+            let artCropURL =
+                col(stmt, CardColumn.imageUriArtCrop)
+
             return MTGCard.ImageUris(
                 small: nil,
-                normal: URL(string: imageURL),
+                normal: normalURL.flatMap(URL.init),
                 large: nil,
-                artCrop: nil
+                artCrop: artCropURL.flatMap(URL.init)
             )
         }()
         
@@ -1049,6 +1301,22 @@ final class CardDatabaseService {
         )?
             .split(separator: ",")
             .map(String.init)
+        
+        let legalitiesJSONString = col(
+            stmt,
+            CardColumn.legalities
+        )
+
+        var legalities: Legalities?
+
+        if let legalitiesJSONString,
+           let data = legalitiesJSONString.data(using: .utf8) {
+
+            legalities = try? JSONDecoder().decode(
+                Legalities.self,
+                from: data
+            )
+        }
         
         return MTGCard(
             id: col(
@@ -1128,7 +1396,7 @@ final class CardDatabaseService {
             
             cardLayout: col(stmt, CardColumn.cardLayout),
             
-            setType: col(stmt, CardColumn.setType)
+            setType: col(stmt, CardColumn.setType), legalities: legalities
         )
     }
 }

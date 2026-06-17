@@ -179,13 +179,6 @@ final class ScannerViewController: UIViewController {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] state in self?.handleStateChange(state) }
             .store(in: &cancellables)
-
-        viewModel.$hashIndexCount
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] count in
-                self?.indexBadge.text = "  \(count) card\(count == 1 ? "" : "s") indexed  "
-            }
-            .store(in: &cancellables)
     }
 
     private func handleStateChange(_ state: ScannerState) {
@@ -225,6 +218,28 @@ final class ScannerViewController: UIViewController {
                 self?.ocrService.resetForNextScan()
             }
         }
+    }
+    
+    private func presentCardDetails(
+        card: MTGCard
+    ) {
+
+        let vc = ScanCardDetailsViewController(
+            card: card
+        )
+
+        vc.onAdd = { entry in
+
+            SessionStore.shared.add(entry)
+
+            self.viewModel.resetToScanning()
+        }
+
+        let nav = UINavigationController(
+            rootViewController: vc
+        )
+
+        present(nav, animated: true)
     }
 
     // MARK: - Set Picker

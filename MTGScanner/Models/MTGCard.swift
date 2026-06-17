@@ -30,6 +30,8 @@ struct MTGCard: Decodable {
     let scryfallUri: URL?
     let cardLayout: String?
     let setType: String?
+    let legalities: Legalities?
+
     
     struct ImageUris: Decodable {
         let small: URL?
@@ -82,25 +84,26 @@ struct MTGCard: Decodable {
         
         case cardLayout
         case setType = "set_type"
+        case legalities
     }
 }
 
 // MARK: - Condition
 
 enum CardCondition: String, Codable, CaseIterable {
-    case nearMint      = "Near Mint"
+    case mint = "Mint"
+    case nearMint = "Near Mint"
+    case good = "Good"
     case lightlyPlayed = "Lightly Played"
-    case moderatelyPlayed = "Moderately Played"
-    case heavilyPlayed = "Heavily Played"
-    case damaged       = "Damaged"
-
+    case poor = "Poor"
+    
     var moxfieldCode: String {
         switch self {
+        case .mint:              return "MI"
         case .nearMint:         return "NM"
         case .lightlyPlayed:    return "LP"
-        case .moderatelyPlayed: return "MP"
-        case .heavilyPlayed:    return "HP"
-        case .damaged:          return "D"
+        case .good:              return "GO"
+        case .poor:              return "PO"
         }
     }
 }
@@ -123,36 +126,114 @@ struct CollectionEntry: Codable, Identifiable {
     let usdPrice: String?
     let imageURL: URL?
     let dateAdded: Date
+    var isAltered: Bool
 
-    init(from card: MTGCard, count: Int = 1, condition: CardCondition = .nearMint, isFoil: Bool = false) {
-        self.id              = UUID()
-        self.count           = count
-        self.cardID          = card.id
-        self.name            = card.name
-        self.setCode         = card.set
-        self.setName         = card.setName
+    init(
+        from card: MTGCard,
+        count: Int = 1,
+        condition: CardCondition = .nearMint,
+        isFoil: Bool = false,
+        isAltered: Bool = false,
+        language: String = "English"
+    ) {
+        self.id = UUID()
+        self.count = count
+        self.cardID = card.id
+        self.name = card.name
+        self.setCode = card.set
+        self.setName = card.setName
         self.collectorNumber = card.collectorNumber
-        self.rarity          = card.rarity
-        self.condition       = condition
-        self.isFoil          = isFoil
-        self.language        = "English"
-        self.purchasePrice   = card.prices?.usd.flatMap { Double($0) }
-        self.usdPrice        = card.prices?.usd
-        self.imageURL        = card.imageUris?.normal
-        self.dateAdded       = Date()
+        self.rarity = card.rarity
+        self.condition = condition
+        self.isFoil = isFoil
+        self.isAltered = isAltered
+        self.language = language
+        self.purchasePrice = card.prices?.usd.flatMap(Double.init)
+        self.usdPrice = card.prices?.usd
+        self.imageURL = card.imageUris?.normal
+        self.dateAdded = Date()
     }
 }
 
 // MARK: - Session Entry (temporary, in-memory)
 
 struct SessionEntry: Identifiable {
+
     let id: UUID
-    var count: Int
+
     let card: MTGCard
 
-    init(card: MTGCard, count: Int = 1) {
-        self.id    = UUID()
+    var count: Int
+
+    var condition: CardCondition
+
+    var isFoil: Bool
+
+    var isAltered: Bool
+
+    var language: String
+
+    init(
+        card: MTGCard,
+        count: Int = 1,
+        condition: CardCondition = .nearMint,
+        isFoil: Bool = false,
+        isAltered: Bool = false,
+        language: String = "English"
+    ) {
+        self.id = UUID()
+        self.card = card
         self.count = count
-        self.card  = card
+        self.condition = condition
+        self.isFoil = isFoil
+        self.isAltered = isAltered
+        self.language = language
+    }
+}
+
+struct Legalities: Codable {
+    
+    let standard: String?
+    let pioneer: String?
+    let modern: String?
+    let legacy: String?
+    let vintage: String?
+    let commander: String?
+    let pauper: String?
+    let brawl: String?
+    let historic: String?
+    let timeless: String?
+    let explorer: String?
+    let alchemy: String?
+}
+
+extension Legalities {
+
+    var isLegalSomewhere: Bool {
+
+        let formats: [String?] = [
+            standard,
+            pioneer,
+            modern,
+            legacy,
+            vintage,
+            commander,
+            pauper,
+            brawl,
+            historic,
+            timeless,
+            explorer,
+            alchemy
+        ]
+
+        for legality in formats {
+            if legality == "legal" ||
+                legality == "restricted" ||
+                legality == "banned" {
+                return true
+            }
+        }
+
+        return false
     }
 }

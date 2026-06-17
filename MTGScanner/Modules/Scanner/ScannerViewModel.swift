@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 import UIKit
+import Vision
 
 // MARK: - Scanner State
 
@@ -13,11 +14,16 @@ enum ScannerState: Equatable {
 
     static func == (lhs: ScannerState, rhs: ScannerState) -> Bool {
         switch (lhs, rhs) {
-        case (.idle, .idle), (.scanning, .scanning): return true
-        case (.found(let a), .found(let b)):         return a.id == b.id
-        case (.selectPrinting(let a), .selectPrinting(let b)): return a.map(\.id) == b.map(\.id)
-        case (.error(let a), .error(let b)):         return a == b
-        default: return false
+        case (.idle, .idle), (.scanning, .scanning):
+            return true
+        case (.found(let a), .found(let b)):
+            return a.id == b.id
+        case (.selectPrinting(let a), .selectPrinting(let b)):
+            return a.map(\.id) == b.map(\.id)
+        case (.error(let a), .error(let b)):
+            return a == b
+        default:
+            return false
         }
     }
 }
@@ -29,21 +35,21 @@ final class ScannerViewModel: ObservableObject {
 
     @Published private(set) var state: ScannerState = .idle
     @Published var isScanning: Bool = false
-    @Published private(set) var hashIndexCount: Int = 0
 
     private let scryfallService = ScryfallService()
     private var lookupTask: Task<Void, Never>?
+
     private var lastFoundCardName: String = ""
+    private var lastAcceptedCardID: String?
+    private var isMatchingVision = false
 
     // MARK: - Public
 
     func startScanning() {
-        print("Cards:", CardDatabaseService.shared.isEmpty)
-        print("Hashes:", CardDatabaseService.shared.artHashCount)
         isScanning = true
         state = .scanning
         lastFoundCardName = ""
-        hashIndexCount = CardDatabaseService.shared.artHashCount
+        lastAcceptedCardID = nil
     }
 
     func stopScanning() {
@@ -56,224 +62,108 @@ final class ScannerViewModel: ObservableObject {
         lookupTask?.cancel()
         state = .scanning
         lastFoundCardName = ""
-        
+
         Task {
             try? await Task.sleep(for: .seconds(2))
             lastAcceptedCardID = nil
         }
     }
 
+    // MARK: - Frame Entry
+
     func processCardImage(
         _ image: UIImage,
         recognisedName: String?
     ) {
-
-        guard isScanning else {
-            return
-        }
-
-        guard case .scanning = state else {
-            return
-        }
-
+        guard isScanning, case .scanning = state else { return }
+        
+        // 1. OCR PATH (fast win)
         if let recognisedName,
-           recognisedName.count > 2 {
-
-            print("[Scanner] OCR found: \(recognisedName)")
-
-            let matches =
-                CardDatabaseService.shared.findCards(
-                    fuzzyName: recognisedName
-                )
-
-            print("[Scanner] OCR matches: \(matches.count)")
-
+           recognisedName.count > 2,
+           recognisedName != lastFoundCardName {
+            
+            lastFoundCardName = recognisedName
+            
+            let matches = CardDatabaseService.shared.findCards(
+                fuzzyName: recognisedName
+            )
+            print(
+                "[Scanner] OCR matches:",
+                matches.count
+            )
+            
             if matches.count == 1 {
-
-                let card = matches[0]
-
-                SessionStore.shared.addOrIncrement(
-                    card: card
-                )
-
-                state = .found(card)
+                handleMatchedCard(matches[0])
                 return
             }
-
+            
             if matches.count > 1 {
-
-                state = .selectPrinting(matches)
+                
+                Task {
+                    
+                    await resolvePrinting(
+                        image: image,
+                        candidates: matches
+                    )
+                }
+                
                 return
             }
-        }
-
-        print("[Scanner] OCR failed, falling back to artwork")
-
-        lookupTask?.cancel()
-
-        lookupTask = Task {
-            await matchByArt(
-                image,
-                recognisedName: recognisedName
+            // OCR failed completely
+            state = .error(
+                "Could not identify card"
             )
         }
     }
 
-    // MARK: - Art Matching
-
-    private func matchByArt(
-        _ image: UIImage,
-        recognisedName: String? = nil
+    // MARK: - Vision Matching
+    
+    private func resolvePrinting(
+        image: UIImage,
+        candidates: [MTGCard]
     ) async {
 
-        guard let artCrop = ArtHashService.shared.cropArtRegion(from: image),
-              let liveHash = ArtHashService.shared.pHash(of: artCrop)
+        guard !isMatchingVision else {
+            return
+        }
+
+        isMatchingVision = true
+
+        defer {
+            isMatchingVision = false
+        }
+
+        guard let livePrint =
+            await VisionFeaturePrintService.shared
+                .generateFeaturePrint(from: image)
         else {
-            print("[Scanner] ❌ pHash failed")
+            state = .selectPrinting(candidates)
             return
         }
 
-        let candidates =
-            CardDatabaseService.shared
-                .findCardCandidatesByArtHash(
-                    liveHash,
-                    limit: 20
+        guard let bestMatch =
+            await VisionFeaturePrintService.shared
+                .bestMatch(
+                    scannedObservation: livePrint,
+                    candidates: candidates
                 )
-
-        guard !candidates.isEmpty else {
-            state = .error("Card not recognised")
+        else {
+            state = .selectPrinting(candidates)
             return
         }
 
-        print("[Scanner] Top candidates:")
-
-        for candidate in candidates.prefix(5) {
-            print(
-                "[Scanner]",
-                candidate.card.name,
-                "distance:",
-                candidate.distance
-            )
-        }
-
-        // OCR + Art combined
-        if let recognisedName,
-           !recognisedName.isEmpty {
-
-            let fuzzyName =
-                recognisedName
-                    .lowercased()
-                    .trimmingCharacters(
-                        in: .whitespacesAndNewlines
-                    )
-
-            if let ocrMatch = candidates.first(where: {
-
-                let candidateName =
-                    $0.card.name.lowercased()
-
-                return candidateName.contains(fuzzyName)
-                    || fuzzyName.contains(candidateName)
-
-            }) {
-
-                print(
-                    "[Scanner] ✅ OCR + Art:",
-                    ocrMatch.card.name
-                )
-
-                handleMatchedCard(ocrMatch.card)
-                return
-            }
-        }
-
-        let best = candidates[0]
-
-        print(
-            "[Scanner] Best art match:",
-            best.card.name,
-            "distance:",
-            best.distance
-        )
-
-        // Very confident
-        if best.distance <= 6 {
-
-            handleMatchedCard(best.card)
-            return
-        }
-
-        // Reasonably confident
-        if best.distance <= 10 {
-
-            let printings =
-                CardDatabaseService.shared
-                    .allPrintings(
-                        named: best.card.name
-                    )
-
-            if printings.count <= 1 {
-
-                handleMatchedCard(best.card)
-
-            } else {
-
-                state = .selectPrinting(printings)
-            }
-
-            return
-        }
-
-        state = .error(
-            "Could not confidently identify card"
-        )
+        handleMatchedCard(bestMatch)
     }
 
-    // MARK: - Art Hash Caching
+    // MARK: - Result Handling
 
-    private func handleMatchedCard(
-        _ card: MTGCard
-    ) {
+    private func handleMatchedCard(_ card: MTGCard) {
 
-        guard card.name != lastFoundCardName else {
-            return
-        }
+        guard lastAcceptedCardID != card.id else { return }
+        lastAcceptedCardID = card.id
 
-        lastFoundCardName = card.name
+        SessionStore.shared.addOrIncrement(card: card)
 
-        let printings =
-            CardDatabaseService.shared
-                .allPrintings(
-                    named: card.name
-                )
-
-        if printings.count <= 1 {
-
-            SessionStore.shared
-                .addOrIncrement(card: card)
-
-            state = .found(card)
-
-        } else {
-
-            state = .selectPrinting(printings)
-        }
-    }
-    
-    func cacheArtHashIfNeeded(for card: MTGCard, hash: UInt64? = nil) async {
-        guard !CardDatabaseService.shared.hasArtHash(cardId: card.id) else { return }
-
-        if let hash = hash {
-            CardDatabaseService.shared.storeArtHash(cardId: card.id, hash: hash)
-            hashIndexCount = CardDatabaseService.shared.artHashCount
-            return
-        }
-
-        guard let url = card.imageUris?.artCrop ?? card.imageUris?.normal else { return }
-        if let hash = await ArtHashService.shared.downloadAndHash(imageURL: url) {
-            CardDatabaseService.shared.storeArtHash(cardId: card.id, hash: hash)
-            hashIndexCount = CardDatabaseService.shared.artHashCount
-            print("[Scanner] Cached hash for \(card.name) — index: \(CardDatabaseService.shared.artHashCount)")
-        }
+        state = .found(card)
     }
 }

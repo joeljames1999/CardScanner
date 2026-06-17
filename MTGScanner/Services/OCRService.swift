@@ -252,8 +252,49 @@ final class OCRService {
             return
         }
 
-        let cardImage = UIImage(cgImage: cgImage)
-        print("[OCR] ✅ Card captured — size: \(cardImage.size)")
+        var cardImage = UIImage(cgImage: cgImage)
+
+        if cardImage.size.width > cardImage.size.height {
+
+            UIGraphicsBeginImageContextWithOptions(
+                CGSize(
+                    width: cardImage.size.height,
+                    height: cardImage.size.width
+                ),
+                false,
+                cardImage.scale
+            )
+
+            guard let context = UIGraphicsGetCurrentContext() else {
+                return
+            }
+
+            context.translateBy(
+                x: cardImage.size.height / 2,
+                y: cardImage.size.width / 2
+            )
+
+            context.rotate(by: -.pi / 2)
+
+            cardImage.draw(
+                in: CGRect(
+                    x: -cardImage.size.width / 2,
+                    y: -cardImage.size.height / 2,
+                    width: cardImage.size.width,
+                    height: cardImage.size.height
+                )
+            )
+
+            if let rotated = UIGraphicsGetImageFromCurrentImageContext() {
+                cardImage = rotated
+            }
+
+            UIGraphicsEndImageContext()
+        }
+        print(
+            "[OCR] Normalised card size:",
+            cardImage.size
+        )
 
         recogniseCardName(from: cardImage) { [weak self] name in
             guard let self else { return }
@@ -263,9 +304,44 @@ final class OCRService {
             print("[OCR] Card name: \(name ?? "none")")
 
             DispatchQueue.main.async {
-                self.onCardImageCaptured?(cardImage)
+                let artworkImage = self.cropArtwork(
+                    from: cardImage
+                )
+
+                self.onCardImageCaptured?(
+                    artworkImage
+                )
             }
         }
+    }
+    
+    private func cropArtwork(
+        from image: UIImage
+    ) -> UIImage {
+
+        guard let cgImage = image.cgImage else {
+            return image
+        }
+
+        let width = CGFloat(cgImage.width)
+        let height = CGFloat(cgImage.height)
+
+        let artRect = CGRect(
+            x: width * 0.08,
+            y: height * 0.12,
+            width: width * 0.84,
+            height: height * 0.42
+        )
+
+        guard let cropped =
+            cgImage.cropping(to: artRect)
+        else {
+            return image
+        }
+
+        return UIImage(
+            cgImage: cropped
+        )
     }
 
     private func perspectiveCorrect(_ image: CIImage, rect: VNRectangleObservation) -> CIImage? {
