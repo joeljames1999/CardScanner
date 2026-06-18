@@ -94,9 +94,8 @@ final class VisionFeaturePrintService {
             let candidateObservation: VNFeaturePrintObservation
 
             if let cached =
-                CardDatabaseService.shared
-                    .featurePrint(
-                        for: card.id
+                await featurePrint(
+                        for: card
                     ) {
 
                 candidateObservation = cached
