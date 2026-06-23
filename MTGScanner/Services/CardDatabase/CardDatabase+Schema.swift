@@ -65,11 +65,12 @@ extension CardDatabaseService {
         CREATE INDEX IF NOT EXISTS idx_cards_name
         ON cards(name COLLATE NOCASE);
         
-        CREATE TABLE IF NOT EXISTS feature_prints
-        (
-            card_id TEXT PRIMARY KEY,
-            feature_print BLOB NOT NULL
-        );
+        CREATE TABLE IF NOT EXISTS feature_prints (
+                card_id TEXT PRIMARY KEY,
+                feature_print BLOB,
+                feature_print_cropped BLOB,
+                feature_print_full BLOB
+            );
         """
         sqlite3_exec(db, sql, nil, nil, nil)
     }

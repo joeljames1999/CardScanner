@@ -3,15 +3,15 @@ import UIKit
 import Compression
 
 final class ScryfallBulkService: NSObject, ObservableObject {
-
+    
     static let shared = ScryfallBulkService()
-
+    
     private let bulkMetaURL    = URL(string: "https://api.scryfall.com/bulk-data")!
     private let lastUpdatedKey = "ScryfallBulkLastUpdated"
     private let staleness: TimeInterval = 60 * 60 * 24
-
+    
     // MARK: - State
-
+    
     enum DownloadState: Equatable {
         case idle
         case fetchingManifest
@@ -21,18 +21,18 @@ final class ScryfallBulkService: NSObject, ObservableObject {
         case done
         case failed(String)
     }
-
+    
     @Published private(set) var downloadState: DownloadState = .idle
-
+    
     private var downloadContinuation: CheckedContinuation<URL, Error>?
     private var expectedBytes: Int64 = 0
-
+    
     private override init() {}
-
+    
     // MARK: - Public
-
+    
     var isDataPresent: Bool { !CardDatabaseService.shared.isEmpty }
-
+    
     var dataSizeOnDisk: String {
         let url = FileManager.default
             .urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -41,18 +41,18 @@ final class ScryfallBulkService: NSObject, ObservableObject {
         else { return "Unknown" }
         return ByteCountFormatter.string(fromByteCount: size, countStyle: .file)
     }
-
+    
     var lastUpdatedDate: Date? {
         UserDefaults.standard.object(forKey: lastUpdatedKey) as? Date
     }
-
+    
     var lastUpdatedString: String {
         guard let date = lastUpdatedDate else { return "Never" }
         let f = RelativeDateTimeFormatter()
         f.unitsStyle = .full
         return f.localizedString(for: date, relativeTo: Date())
     }
-
+    
     func refreshIfNeeded() async {
         guard !isDownloading else { return }
         if CardDatabaseService.shared.isEmpty || isStale {
@@ -61,92 +61,92 @@ final class ScryfallBulkService: NSObject, ObservableObject {
             print("[Bulk] Data is fresh, skipping download.")
         }
     }
-
+    
     func forceRefresh() async {
         guard !isDownloading else { return }
         await downloadAndImport()
     }
-
+    
     private var isDownloading: Bool {
         switch downloadState {
         case .idle, .done, .failed: return false
         default: return true
         }
     }
-
+    
     private var isStale: Bool {
         guard let last = lastUpdatedDate else { return true }
         return Date().timeIntervalSince(last) > staleness
     }
-
+    
     // MARK: - Pipeline
-
+    
     private func downloadAndImport() async {
         do {
             await setState(.fetchingManifest)
             let (uri, remoteSize) = try await fetchManifest(type: "default_cards")
-
+            
             await setState(.downloading(progress: 0, totalBytes: remoteSize))
             let rawFile = try await downloadToFile(from: uri, expectedSize: remoteSize)
             defer { try? FileManager.default.removeItem(at: rawFile) }
-
+            
             // Decompress gzip if needed — Scryfall serves compressed files
             let jsonFile = try decompressIfNeeded(rawFile)
             defer { if jsonFile != rawFile { try? FileManager.default.removeItem(at: jsonFile) } }
-
+            
             // Verify the file is valid JSON before streaming
             try verifyIsJSON(jsonFile)
-
+            
             _ = try await streamImport(from: jsonFile)
-
+            
             UserDefaults.standard.set(
                 Date(),
                 forKey: lastUpdatedKey
             )
-
+            
             await setState(.done)
-
+            
             print("[Bulk] Import complete.")
-
+            
         } catch {
             await setState(.failed(error.localizedDescription))
             print("[Bulk] Failed: \(error)")
         }
     }
-
+    
     // MARK: - Gzip Detection + Decompression
-
+    
     private func decompressIfNeeded(_ fileURL: URL) throws -> URL {
         guard let handle = FileHandle(forReadingAtPath: fileURL.path) else {
             throw CocoaError(.fileReadNoSuchFile)
         }
         let magic = handle.readData(ofLength: 2)
         handle.closeFile()
-
+        
         // Gzip magic bytes: 0x1F 0x8B
         let isGzip = magic.count >= 2 && magic[0] == 0x1F && magic[1] == 0x8B
-
+        
         guard isGzip else {
             print("[Bulk] File is plain JSON — no decompression needed.")
             return fileURL
         }
-
+        
         print("[Bulk] Gzip detected — decompressing…")
         let compressedData = try Data(contentsOf: fileURL)
         let decompressed   = try (compressedData as NSData).decompressed(using: .zlib) as Data
-
+        
         let destURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("scryfall_decompressed_\(UUID().uuidString).json")
         try decompressed.write(to: destURL, options: .atomic)
-
+        
         print("[Bulk] Decompressed: \(ByteCountFormatter.string(fromByteCount: Int64(decompressed.count), countStyle: .file))")
         return destURL
     }
-
+    
     private func verifyIsJSON(_ fileURL: URL) throws {
         guard let handle = FileHandle(forReadingAtPath: fileURL.path) else { return }
         defer { handle.closeFile() }
-
+        
         let peek = handle.readData(ofLength: 64)
         for byte in peek {
             // Skip whitespace
@@ -163,58 +163,50 @@ final class ScryfallBulkService: NSObject, ObservableObject {
             }
         }
     }
-
+    
     // MARK: - Stream Import
-
+    
     private func streamImport(from fileURL: URL) async throws -> Int {
-        await setState(.importing(done: 0, total: 0))
-
+        // 1. Set state to initial processing configuration
+        await setState(.importing(done: 0, total: 115000))
+        
         return await Task.detached(priority: .userInitiated) {
-            let parser = StreamingJSONParser(fileURL: fileURL)
-            do { try parser.open() } catch {
-                print("[Bulk] Parser open failed: \(error)")
-                return 0
-            }
-            defer { parser.close() }
-
             let db = CardDatabaseService.shared
-            var batch: [[String: Any]] = []
-            batch.reserveCapacity(100)
-            var total = 0
-
-            // Use clearCardsIfNeeded to match your CardDatabaseService
+            
+            // 2. Clear old database tables and indexes safely
             db.clearCardsIfNeeded()
-
-            while let card = parser.nextCard() {
-                batch.append(card)
-                total += 1
-
-                if batch.count >= 100 {
-                    db.importCards(batch)
-                    batch.removeAll(keepingCapacity: true)
-                    await MainActor.run {
-                        self.downloadState = .importing(done: total, total: 0)
-                    }
-                }
-            }
-
-            if !batch.isEmpty {
-                db.importCards(batch)
-            }
-
+            
+            let startTime = CFAbsoluteTimeGetCurrent()
+            print("[Bulk] Starting direct disk-to-SQLite streaming import...")
+            
+            // 3. Hand off the local file URL directly to your updated database engine
+            // This runs one singular, ultra-optimized memory transaction
+            db.importCards(fromFileAt: fileURL)
+            
+            let duration = CFAbsoluteTimeGetCurrent() - startTime
+            print("[Bulk] Stream import completed in exactly: \(String(format: "%.4f", duration)) seconds.")
+            
+            // 4. Force a checkpoint to secure the database changes on disk
             db.checkpoint()
-            print("[Bulk] Imported \(total) cards.")
-            return total
+            
+            // 5. Query total count from the indexed table to verify performance
+            let finalCount = db.cardCount() // Add a simple helper to return row counts
+            
+            await MainActor.run {
+                self.downloadState = .importing(done: finalCount, total: finalCount)
+            }
+            
+            return finalCount
         }.value
     }
     
     // MARK: - Manifest
-
+    
     private func fetchManifest(type: String) async throws -> (URL, Int64) {
         var req = URLRequest(url: bulkMetaURL)
         req.setValue("MTGScanner-iOS/1.0", forHTTPHeaderField: "User-Agent")
         let (data, _) = try await URLSession.shared.data(for: req)
-
+        
         guard
             let json      = try JSONSerialization.jsonObject(with: data) as? [String: Any],
             let dataArray = json["data"] as? [[String: Any]],
@@ -222,13 +214,13 @@ final class ScryfallBulkService: NSObject, ObservableObject {
             let uriStr    = bulk["download_uri"] as? String,
             let uri       = URL(string: uriStr)
         else { throw URLError(.cannotParseResponse) }
-
+        
         let size = bulk["size"] as? Int64 ?? bulk["compressed_size"] as? Int64 ?? 0
         return (uri, size)
     }
-
+    
     // MARK: - Download to File
-
+    
     private func downloadToFile(from url: URL, expectedSize: Int64) async throws -> URL {
         self.expectedBytes = expectedSize
         return try await withCheckedThrowingContinuation { continuation in
@@ -242,9 +234,80 @@ final class ScryfallBulkService: NSObject, ObservableObject {
             session.downloadTask(with: req).resume()
         }
     }
-
+    
     private func setState(_ state: DownloadState) async {
         await MainActor.run { downloadState = state }
+    }
+    
+    func precomputeVectorsForCommonCards() {
+        Task.detached(priority: .background) {
+            let db = CardDatabaseService.shared
+            
+            let sql = """
+            SELECT * FROM cards 
+            WHERE card_id NOT IN (SELECT card_id FROM feature_prints) 
+            AND illustration_id IS NOT NULL
+            GROUP BY illustration_id
+            LIMIT 200;
+            """
+            
+            let missingCards = db.executeRawQueryForCards(sql)
+            guard !missingCards.isEmpty else { return }
+            
+            print("[Maintenance] Pre-computing vectors for \(missingCards.count) items without blocking the main UI thread...")
+            
+            // Use a TaskGroup to process tasks with a strict concurrency limit of 2
+            await withTaskGroup(of: Void.self) { group in
+                var activeCount = 0
+                let maxConcurrentTasks = 2
+                
+                for card in missingCards {
+                    // Instantly break the generation pipeline if the user wakes the application back up!
+                    let isBackground = await MainActor.run { UIApplication.shared.applicationState == .background }
+                    if !isBackground {
+                        print("[Maintenance] User returned to foreground. Pausing vector engine.")
+                        break
+                    }
+                    
+                    // Throttle: If we hit our maximum concurrent task limit, wait for one worker to finish
+                    if activeCount >= maxConcurrentTasks {
+                        await group.next()
+                        activeCount -= 1
+                    }
+                    
+                    activeCount += 1
+                    group.addTask {
+                        guard let url = card.imageUris?.artCrop ?? card.imageUris?.normal else { return }
+                        
+                        do {
+                            // Keep network download timeouts tight to prevent hanging sockets
+                            let configuration = URLSessionConfiguration.ephemeral
+                            configuration.timeoutIntervalForRequest = 4.0
+                            let session = URLSession(configuration: configuration)
+                            
+                            let (data, _) = try await session.data(from: url)
+                            guard let image = UIImage(data: data)?.artworkCrop()?.normalizedLandscape(),
+                                  let observation = await VisionFeaturePrintService.shared.generateFeaturePrint(from: image) else {
+                                return
+                            }
+                            
+                            // Small deliberate sleep pause to allow the main thread queue a chance to slip in between inserts
+                            try? await Task.sleep(for: .milliseconds(30))
+                            db.saveFeaturePrint(cardId: card.id, observation: observation)
+                        } catch {
+                            // Fail silently if the network drops or sleeps
+                        }
+                    }
+                }
+                
+                // Clean up any remaining active background tasks
+                while activeCount > 0 {
+                    await group.next()
+                    activeCount -= 1
+                }
+            }
+            print("[Maintenance] Vector compilation cycle completed or paused gracefully.")
+        }
     }
 }
 

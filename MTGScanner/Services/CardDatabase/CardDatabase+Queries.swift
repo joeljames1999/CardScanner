@@ -11,7 +11,6 @@ import SQLite3
 extension CardDatabaseService {
     
     var isEmpty: Bool {
-
         print("[DB] Checking isEmpty")
 
         guard db != nil else {
@@ -20,20 +19,10 @@ extension CardDatabaseService {
         }
 
         var stmt: OpaquePointer?
-
-        guard sqlite3_prepare_v2(
-            db,
-            "SELECT COUNT(*) FROM cards;",
-            -1,
-            &stmt,
-            nil
-        ) == SQLITE_OK else {
-
-            print(
-                "[DB] COUNT query failed:",
-                String(cString: sqlite3_errmsg(db))
-            )
-
+        
+        // Direct pointer checking bypasses the serial queue lock for instant UI verification
+        guard sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM cards;", -1, &stmt, nil) == SQLITE_OK else {
+            print("[DB] COUNT query failed: \(String(cString: sqlite3_errmsg(db)))")
             return true
         }
 
@@ -45,7 +34,6 @@ extension CardDatabaseService {
         }
 
         let count = sqlite3_column_int(stmt, 0)
-
         print("[DB] Card count =", count)
 
         return count == 0
@@ -95,15 +83,17 @@ extension CardDatabaseService {
             // Contains match
             
             let contains = queryCards(
-            """
-            SELECT *
-            FROM cards
-            WHERE name LIKE ?
-            COLLATE NOCASE
-            LIMIT 50;
-            """,
-            param: "%\(cleaned)%"
-            )
+                """
+                SELECT *
+                FROM cards
+                WHERE name LIKE ?
+                COLLATE NOCASE
+                GROUP BY illustration_id
+                ORDER BY release_date DESC
+                LIMIT 100;
+                """,
+                param: "%\(cleaned)%"
+                )
             
             if !contains.isEmpty {
                 return contains
@@ -221,6 +211,28 @@ extension CardDatabaseService {
             return Int(
                 sqlite3_column_int64(stmt, 0)
             )
+        }
+    }
+    // MARK: - Bulk Maintenance Helper
+    
+    func executeRawQueryForCards(_ sql: String) -> [MTGCard] {
+        return databaseQueue.sync {
+            var stmt: OpaquePointer?
+            var results: [MTGCard] = []
+            
+            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+                print("[CardDB] executeRawQueryForCards preparation failed: \(String(cString: sqlite3_errmsg(db)))")
+                return []
+            }
+            
+            defer { sqlite3_finalize(stmt) }
+            
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                if let card = CardRowMapper.map(stmt) {
+                    results.append(card)
+                }
+            }
+            return results
         }
     }
 }

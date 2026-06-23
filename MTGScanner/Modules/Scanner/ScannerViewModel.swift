@@ -122,65 +122,52 @@ final class ScannerViewModel: ObservableObject {
             return
         }
     }
-
+    
     // MARK: - Vision Matching
     
     private func resolvePrinting(
         image: UIImage,
         candidates: [MTGCard]
     ) async {
+
         guard !isMatchingVision else { return }
         isMatchingVision = true
         defer { isMatchingVision = false }
 
-        let artworkImage = image.artworkCrop()?.normalizedLandscape()
-
-        // 1. Generate the live print
-        let visionStart = clock.now
-        guard let livePrint = await VisionFeaturePrintService.shared
-            .generateFeaturePrint(from: artworkImage ?? image)
+        // --- FIXED BUG: Call bestMatch directly passing the original image frame snapshot ---
+        let matchStart = clock.now
+        guard let bestMatch = await VisionFeaturePrintService.shared
+            .bestMatch(scannedImage: image, candidates: candidates)
         else {
             state = .selectPrinting(candidates)
             return
         }
-        let visionDuration = clock.now - visionStart
-        print("[Timer] Vision Feature Print Generation took: \(visionDuration)")
-
-        // 2. Offload matching loop to a parallelized background task!
-        let matchStart = clock.now
-        
-        // Using detached task pushes this completely off the MainActor thread
-        let bestMatch = await Task.detached(priority: .userInitiated) {
-            return await VisionFeaturePrintService.shared
-                .bestMatch(scannedObservation: livePrint, candidates: candidates)
-        }.value
-
         let matchDuration = clock.now - matchStart
         print("[Timer] Vision Best Match Comparison took: \(matchDuration)")
 
-        guard let bestMatch else {
-            state = .selectPrinting(candidates)
-            return
-        }
-
         print("[Scanner] Best match:", bestMatch.name, bestMatch.set, bestMatch.collectorNumber)
 
-        // 3. Fast SQL grouping (Now instant thanks to your new index)
+        // Fast SQL grouping using your optimized index
         let groupStart = clock.now
         let sharedArtworkPrintings: [MTGCard]
         
         if let illustrationID = bestMatch.illustrationID, !illustrationID.isEmpty {
-            // Fetch matching items from the local DB
-            sharedArtworkPrintings = CardDatabaseService.shared.cards(withIllustrationID: illustrationID)
-            
+            let allSharedArtworkPrintings = CardDatabaseService.shared.cards(withIllustrationID: illustrationID)
+            sharedArtworkPrintings = allSharedArtworkPrintings.filter {
+                $0.illustrationID == illustrationID
+            }
             let groupDuration = clock.now - groupStart
             print("[Timer] DB Illustration ID Fetch (\(sharedArtworkPrintings.count) prints) took: \(groupDuration)")
+            print("[Scanner] Grouped by illustrationID:", illustrationID, "→", sharedArtworkPrintings.count, "printings")
         } else {
+            // Fallback: dual-vector context matching grouping
             sharedArtworkPrintings = await VisionFeaturePrintService.shared
                 .matchingArtworkPrintings(sourceCard: bestMatch, candidates: candidates)
+            let groupDuration = clock.now - groupStart
+            print("[Timer] Vision Fallback Grouping took: \(groupDuration)")
+            print("[Scanner] Grouped by artwork vision →", sharedArtworkPrintings.count, "printings")
         }
 
-        // 4. Update UI State safely back on MainActor
         if sharedArtworkPrintings.count > 1 {
             state = .selectPrinting(
                 sharedArtworkPrintings.sorted { $0.setName < $1.setName }
@@ -189,6 +176,7 @@ final class ScannerViewModel: ObservableObject {
             handleMatchedCard(bestMatch)
         }
     }
+
 
     // MARK: - Result Handling
 
