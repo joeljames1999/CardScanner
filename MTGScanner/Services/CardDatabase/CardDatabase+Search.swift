@@ -126,7 +126,7 @@ extension CardDatabaseService {
                     let layout = card.cardLayout?.lowercased() ?? ""
                     let typeLine = card.typeLine.lowercased()
                     let setName = card.setName.lowercased()
-
+                    
                     if [
                         "token",
                         "emblem",
@@ -160,20 +160,20 @@ extension CardDatabaseService {
             }
             
             if !filter.selectedManaColors.isEmpty {
-
+                
                 results = results.filter { card in
-
+                    
                     let cardColors = SearchFilter.extractManaColors(
                         from: card.colors
                     )
-
+                    
                     return SearchFilter.cardColorsMatch(
                         cardColors,
                         selectedColors: filter.selectedManaColors,
                         mode: filter.colorFilterMode
                     )
                 }
-
+                
                 print(
                     "Results After Colour Filter:",
                     results.count
@@ -181,18 +181,18 @@ extension CardDatabaseService {
             }
             
             if !filter.selectedFormats.isEmpty {
-
+                
                 results = results.filter { card in
-
+                    
                     guard let legalities = card.legalities else {
                         return false
                     }
-
+                    
                     return filter.selectedFormats.contains { format in
                         legalities.isLegal(in: format)
                     }
                 }
-
+                
                 print(
                     "Results After Format Filter:",
                     results.count
@@ -222,101 +222,183 @@ extension CardDatabaseService {
             return results
         }
     }
-
-        /// Internal helper to execute filtered queries (already inside databaseQueue.sync)
-        private func executeFilteredQuery(_ sql: String, params: [String]) -> [MTGCard] {
-            var stmt: OpaquePointer?
-
-            guard sqlite3_prepare_v2(
-                db,
-                sql,
-                -1,
-                &stmt,
-                nil
-            ) == SQLITE_OK else {
-                print("[CardDB] Filter prepare failed: \(String(cString: sqlite3_errmsg(db)))")
-                return []
-            }
-
-            defer { sqlite3_finalize(stmt) }
-
-            // Bind parameters
-            for (index, param) in params.enumerated() {
-                sqlite3_bind_text(
-                    stmt,
-                    Int32(index + 1),
-                    param,
-                    -1,
-                    unsafeBitCast(-1, to: sqlite3_destructor_type.self)
-                )
-            }
-
-            var results: [MTGCard] = []
-
-            while sqlite3_step(stmt) == SQLITE_ROW {
-                if let card = CardRowMapper.map(stmt) {
-                    results.append(card)
-                }
-            }
-
-            return results
+    
+    /// Internal helper to execute filtered queries (already inside databaseQueue.sync)
+    private func executeFilteredQuery(_ sql: String, params: [String]) -> [MTGCard] {
+        var stmt: OpaquePointer?
+        
+        guard sqlite3_prepare_v2(
+            db,
+            sql,
+            -1,
+            &stmt,
+            nil
+        ) == SQLITE_OK else {
+            print("[CardDB] Filter prepare failed: \(String(cString: sqlite3_errmsg(db)))")
+            return []
         }
-
-        /// Get all available sets (THREAD-SAFE)
-        func getAllSets() -> [String] {
-            databaseQueue.sync {
-                let sql = """
+        
+        defer { sqlite3_finalize(stmt) }
+        
+        // Bind parameters
+        for (index, param) in params.enumerated() {
+            sqlite3_bind_text(
+                stmt,
+                Int32(index + 1),
+                param,
+                -1,
+                unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+            )
+        }
+        
+        var results: [MTGCard] = []
+        
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            if let card = CardRowMapper.map(stmt) {
+                results.append(card)
+            }
+        }
+        
+        return results
+    }
+    
+    /// Get all available sets (THREAD-SAFE)
+    func getAllSets() -> [String] {
+        databaseQueue.sync {
+            let sql = """
                 SELECT DISTINCT set_name
                 FROM cards
                 ORDER BY set_name ASC;
                 """
-
-                var stmt: OpaquePointer?
-                guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
-                    print("[CardDB] getAllSets prepare failed: \(String(cString: sqlite3_errmsg(db)))")
-                    return []
-                }
-
-                defer { sqlite3_finalize(stmt) }
-
-                var sets: [String] = []
-                while sqlite3_step(stmt) == SQLITE_ROW {
-                    if let setName = col(stmt, 0) {
-                        sets.append(setName)
-                    }
-                }
-
-                print("[CardDB] Loaded \(sets.count) unique sets")
-                return sets
+            
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+                print("[CardDB] getAllSets prepare failed: \(String(cString: sqlite3_errmsg(db)))")
+                return []
             }
+            
+            defer { sqlite3_finalize(stmt) }
+            
+            var sets: [String] = []
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                if let setName = col(stmt, 0) {
+                    sets.append(setName)
+                }
+            }
+            
+            print("[CardDB] Loaded \(sets.count) unique sets")
+            return sets
         }
-
-        /// Get all available rarities (THREAD-SAFE)
-        func getAllRarities() -> [String] {
-            databaseQueue.sync {
-                let sql = """
+    }
+    
+    /// Get all available rarities (THREAD-SAFE)
+    func getAllRarities() -> [String] {
+        databaseQueue.sync {
+            let sql = """
                 SELECT DISTINCT rarity
                 FROM cards
                 WHERE rarity IS NOT NULL AND rarity != ''
                 ORDER BY rarity ASC;
                 """
-
-                var stmt: OpaquePointer?
-                guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
-                    print("[CardDB] getAllRarities prepare failed: \(String(cString: sqlite3_errmsg(db)))")
-                    return []
+            
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+                print("[CardDB] getAllRarities prepare failed: \(String(cString: sqlite3_errmsg(db)))")
+                return []
+            }
+            
+            defer { sqlite3_finalize(stmt) }
+            
+            var rarities: [String] = []
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                if let rarity = col(stmt, 0) {
+                    rarities.append(rarity)
                 }
-
-                defer { sqlite3_finalize(stmt) }
-
-                var rarities: [String] = []
-                while sqlite3_step(stmt) == SQLITE_ROW {
-                    if let rarity = col(stmt, 0) {
-                        rarities.append(rarity)
-                    }
-                }
-
-                return rarities
+            }
+            
+            return rarities
+        }
+    }
+    func cards(
+        withIllustrationID illustrationID: String
+    ) -> [MTGCard] {
+        
+        let sql = """
+        SELECT *
+        FROM cards
+        WHERE illustration_id = ?
+        ORDER BY rowid DESC
+        """
+        
+        let SQLITE_TRANSIENT = unsafeBitCast(
+            -1,
+            to: sqlite3_destructor_type.self
+        )
+        
+        var stmt: OpaquePointer?
+        
+        guard sqlite3_prepare_v2(
+            db,
+            sql,
+            -1,
+            &stmt,
+            nil
+        ) == SQLITE_OK else {
+            return []
+        }
+        
+        defer {
+            sqlite3_finalize(stmt)
+        }
+        
+        sqlite3_bind_text(
+            stmt,
+            1,
+            illustrationID,
+            -1,
+            SQLITE_TRANSIENT
+        )
+        
+        var cards: [MTGCard] = []
+        
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            
+            if let card =
+                CardRowMapper.map(stmt) {
+                
+                cards.append(card)
             }
         }
+        
+        return cards
+    }
+    
+    func cardsGroupedByIllustration(
+        _ cards: [MTGCard]
+    ) -> [MTGCard] {
+
+        var groups: [String: MTGCard] = [:]
+        var result: [MTGCard] = []
+
+        for card in cards {
+
+            guard let illustrationID =
+                card.illustrationID
+            else {
+
+                result.append(card)
+                continue
+            }
+
+            if groups[illustrationID] == nil {
+                groups[illustrationID] = card
+            }
+        }
+
+        result.append(
+            contentsOf: groups.values
+        )
+
+        return result
+    }
 }

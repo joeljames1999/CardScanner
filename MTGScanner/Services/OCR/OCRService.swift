@@ -213,25 +213,27 @@ extension OCRService {
         )
         
         Task { [weak self] in
-            
-            guard let self else {
-                return
-            }
+
+            guard let self else { return }
+
+            defer {
+                   self.isLocked = false
+               }
             
             let cardName =
             await nameRecognizer.recognise(
                 from: cardImage
             )
-            
+
             recognisedCardName = cardName
-            
+
             print(
                 "[OCR] Card name:",
                 cardName ?? "none"
             )
-            
+
             await MainActor.run {
-                
+
                 self.onCardImageCaptured?(
                     cardImage
                 )

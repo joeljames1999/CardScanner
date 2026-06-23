@@ -202,7 +202,9 @@ final class CardDetailViewController: UIViewController {
                 self?.dismiss(animated: true)
             }
         )
-
+        
+        RecentlyViewedStore.shared.add(card: card)
+        
         setupLayout()
         populateData()
         loadImage()

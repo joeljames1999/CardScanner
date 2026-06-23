@@ -1,3 +1,4 @@
+import Photos
 import Foundation
 import Combine
 import UIKit
@@ -87,6 +88,28 @@ final class ScannerViewModel: ObservableObject {
             let matches = CardDatabaseService.shared.findCards(
                 fuzzyName: recognisedName
             )
+            
+            for card in matches {
+
+                print(
+                    "[Scanner]",
+                    card.set,
+                    card.collectorNumber,
+                    "illustration:",
+                    card.illustrationID ?? "nil"
+                )
+                let matches =
+                    CardDatabaseService.shared.findCards(
+                        fuzzyName: recognisedName
+                    )
+                print (matches.count)
+            }
+            print(
+                "[Scanner] Found cards:",
+                matches.map {
+                    "\($0.set.uppercased()) #\($0.collectorNumber)"
+                }
+            )
             print(
                 "[Scanner] OCR matches:",
                 matches.count
@@ -98,21 +121,18 @@ final class ScannerViewModel: ObservableObject {
             }
             
             if matches.count > 1 {
-                
+
                 Task {
-                    
+
                     await resolvePrinting(
                         image: image,
                         candidates: matches
                     )
                 }
-                
+
                 return
             }
-            // OCR failed completely
-            state = .error(
-                "Could not identify card"
-            )
+            return
         }
     }
 
@@ -133,10 +153,18 @@ final class ScannerViewModel: ObservableObject {
             isMatchingVision = false
         }
 
+        let artworkImage =
+            image
+                .artworkCrop()?
+                .normalizedLandscape()
+
         guard let livePrint =
             await VisionFeaturePrintService.shared
-                .generateFeaturePrint(from: image)
+                .generateFeaturePrint(
+                    from: artworkImage ?? image
+                )
         else {
+
             state = .selectPrinting(candidates)
             return
         }
@@ -148,11 +176,51 @@ final class ScannerViewModel: ObservableObject {
                     candidates: candidates
                 )
         else {
+
             state = .selectPrinting(candidates)
             return
         }
 
-        handleMatchedCard(bestMatch)
+        print(
+            "[Scanner] Best match:",
+            bestMatch.name,
+            bestMatch.set,
+            bestMatch.collectorNumber
+        )
+
+        // Find all printings that use the same artwork
+        let artworkPrintings =
+            await VisionFeaturePrintService.shared
+                .matchingArtworkPrintings(
+                    sourceCard: bestMatch,
+                    candidates: candidates
+                )
+
+        print(
+            "[Scanner] Artwork printings:",
+            artworkPrintings.count
+        )
+
+        for card in artworkPrintings {
+
+            print(
+                "[Scanner] Artwork card:",
+                "\(card.set.uppercased()) #\(card.collectorNumber)"
+            )
+        }
+
+        if artworkPrintings.count > 1 {
+
+            state = .selectPrinting(
+                artworkPrintings.sorted {
+                    $0.setName < $1.setName
+                }
+            )
+
+        } else {
+
+            handleMatchedCard(bestMatch)
+        }
     }
 
     // MARK: - Result Handling
@@ -160,10 +228,48 @@ final class ScannerViewModel: ObservableObject {
     private func handleMatchedCard(_ card: MTGCard) {
 
         guard lastAcceptedCardID != card.id else { return }
+
         lastAcceptedCardID = card.id
 
-        SessionStore.shared.addOrIncrement(card: card)
-
         state = .found(card)
+    }
+}
+
+
+extension UIImage {
+
+    func normalizedLandscape() -> UIImage {
+
+        if size.width > size.height {
+            return self
+        }
+
+        let renderer = UIGraphicsImageRenderer(
+            size: CGSize(
+                width: size.height,
+                height: size.width
+            )
+        )
+
+        return renderer.image { context in
+
+            context.cgContext.translateBy(
+                x: size.height / 2,
+                y: size.width / 2
+            )
+
+            context.cgContext.rotate(
+                by: -.pi / 2
+            )
+
+            draw(
+                in: CGRect(
+                    x: -size.width / 2,
+                    y: -size.height / 2,
+                    width: size.width,
+                    height: size.height
+                )
+            )
+        }
     }
 }

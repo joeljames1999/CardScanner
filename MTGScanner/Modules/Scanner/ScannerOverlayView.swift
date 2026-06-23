@@ -9,7 +9,7 @@ final class ScannerOverlayView: UIView {
     override init(frame: CGRect) {
         super.init(frame: frame)
 
-        shapeLayer.strokeColor = UIColor.green.cgColor
+        shapeLayer.strokeColor = UIColor.blue.cgColor
         shapeLayer.lineWidth = 3
         shapeLayer.fillColor = UIColor.clear.cgColor
 

@@ -115,6 +115,7 @@ extension CardDatabaseService {
         let priceUsdF  = prices?["usd_foil"] as? String
         let scryfUri   = card["scryfall_uri"] as? String
         let cardLayout = card["layout"] as? String
+        let illustrationID = card["illustration_id"] as? String
         let colors =
         (card["colors"] as? [String])?
             .sorted()
@@ -173,30 +174,42 @@ extension CardDatabaseService {
             )
         }()
         
-        sqlite3_bind_text(stmt, 1, cardId, -1, TRANSIENT)
-        sqlite3_bind_text(stmt, 2, name,   -1, TRANSIENT)
-        bind(stmt, 3,  manaCost)
-        sqlite3_bind_double(stmt, 4, cmc)
-        bind(stmt, 5, colors)
-        bind(stmt, 6, colorIdentity)
-        bind(stmt, 7, artist)
-        
-        bind(stmt, 8, typeLine)
-        bind(stmt, 9, oracleText)
-        bind(stmt, 10, power)
-        bind(stmt, 11, toughness)
-        bind(stmt, 12, rarity)
-        bind(stmt, 13, setCode)
-        bind(stmt, 14, setName)
-        bind(stmt, 15, colNum)
-        bind(stmt, 16, imageUriNormal)
-        bind(stmt, 17, imageUriArtCrop)
-        bind(stmt, 18, priceUsd)
-        bind(stmt, 19, priceUsdF)
-        bind(stmt, 20, scryfUri)
-        bind(stmt, 21, cardLayout)
-        bind(stmt, 22, setType)
-        bind(stmt, 23, legalitiesJSON)
+        bindValues(
+            stmt,
+            values: [
+
+                cardId,
+                name,
+                manaCost,
+                cmc,
+
+                colors,
+                colorIdentity,
+                artist,
+
+                typeLine,
+                oracleText,
+                power,
+                toughness,
+
+                rarity,
+                setCode,
+                setName,
+                colNum,
+
+                imageUriNormal,
+                imageUriArtCrop,
+
+                priceUsd,
+                priceUsdF,
+
+                scryfUri,
+                cardLayout,
+                setType,
+                illustrationID,
+                legalitiesJSON
+            ]
+        )
         
         
         if sqlite3_step(stmt) != SQLITE_DONE {
@@ -213,4 +226,43 @@ extension CardDatabaseService {
         }
         sqlite3_reset(stmt)
     }
+    
+    
+    
+    private func bindValues(
+        _ stmt: OpaquePointer?,
+        values: [Any?]
+    ) {
+        for (index, value) in values.enumerated() {
+
+            let column = Int32(index + 1)
+
+            switch value {
+
+            case let string as String:
+                bind(stmt, column, string)
+
+            case let double as Double:
+                sqlite3_bind_double(
+                    stmt,
+                    column,
+                    double
+                )
+
+            case nil:
+                sqlite3_bind_null(
+                    stmt,
+                    column
+                )
+
+            default:
+                bind(
+                    stmt,
+                    column,
+                    "\(value!)"
+                )
+            }
+        }
+    }
+    
 }

@@ -32,11 +32,25 @@ final class SessionStore: ObservableObject {
         }
     }
     
-    func add(
-        _ entry: SessionEntry
-    ) {
-        entries.insert(entry, at: 0)
+    func add(_ entry: SessionEntry) {
+
+        if let idx = entries.firstIndex(where: {
+
+            $0.card.id == entry.card.id &&
+            $0.language == entry.language &&
+            $0.isFoil == entry.isFoil &&
+            $0.condition == entry.condition
+
+        }) {
+
+            entries[idx].count += entry.count
+
+        } else {
+
+            entries.insert(entry, at: 0)
+        }
     }
+    
 
     func setCount(id: UUID, count: Int) {
         guard let idx = entries.firstIndex(where: { $0.id == id }) else { return }

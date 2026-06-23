@@ -51,12 +51,13 @@ extension CardDatabaseService {
             set_name         TEXT,
             collector_number TEXT,
             image_uri_normal TEXT,
-                    image_uri_art_crop TEXT,
+            image_uri_art_crop TEXT,
             price_usd        TEXT,
             price_usd_foil   TEXT,
             scryfall_uri     TEXT,
             layout           TEXT,
             set_type         TEXT,
+            illustration_id TEXT,
             legalities       TEXT
         
         );
@@ -100,6 +101,7 @@ extension CardDatabaseService {
             scryfall_uri,
             layout,
             set_type,
+            illustration_id,
             legalities
         )
         VALUES
@@ -107,7 +109,7 @@ extension CardDatabaseService {
             ?,?,?,?,?,?,
             ?,?,?,?,?,?,
             ?,?,?,?,?,?,
-            ?,?,?,?,?
+            ?,?,?,?,?,?
         );
         """
 

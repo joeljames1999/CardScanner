@@ -56,13 +56,32 @@ final class HomeViewController: UIViewController {
         return label
     }()
 
-    private let recentPlaceholderLabel: UILabel = {
-        let label = UILabel()
-        label.text = "Cards you view will appear here."
-        label.font = .systemFont(ofSize: 16)
-        label.textColor = .secondaryLabel
-        label.numberOfLines = 0
-        return label
+    private var recentCards: [RecentCard] = []
+
+    private lazy var recentCollectionView: UICollectionView = {
+
+        let layout = UICollectionViewFlowLayout()
+
+        layout.scrollDirection = .horizontal
+        layout.minimumLineSpacing = 12
+
+        let cv = UICollectionView(
+            frame: .zero,
+            collectionViewLayout: layout
+        )
+
+        cv.translatesAutoresizingMaskIntoConstraints = false
+        cv.backgroundColor = .clear
+
+        cv.register(
+            RecentCardCell.self,
+            forCellWithReuseIdentifier: RecentCardCell.reuseID
+        )
+
+        cv.dataSource = self
+        cv.delegate = self
+
+        return cv
     }()
 
     // MARK: - Lifecycle
@@ -76,6 +95,17 @@ final class HomeViewController: UIViewController {
         setupLayout()
     }
 
+    override func viewWillAppear(
+        _ animated: Bool
+    ) {
+        super.viewWillAppear(animated)
+
+        recentCards =
+        RecentlyViewedStore.shared.cards
+
+        recentCollectionView.reloadData()
+    }
+    
     // MARK: - Layout
 
     private func setupLayout() {
@@ -92,7 +122,7 @@ final class HomeViewController: UIViewController {
             scanButton,
             searchButton,
             recentTitleLabel,
-            recentPlaceholderLabel
+            recentCollectionView
         ].forEach {
             $0.translatesAutoresizingMaskIntoConstraints = false
             contentView.addSubview($0)
@@ -184,17 +214,24 @@ final class HomeViewController: UIViewController {
                 equalTo: scanButton.leadingAnchor
             ),
 
-            recentPlaceholderLabel.topAnchor.constraint(
+            recentCollectionView.topAnchor.constraint(
                 equalTo: recentTitleLabel.bottomAnchor,
                 constant: 12
             ),
-            recentPlaceholderLabel.leadingAnchor.constraint(
+
+            recentCollectionView.leadingAnchor.constraint(
                 equalTo: recentTitleLabel.leadingAnchor
             ),
-            recentPlaceholderLabel.trailingAnchor.constraint(
+
+            recentCollectionView.trailingAnchor.constraint(
                 equalTo: scanButton.trailingAnchor
             ),
-            recentPlaceholderLabel.bottomAnchor.constraint(
+
+            recentCollectionView.heightAnchor.constraint(
+                equalToConstant: 180
+            ),
+
+            recentCollectionView.bottomAnchor.constraint(
                 equalTo: contentView.bottomAnchor,
                 constant: -40
             )
@@ -245,5 +282,72 @@ final class HomeViewController: UIViewController {
     @objc private func searchTapped() {
 
         tabBarController?.selectedIndex = 1
+    }
+}
+
+extension HomeViewController:
+UICollectionViewDataSource,
+UICollectionViewDelegateFlowLayout {
+
+    func collectionView(
+        _ collectionView: UICollectionView,
+        numberOfItemsInSection section: Int
+    ) -> Int {
+
+        recentCards.count
+    }
+
+    func collectionView(
+        _ collectionView: UICollectionView,
+        cellForItemAt indexPath: IndexPath
+    ) -> UICollectionViewCell {
+
+        let cell =
+            collectionView.dequeueReusableCell(
+                withReuseIdentifier: RecentCardCell.reuseID,
+                for: indexPath
+            ) as! RecentCardCell
+        
+        if let card = CardDatabaseService.shared.findCard(named: recentCards[indexPath.item].name) {
+            cell.configure(
+                with: card
+            )
+        }
+
+        return cell
+    }
+
+    func collectionView(
+        _ collectionView: UICollectionView,
+        layout collectionViewLayout: UICollectionViewLayout,
+        sizeForItemAt indexPath: IndexPath
+    ) -> CGSize {
+
+        CGSize(
+            width: 128,
+            height: 180
+        )
+    }
+
+    func collectionView(
+        _ collectionView: UICollectionView,
+        didSelectItemAt indexPath: IndexPath
+    ) {
+
+        let recentCard = recentCards[indexPath.item]
+
+        guard let card = CardDatabaseService.shared.findCard(named: recentCards[indexPath.item].name)
+        else {
+            return
+        }
+
+        let vc = CardDetailViewController(
+            card: card
+        )
+
+        navigationController?.pushViewController(
+            vc,
+            animated: true
+        )
     }
 }

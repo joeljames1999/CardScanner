@@ -30,6 +30,7 @@ struct MTGCard: Decodable {
     let scryfallUri: URL?
     let cardLayout: String?
     let setType: String?
+    let illustrationID: String?
     let legalities: Legalities?
 
     
@@ -84,156 +85,8 @@ struct MTGCard: Decodable {
         
         case cardLayout
         case setType = "set_type"
+        case illustrationID = "illustration_id"
         case legalities
     }
 }
 
-// MARK: - Condition
-
-enum CardCondition: String, Codable, CaseIterable {
-    case mint = "Mint"
-    case nearMint = "Near Mint"
-    case good = "Good"
-    case lightlyPlayed = "Lightly Played"
-    case poor = "Poor"
-    
-    var moxfieldCode: String {
-        switch self {
-        case .mint:              return "MI"
-        case .nearMint:         return "NM"
-        case .lightlyPlayed:    return "LP"
-        case .good:              return "GO"
-        case .poor:              return "PO"
-        }
-    }
-}
-
-// MARK: - Collection Entry (persistent)
-
-struct CollectionEntry: Codable, Identifiable {
-    let id: UUID
-    var count: Int
-    let cardID: String          // Scryfall card ID
-    let name: String
-    let setCode: String         // e.g. "lea"
-    let setName: String
-    let collectorNumber: String
-    let rarity: String
-    var condition: CardCondition
-    var isFoil: Bool
-    var language: String        // e.g. "English"
-    var purchasePrice: Double?
-    let usdPrice: String?
-    let imageURL: URL?
-    let dateAdded: Date
-    var isAltered: Bool
-
-    init(
-        from card: MTGCard,
-        count: Int = 1,
-        condition: CardCondition = .nearMint,
-        isFoil: Bool = false,
-        isAltered: Bool = false,
-        language: String = "English"
-    ) {
-        self.id = UUID()
-        self.count = count
-        self.cardID = card.id
-        self.name = card.name
-        self.setCode = card.set
-        self.setName = card.setName
-        self.collectorNumber = card.collectorNumber
-        self.rarity = card.rarity
-        self.condition = condition
-        self.isFoil = isFoil
-        self.isAltered = isAltered
-        self.language = language
-        self.purchasePrice = card.prices?.usd.flatMap(Double.init)
-        self.usdPrice = card.prices?.usd
-        self.imageURL = card.imageUris?.normal
-        self.dateAdded = Date()
-    }
-}
-
-// MARK: - Session Entry (temporary, in-memory)
-
-struct SessionEntry: Identifiable {
-
-    let id: UUID
-
-    let card: MTGCard
-
-    var count: Int
-
-    var condition: CardCondition
-
-    var isFoil: Bool
-
-    var isAltered: Bool
-
-    var language: String
-
-    init(
-        card: MTGCard,
-        count: Int = 1,
-        condition: CardCondition = .nearMint,
-        isFoil: Bool = false,
-        isAltered: Bool = false,
-        language: String = "English"
-    ) {
-        self.id = UUID()
-        self.card = card
-        self.count = count
-        self.condition = condition
-        self.isFoil = isFoil
-        self.isAltered = isAltered
-        self.language = language
-    }
-}
-
-struct Legalities: Codable {
-    
-    let standard: String?
-    let pioneer: String?
-    let modern: String?
-    let legacy: String?
-    let vintage: String?
-    let commander: String?
-    let pauper: String?
-    let brawl: String?
-    let historic: String?
-    let timeless: String?
-    let explorer: String?
-    let alchemy: String?
-}
-
-extension Legalities {
-
-    var isLegalSomewhere: Bool {
-
-        let formats: [String?] = [
-            standard,
-            pioneer,
-            modern,
-            legacy,
-            vintage,
-            commander,
-            pauper,
-            brawl,
-            historic,
-            timeless,
-            explorer,
-            alchemy
-        ]
-
-        for legality in formats {
-            if legality == "legal" ||
-                legality == "restricted" ||
-                legality == "banned" {
-                return true
-            }
-        }
-
-        return false
-    }
-}

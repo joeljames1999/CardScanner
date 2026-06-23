@@ -1,6 +1,11 @@
 import UIKit
 import Vision
 
+struct ArtworkMatch {
+    let card: MTGCard
+    let distance: Float
+}
+
 final class VisionFeaturePrintService {
 
     static let shared = VisionFeaturePrintService()
@@ -66,7 +71,9 @@ final class VisionFeaturePrintService {
                     .data(from: url)
 
             guard let image =
-                UIImage(data: data)
+                UIImage(data: data)?
+                    .artworkCrop()?
+                    .normalizedLandscape()
             else {
                 return nil
             }
@@ -94,18 +101,14 @@ final class VisionFeaturePrintService {
             let candidateObservation: VNFeaturePrintObservation
 
             if let cached =
-                await featurePrint(
-                        for: card
-                    ) {
+                await featurePrint(for: card) {
 
                 candidateObservation = cached
 
             } else {
 
                 guard let generated =
-                    await featurePrint(
-                        for: card
-                    )
+                    await featurePrint(for: card)
                 else {
                     continue
                 }
@@ -114,9 +117,7 @@ final class VisionFeaturePrintService {
 
                 if let archived =
                     try? CardDatabaseService.shared
-                        .generateFeaturePrint(
-                            from: generated
-                        ) {
+                        .generateFeaturePrint(from: generated) {
 
                     CardDatabaseService.shared
                         .storeFeaturePrint(
@@ -132,6 +133,13 @@ final class VisionFeaturePrintService {
                     and: candidateObservation
                 )
 
+            print(
+                "[Vision]",
+                card.set,
+                card.collectorNumber,
+                distance
+            )
+
             if distance < bestDistance {
 
                 bestDistance = distance
@@ -139,9 +147,116 @@ final class VisionFeaturePrintService {
             }
         }
 
+        guard let bestCard else {
+            return nil
+        }
+
+        print(
+            "[Vision] WINNER:",
+            bestCard.set,
+            bestCard.collectorNumber,
+            "distance:",
+            bestDistance
+        )
+
         return bestCard
     }
 
+    func matchingArtworkPrintings(
+        sourceCard: MTGCard,
+        candidates: [MTGCard]
+    ) async -> [MTGCard] {
+
+        guard let sourcePrint =
+            await featurePrint(for: sourceCard)
+        else {
+            return [sourceCard]
+        }
+
+        var matches: [MTGCard] = []
+
+        for card in candidates {
+
+            guard let candidatePrint =
+                await featurePrint(for: card)
+            else {
+                continue
+            }
+
+            let distance =
+                distance(
+                    between: sourcePrint,
+                    and: candidatePrint
+                )
+
+            print(
+                "[Artwork Match]",
+                card.set,
+                card.collectorNumber,
+                distance
+            )
+
+            // Same artwork threshold
+            if distance < 0.08 {
+
+                matches.append(card)
+            }
+        }
+
+        return matches
+    }
+    
+    func artworkMatches(
+        scannedObservation: VNFeaturePrintObservation,
+        candidates: [MTGCard]
+    ) async -> [ArtworkMatch] {
+
+        var results: [ArtworkMatch] = []
+
+        for card in candidates {
+
+            let candidateObservation: VNFeaturePrintObservation
+
+            if let cached = await featurePrint(for: card) {
+
+                candidateObservation = cached
+
+            } else {
+
+                guard let generated =
+                    await featurePrint(for: card)
+                else {
+                    continue
+                }
+
+                candidateObservation = generated
+            }
+
+            let distance = distance(
+                between: scannedObservation,
+                and: candidateObservation
+            )
+
+            print(
+                "[Vision]",
+                card.set,
+                "#\(card.collectorNumber)",
+                distance
+            )
+
+            results.append(
+                ArtworkMatch(
+                    card: card,
+                    distance: distance
+                )
+            )
+        }
+
+        return results.sorted {
+            $0.distance < $1.distance
+        }
+    }
+    
     func distance(
         between a: VNFeaturePrintObservation,
         and b: VNFeaturePrintObservation
@@ -155,5 +270,44 @@ final class VisionFeaturePrintService {
         )
 
         return distance
+    }
+}
+
+
+extension UIImage {
+
+    func artworkCrop() -> UIImage? {
+
+        guard let cgImage else {
+            return nil
+        }
+
+        let rect = CGRect(
+            x: size.width * 0.07,
+            y: size.height * 0.12,
+            width: size.width * 0.86,
+            height: size.height * 0.32
+        )
+
+        let scale = self.scale
+
+        let cropRect = CGRect(
+            x: rect.origin.x * scale,
+            y: rect.origin.y * scale,
+            width: rect.width * scale,
+            height: rect.height * scale
+        )
+
+        guard let cropped =
+            cgImage.cropping(to: cropRect)
+        else {
+            return nil
+        }
+
+        return UIImage(
+            cgImage: cropped,
+            scale: scale,
+            orientation: imageOrientation
+        )
     }
 }

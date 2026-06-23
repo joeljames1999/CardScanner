@@ -23,5 +23,7 @@ enum CardColumn {
     static let scryfallUri: Int32 = 19
     static let cardLayout: Int32 = 20
     static let setType: Int32 = 21
-    static let legalities: Int32 = 22
+    static let illustrationID: Int32 = 22
+    static let legalities: Int32 = 23
 }
+

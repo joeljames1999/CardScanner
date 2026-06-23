@@ -182,8 +182,8 @@ extension SetPickerViewController: UITableViewDelegate {
 
 // MARK: - PrintingCell
 
-final class PrintingCell: UITableViewCell {
-    static let reuseID = "PrintingCell"
+final class SetPickerPrintingCell: UITableViewCell {
+    static let reuseID = "SetPickerPrintingCell"
 
     private let cardImageView: UIImageView = {
         let iv = UIImageView()

@@ -198,7 +198,9 @@ enum CardRowMapper {
             
             cardLayout: col(stmt, CardColumn.cardLayout),
             
-            setType: col(stmt, CardColumn.setType), legalities: legalities
+            setType: col(stmt, CardColumn.setType),
+            illustrationID: col(stmt,CardColumn.illustrationID),
+            legalities: legalities
         )
     }
 }

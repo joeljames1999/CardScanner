@@ -12,6 +12,7 @@ final class ScannerViewController: UIViewController {
     private let ocrService    = OCRService()
     private let viewModel     = ScannerViewModel()
     private var cancellables  = Set<AnyCancellable>()
+    private var printingOverlay: PrintingSelectionOverlayView?
 
     // MARK: - UI
 
@@ -171,6 +172,113 @@ final class ScannerViewController: UIViewController {
             }
         }
     }
+    
+    private func showPrintingOverlay(
+        printings: [MTGCard]
+    ) {
+
+        printingOverlay?.removeFromSuperview()
+
+        let overlay = PrintingSelectionOverlayView(
+            printings: printings
+        )
+
+        overlay.translatesAutoresizingMaskIntoConstraints = false
+
+        overlay.onSelect = { [weak self] card in
+
+            guard let self else { return }
+
+            overlay.removeFromSuperview()
+
+            self.showAddCardOverlay(
+                card: card
+            )
+        }
+
+        overlay.onCancel = { [weak self] in
+
+            guard let self else { return }
+
+            overlay.removeFromSuperview()
+
+            self.overlayView.resetToScanning()
+            self.ocrService.resetForNextScan()
+            self.viewModel.resetToScanning()
+        }
+
+        view.addSubview(overlay)
+
+        NSLayoutConstraint.activate([
+            overlay.leadingAnchor.constraint(
+                equalTo: view.leadingAnchor
+            ),
+            overlay.trailingAnchor.constraint(
+                equalTo: view.trailingAnchor
+            ),
+            overlay.topAnchor.constraint(
+                equalTo: view.topAnchor
+            ),
+            overlay.bottomAnchor.constraint(
+                equalTo: view.bottomAnchor
+            )
+        ])
+
+        printingOverlay = overlay
+    }
+    
+    private func showAddCardOverlay(
+        card: MTGCard
+    ) {
+
+        let overlay = AddCardOverlayView(
+            card: card
+        )
+
+        overlay.translatesAutoresizingMaskIntoConstraints = false
+
+        overlay.onAdd = { [weak self] details in
+
+            guard let self else { return }
+
+            let entry = SessionEntry(
+                card: card,
+                count: details.quantity,
+                isFoil: details.isFoil,
+                language: details.language
+            )
+
+            SessionStore.shared.add(entry)
+
+            overlay.removeFromSuperview()
+
+            self.showAddedToast(for: card)
+
+            self.overlayView.resetToScanning()
+            self.ocrService.resetForNextScan()
+            self.viewModel.resetToScanning()
+        }
+
+        overlay.onCancel = { [weak self] in
+
+            guard let self else { return }
+
+            overlay.removeFromSuperview()
+
+            self.overlayView.resetToScanning()
+            self.ocrService.resetForNextScan()
+            self.viewModel.resetToScanning()
+        }
+
+        view.addSubview(overlay)
+
+        NSLayoutConstraint.activate([
+            overlay.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            overlay.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            overlay.topAnchor.constraint(equalTo: view.topAnchor),
+            overlay.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+    }
 
     // MARK: - ViewModel Binding
 
@@ -193,22 +301,25 @@ final class ScannerViewController: UIViewController {
             ocrService.resetForNextScan()
 
         case .found(let card):
-            // Single printing — auto-added in VM, just show toast
-            overlayView.showFound(cardName: card.name)
-            statusLabel.text = "Added: \(card.name)"
-            showAddedToast(for: card)
-            ocrService.resetForNextScan()
-            // Auto-reset after toast
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
-                self?.viewModel.resetToScanning()
-            }
 
+            statusLabel.text = card.name
+            showAddCardOverlay(card: card)
+            
+            
         case .selectPrinting(let printings):
-            // Multiple printings — show picker sheet
-            overlayView.showFound(cardName: printings.first?.name ?? "")
-            statusLabel.text = "Select your printing"
-            ocrService.resetForNextScan()
-            presentSetPicker(printings: printings)
+
+            print(
+                "[ScannerVC] Showing printing picker:",
+                printings.count
+            )
+
+            overlayView.showFound(
+                cardName: printings.first?.name ?? ""
+            )
+
+            showPrintingOverlay(
+                printings: printings
+            )
 
         case .error(let message):
             overlayView.resetToScanning()
@@ -218,28 +329,6 @@ final class ScannerViewController: UIViewController {
                 self?.ocrService.resetForNextScan()
             }
         }
-    }
-    
-    private func presentCardDetails(
-        card: MTGCard
-    ) {
-
-        let vc = ScanCardDetailsViewController(
-            card: card
-        )
-
-        vc.onAdd = { entry in
-
-            SessionStore.shared.add(entry)
-
-            self.viewModel.resetToScanning()
-        }
-
-        let nav = UINavigationController(
-            rootViewController: vc
-        )
-
-        present(nav, animated: true)
     }
 
     // MARK: - Set Picker
@@ -253,15 +342,21 @@ final class ScannerViewController: UIViewController {
         )
 
         pickerVC.onSelect = { [weak self] card in
-            SessionStore.shared.addOrIncrement(card: card)
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
-            self?.showAddedToast(for: card)
-            self?.viewModel.resetToScanning()
-        }
 
+            guard let self else { return }
+
+            self.showAddCardOverlay(
+                card: card
+            )
+        }
+        
         pickerVC.onDismiss = { [weak self] in
-            self?.viewModel.resetToScanning()
+
+            self?.overlayView.resetToScanning()
+
             self?.ocrService.resetForNextScan()
+
+            self?.viewModel.resetToScanning()
         }
 
         let nav = UINavigationController(rootViewController: pickerVC)

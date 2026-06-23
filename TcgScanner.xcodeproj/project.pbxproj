@@ -36,11 +36,22 @@
 		98CB31872FDC47190029CA7F /* FilterManaCostRowCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB31862FDC47190029CA7F /* FilterManaCostRowCell.swift */; };
 		98CB318A2FDC5A6E0029CA7F /* FilterColorCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB31892FDC5A6E0029CA7F /* FilterColorCell.swift */; };
 		98CB318C2FDC5E0C0029CA7F /* FilterColorModeCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB318B2FDC5E0C0029CA7F /* FilterColorModeCell.swift */; };
-		98CB318E2FE16EFB0029CA7F /* ScanCardDetailsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB318D2FE16EFB0029CA7F /* ScanCardDetailsViewController.swift */; };
 		98CB31902FE171F40029CA7F /* VisionFeaturePrintService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB318F2FE171F40029CA7F /* VisionFeaturePrintService.swift */; };
 		98CB319A2FE311680029CA7F /* CardRectangularDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB31992FE311680029CA7F /* CardRectangularDetector.swift */; };
 		98CB319C2FE311740029CA7F /* CardCaptureService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB319B2FE311740029CA7F /* CardCaptureService.swift */; };
 		98CB319E2FE311820029CA7F /* CardNameRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB319D2FE311820029CA7F /* CardNameRecognizer.swift */; };
+		98CB31B72FE460BB0029CA7F /* PrintingSelectionOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB31B62FE460BB0029CA7F /* PrintingSelectionOverlayView.swift */; };
+		98CB31B92FE463380029CA7F /* AddCardOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB31B82FE463380029CA7F /* AddCardOverlayView.swift */; };
+		98CB31BB2FE5F8980029CA7F /* MTGCard+Legalities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB31BA2FE5F8980029CA7F /* MTGCard+Legalities.swift */; };
+		98CB31BD2FE5F8A00029CA7F /* CollectionEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB31BC2FE5F8A00029CA7F /* CollectionEntry.swift */; };
+		98CB31BF2FE5F8A80029CA7F /* SessionEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB31BE2FE5F8A80029CA7F /* SessionEntry.swift */; };
+		98CB31C12FE5F8AF0029CA7F /* CardCondition.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB31C02FE5F8AF0029CA7F /* CardCondition.swift */; };
+		98CB31C32FE5F91A0029CA7F /* SettingsCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB31C22FE5F91A0029CA7F /* SettingsCell.swift */; };
+		98CB31C52FE5F93C0029CA7F /* BulkDataCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB31C42FE5F93C0029CA7F /* BulkDataCell.swift */; };
+		98CB31C72FE5F95E0029CA7F /* SettingsOptionsCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB31C62FE5F95E0029CA7F /* SettingsOptionsCell.swift */; };
+		98CB31C92FE6ACE50029CA7F /* RecentlyViewedStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB31C82FE6ACE50029CA7F /* RecentlyViewedStore.swift */; };
+		98CB31CB2FE6ADC20029CA7F /* RecentCardCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB31CA2FE6ADC20029CA7F /* RecentCardCell.swift */; };
+		98CB31CD2FE6AEA00029CA7F /* RecentCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB31CC2FE6AEA00029CA7F /* RecentCard.swift */; };
 		98EEA85F2FA54A4800EFA5F8 /* ScryfallBulkService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98EEA85E2FA54A4800EFA5F8 /* ScryfallBulkService.swift */; };
 		98EEA8662FA97E0B00EFA5F8 /* StreamingJSONParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98EEA8652FA97E0B00EFA5F8 /* StreamingJSONParser.swift */; };
 /* End PBXBuildFile section */
@@ -77,11 +88,22 @@
 		98CB31862FDC47190029CA7F /* FilterManaCostRowCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilterManaCostRowCell.swift; sourceTree = "<group>"; };
 		98CB31892FDC5A6E0029CA7F /* FilterColorCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilterColorCell.swift; sourceTree = "<group>"; };
 		98CB318B2FDC5E0C0029CA7F /* FilterColorModeCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilterColorModeCell.swift; sourceTree = "<group>"; };
-		98CB318D2FE16EFB0029CA7F /* ScanCardDetailsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanCardDetailsViewController.swift; sourceTree = "<group>"; };
 		98CB318F2FE171F40029CA7F /* VisionFeaturePrintService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisionFeaturePrintService.swift; sourceTree = "<group>"; };
 		98CB31992FE311680029CA7F /* CardRectangularDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardRectangularDetector.swift; sourceTree = "<group>"; };
 		98CB319B2FE311740029CA7F /* CardCaptureService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardCaptureService.swift; sourceTree = "<group>"; };
 		98CB319D2FE311820029CA7F /* CardNameRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardNameRecognizer.swift; sourceTree = "<group>"; };
+		98CB31B62FE460BB0029CA7F /* PrintingSelectionOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrintingSelectionOverlayView.swift; sourceTree = "<group>"; };
+		98CB31B82FE463380029CA7F /* AddCardOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddCardOverlayView.swift; sourceTree = "<group>"; };
+		98CB31BA2FE5F8980029CA7F /* MTGCard+Legalities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MTGCard+Legalities.swift"; sourceTree = "<group>"; };
+		98CB31BC2FE5F8A00029CA7F /* CollectionEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionEntry.swift; sourceTree = "<group>"; };
+		98CB31BE2FE5F8A80029CA7F /* SessionEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionEntry.swift; sourceTree = "<group>"; };
+		98CB31C02FE5F8AF0029CA7F /* CardCondition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardCondition.swift; sourceTree = "<group>"; };
+		98CB31C22FE5F91A0029CA7F /* SettingsCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsCell.swift; sourceTree = "<group>"; };
+		98CB31C42FE5F93C0029CA7F /* BulkDataCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BulkDataCell.swift; sourceTree = "<group>"; };
+		98CB31C62FE5F95E0029CA7F /* SettingsOptionsCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsOptionsCell.swift; sourceTree = "<group>"; };
+		98CB31C82FE6ACE50029CA7F /* RecentlyViewedStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentlyViewedStore.swift; sourceTree = "<group>"; };
+		98CB31CA2FE6ADC20029CA7F /* RecentCardCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentCardCell.swift; sourceTree = "<group>"; };
+		98CB31CC2FE6AEA00029CA7F /* RecentCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentCard.swift; sourceTree = "<group>"; };
 		98EEA85E2FA54A4800EFA5F8 /* ScryfallBulkService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScryfallBulkService.swift; sourceTree = "<group>"; };
 		98EEA8652FA97E0B00EFA5F8 /* StreamingJSONParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamingJSONParser.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -159,6 +181,10 @@
 			isa = PBXGroup;
 			children = (
 				986A78542F96E98800EAEBEC /* MTGCard.swift */,
+				98CB31BA2FE5F8980029CA7F /* MTGCard+Legalities.swift */,
+				98CB31BC2FE5F8A00029CA7F /* CollectionEntry.swift */,
+				98CB31BE2FE5F8A80029CA7F /* SessionEntry.swift */,
+				98CB31C02FE5F8AF0029CA7F /* CardCondition.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -184,6 +210,7 @@
 			isa = PBXGroup;
 			children = (
 				986A785A2F96E98800EAEBEC /* HomeViewController.swift */,
+				98CB31CA2FE6ADC20029CA7F /* RecentCardCell.swift */,
 			);
 			path = Home;
 			sourceTree = "<group>";
@@ -192,6 +219,8 @@
 			isa = PBXGroup;
 			children = (
 				986A785C2F96E98800EAEBEC /* MenuViewController.swift */,
+				98CB31C22FE5F91A0029CA7F /* SettingsCell.swift */,
+				98CB31C42FE5F93C0029CA7F /* BulkDataCell.swift */,
 				98CB316E2FD187660029CA7F /* Menu Options */,
 			);
 			path = Menu;
@@ -201,9 +230,10 @@
 			isa = PBXGroup;
 			children = (
 				986A785E2F96E98800EAEBEC /* ScannerViewController.swift */,
+				98CB31B62FE460BB0029CA7F /* PrintingSelectionOverlayView.swift */,
+				98CB31B82FE463380029CA7F /* AddCardOverlayView.swift */,
 				986A78AC2F96EBD900EAEBEC /* ScannerViewModel.swift */,
 				986A78AE2F96EBEA00EAEBEC /* ScannerOverlayView.swift */,
-				98CB318D2FE16EFB0029CA7F /* ScanCardDetailsViewController.swift */,
 			);
 			path = Scanner;
 			sourceTree = "<group>";
@@ -251,6 +281,8 @@
 				98CB31982FE3114C0029CA7F /* OCR */,
 				98CB319F2FE313440029CA7F /* CardDatabase */,
 				98CB318F2FE171F40029CA7F /* VisionFeaturePrintService.swift */,
+				98CB31C82FE6ACE50029CA7F /* RecentlyViewedStore.swift */,
+				98CB31CC2FE6AEA00029CA7F /* RecentCard.swift */,
 				98EEA85E2FA54A4800EFA5F8 /* ScryfallBulkService.swift */,
 				98EEA8652FA97E0B00EFA5F8 /* StreamingJSONParser.swift */,
 				986A78B42F96EC2300EAEBEC /* ScryfallService.swift */,
@@ -276,6 +308,7 @@
 			isa = PBXGroup;
 			children = (
 				98CB316C2FD1875B0029CA7F /* SettingsViewController.swift */,
+				98CB31C62FE5F95E0029CA7F /* SettingsOptionsCell.swift */,
 			);
 			path = "Menu Options";
 			sourceTree = "<group>";
@@ -376,12 +409,16 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				98CB31BB2FE5F8980029CA7F /* MTGCard+Legalities.swift in Sources */,
 				986A787E2F96EA1D00EAEBEC /* MenuViewController.swift in Sources */,
 				986A787F2F96EA1D00EAEBEC /* ScannerViewController.swift in Sources */,
 				986A78802F96EA1D00EAEBEC /* SearchViewController.swift in Sources */,
 				986A78B32F96EC1400EAEBEC /* OCRService.swift in Sources */,
+				98CB31BF2FE5F8A80029CA7F /* SessionEntry.swift in Sources */,
+				98CB31CB2FE6ADC20029CA7F /* RecentCardCell.swift in Sources */,
 				98CB319A2FE311680029CA7F /* CardRectangularDetector.swift in Sources */,
 				98EEA85F2FA54A4800EFA5F8 /* ScryfallBulkService.swift in Sources */,
+				98CB31B72FE460BB0029CA7F /* PrintingSelectionOverlayView.swift in Sources */,
 				986A78812F96EA1D00EAEBEC /* SessionViewController.swift in Sources */,
 				98CB319E2FE311820029CA7F /* CardNameRecognizer.swift in Sources */,
 				986A78B52F96EC2300EAEBEC /* ScryfallService.swift in Sources */,
@@ -389,28 +426,35 @@
 				98CB31762FD45F120029CA7F /* SearchFilter.swift in Sources */,
 				98CB31872FDC47190029CA7F /* FilterManaCostRowCell.swift in Sources */,
 				98EEA8662FA97E0B00EFA5F8 /* StreamingJSONParser.swift in Sources */,
+				98CB31C92FE6ACE50029CA7F /* RecentlyViewedStore.swift in Sources */,
 				986A78832F96EA1D00EAEBEC /* CSVService.swift in Sources */,
 				98CB317C2FD78E460029CA7F /* CardDetailPrintingCell.swift in Sources */,
+				98CB31C72FE5F95E0029CA7F /* SettingsOptionsCell.swift in Sources */,
 				986A78842F96EA1D00EAEBEC /* SessionStore.swift in Sources */,
 				986A78AD2F96EBD900EAEBEC /* ScannerViewModel.swift in Sources */,
+				98CB31C52FE5F93C0029CA7F /* BulkDataCell.swift in Sources */,
 				986A78B12F96EBFD00EAEBEC /* CameraService.swift in Sources */,
 				986A787D2F96EA1600EAEBEC /* HomeViewController.swift in Sources */,
+				98CB31C12FE5F8AF0029CA7F /* CardCondition.swift in Sources */,
 				98CB31832FDA04B60029CA7F /* SplashViewController.swift in Sources */,
 				986A787C2F96EA0300EAEBEC /* CollectionViewController.swift in Sources */,
 				98CB31782FD45F4C0029CA7F /* CardFilterViewController.swift in Sources */,
 				986A78AF2F96EBEA00EAEBEC /* ScannerOverlayView.swift in Sources */,
-				98CB318E2FE16EFB0029CA7F /* ScanCardDetailsViewController.swift in Sources */,
 				98CB31702FD1E7D40029CA7F /* CardSearchViewModel.swift in Sources */,
 				986A787B2F96E9FD00EAEBEC /* CardDetailViewController.swift in Sources */,
 				98CB319C2FE311740029CA7F /* CardCaptureService.swift in Sources */,
 				98CB31902FE171F40029CA7F /* VisionFeaturePrintService.swift in Sources */,
+				98CB31B92FE463380029CA7F /* AddCardOverlayView.swift in Sources */,
 				98CB31722FD1E8740029CA7F /* CardSearchCell.swift in Sources */,
+				98CB31C32FE5F91A0029CA7F /* SettingsCell.swift in Sources */,
 				986A787A2F96E9FA00EAEBEC /* MTGCard.swift in Sources */,
 				98CB318C2FDC5E0C0029CA7F /* FilterColorModeCell.swift in Sources */,
 				98CB316D2FD1875B0029CA7F /* SettingsViewController.swift in Sources */,
 				9875E0DA2F96FB0F002929D0 /* SceneDelegate.swift in Sources */,
+				98CB31BD2FE5F8A00029CA7F /* CollectionEntry.swift in Sources */,
 				98CB318A2FDC5A6E0029CA7F /* FilterColorCell.swift in Sources */,
 				986A78792F96E9F700EAEBEC /* MainTabBarController.swift in Sources */,
+				98CB31CD2FE6AEA00029CA7F /* RecentCard.swift in Sources */,
 				986A78782F96E9F300EAEBEC /* AppDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
