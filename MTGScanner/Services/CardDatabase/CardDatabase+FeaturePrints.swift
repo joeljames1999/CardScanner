@@ -208,4 +208,63 @@ extension CardDatabaseService {
         }
     }
     
+    func saveFeaturePrint(cardId: String, observation: VNFeaturePrintObservation) {
+        let sql = "INSERT OR REPLACE INTO feature_prints (card_id, print_blob) VALUES (?, ?);"
+        var stmt: OpaquePointer?
+        
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return }
+        
+        // Serialize VNFeaturePrintObservation to binary Data
+        guard let data = try? NSKeyedArchiver.archivedData(withRootObject: observation, requiringSecureCoding: true) else {
+            sqlite3_finalize(stmt)
+            return
+        }
+        
+        let TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+        sqlite3_bind_text(stmt, 1, cardId, -1, TRANSIENT)
+        
+        data.withUnsafeBytes { bytes in
+            sqlite3_bind_blob(stmt, 2, bytes.baseAddress, Int32(data.count), TRANSIENT)
+        }
+        
+        if sqlite3_step(stmt) != SQLITE_DONE {
+            print("[CardDB] Failed to save feature print blob")
+        }
+        sqlite3_finalize(stmt)
+    }
+
+    func fetchFeaturePrints(for cardIds: [String]) -> [String: VNFeaturePrintObservation] {
+        guard !cardIds.isEmpty else { return [:] }
+        
+        // Dynamically build placeholder markers: ?, ?, ?
+        let placeholders = String(repeating: "?,", count: cardIds.count).dropLast()
+        let sql = "SELECT card_id, print_blob FROM feature_prints WHERE card_id IN (\(placeholders));"
+        
+        var stmt: OpaquePointer?
+        var results: [String: VNFeaturePrintObservation] = [:]
+        
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return [:] }
+        
+        let TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+        for (index, id) in cardIds.enumerated() {
+            sqlite3_bind_text(stmt, Int32(index + 1), id, -1, TRANSIENT)
+        }
+        
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            if let cString = sqlite3_column_text(stmt, 0) {
+                let cardId = String(cString: cString)
+                if let blobBytes = sqlite3_column_blob(stmt, 1) {
+                    let blobSize = sqlite3_column_bytes(stmt, 1)
+                    let data = Data(bytes: blobBytes, count: Int(blobSize))
+                    
+                    if let observation = try? NSKeyedUnarchiver.unarchivedObject(ofClass: VNFeaturePrintObservation.self, from: data) {
+                        results[cardId] = observation
+                    }
+                }
+            }
+        }
+        sqlite3_finalize(stmt)
+        return results
+    }
+    
 }

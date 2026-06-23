@@ -1,313 +1,93 @@
 import UIKit
 import Vision
 
-struct ArtworkMatch {
-    let card: MTGCard
-    let distance: Float
-}
-
 final class VisionFeaturePrintService {
 
     static let shared = VisionFeaturePrintService()
-
     private init() {}
 
-    func generateFeaturePrint(
-        from image: UIImage
-    ) async -> VNFeaturePrintObservation? {
-
-        guard let cgImage = image.cgImage else {
-            return nil
-        }
+    func generateFeaturePrint(from image: UIImage) async -> VNFeaturePrintObservation? {
+        guard let cgImage = image.cgImage else { return nil }
 
         return await withCheckedContinuation { continuation in
-
             let request = VNGenerateImageFeaturePrintRequest()
-
-            let handler = VNImageRequestHandler(
-                cgImage: cgImage,
-                options: [:]
-            )
+            let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
 
             DispatchQueue.global(qos: .userInitiated).async {
-
                 do {
-
                     try handler.perform([request])
-
-                    let result =
-                        request.results?.first
-                        as? VNFeaturePrintObservation
-
-                    continuation.resume(
-                        returning: result
-                    )
-
+                    let result = request.results?.first as? VNFeaturePrintObservation
+                    continuation.resume(returning: result)
                 } catch {
-
-                    continuation.resume(
-                        returning: nil
-                    )
+                    continuation.resume(returning: nil)
                 }
             }
         }
     }
     
-    func featurePrint(
-        for card: MTGCard
-    ) async -> VNFeaturePrintObservation? {
-
-        guard let url =
-            card.imageUris?.artCrop ??
-            card.imageUris?.normal
-        else {
-            return nil
-        }
-
-        do {
-
-            let (data, _) =
-                try await URLSession.shared
-                    .data(from: url)
-
-            guard let image =
-                UIImage(data: data)?
-                    .artworkCrop()?
-                    .normalizedLandscape()
-            else {
-                return nil
-            }
-
-            return await generateFeaturePrint(
-                from: image
-            )
-
-        } catch {
-
-            return nil
-        }
-    }
-    
+    /// Matches scanned cards against candidates instantly offline using parallel CPU threads
     func bestMatch(
         scannedObservation: VNFeaturePrintObservation,
         candidates: [MTGCard]
     ) async -> MTGCard? {
+        guard !candidates.isEmpty else { return nil }
 
-        var bestCard: MTGCard?
-        var bestDistance: Float = .greatestFiniteMagnitude
+        // Batch query all feature prints from SQLite into memory at once
+        let candidateIds = candidates.map { $0.id }
+        let cachedPrints = CardDatabaseService.shared.fetchFeaturePrints(for: candidateIds)
 
-        for card in candidates {
-
-            let candidateObservation: VNFeaturePrintObservation
-
-            if let cached =
-                await featurePrint(for: card) {
-
-                candidateObservation = cached
-
-            } else {
-
-                guard let generated =
-                    await featurePrint(for: card)
-                else {
-                    continue
-                }
-
-                candidateObservation = generated
-
-                if let archived =
-                    try? CardDatabaseService.shared
-                        .generateFeaturePrint(from: generated) {
-
-                    CardDatabaseService.shared
-                        .storeFeaturePrint(
-                            cardId: card.id,
-                            data: archived
-                        )
+        // Spread the vector distance processing across parallel worker contexts
+        let scoredCandidates: [(card: MTGCard, distance: Float)] = await withTaskGroup(of: (MTGCard, Float)?.self) { group in
+            for card in candidates {
+                group.addTask {
+                    // Check if the card has a stored binary footprint, skip download if it's missing
+                    guard let candidateObservation = cachedPrints[card.id] else {
+                        return nil
+                    }
+                    
+                    var distance: Float = 0
+                    try? scannedObservation.computeDistance(&distance, to: candidateObservation)
+                    return (card, distance)
                 }
             }
 
-            let distance =
-                distance(
-                    between: scannedObservation,
-                    and: candidateObservation
-                )
-
-            print(
-                "[Vision]",
-                card.set,
-                card.collectorNumber,
-                distance
-            )
-
-            if distance < bestDistance {
-
-                bestDistance = distance
-                bestCard = card
+            var results = [(card: MTGCard, distance: Float)]()
+            for await result in group {
+                if let result = result {
+                    results.append(result)
+                }
             }
+            return results
         }
 
-        guard let bestCard else {
-            return nil
+        if let winner = scoredCandidates.min(by: { $0.distance < $1.distance }) {
+            print("[Vision] WINNER:", winner.card.set, winner.card.collectorNumber, "distance:", winner.distance)
+            return winner.card
         }
 
-        print(
-            "[Vision] WINNER:",
-            bestCard.set,
-            bestCard.collectorNumber,
-            "distance:",
-            bestDistance
-        )
-
-        return bestCard
+        // Fallback: If your DB hasn't populated feature prints yet, return the first card
+        return candidates.first
     }
 
     func matchingArtworkPrintings(
         sourceCard: MTGCard,
         candidates: [MTGCard]
     ) async -> [MTGCard] {
-
-        guard let sourcePrint =
-            await featurePrint(for: sourceCard)
-        else {
-            return [sourceCard]
-        }
-
+        let candidateIds = candidates.map { $0.id }
+        let cachedPrints = CardDatabaseService.shared.fetchFeaturePrints(for: candidateIds + [sourceCard.id])
+        
+        guard let sourcePrint = cachedPrints[sourceCard.id] else { return [sourceCard] }
         var matches: [MTGCard] = []
 
         for card in candidates {
+            guard let candidatePrint = cachedPrints[card.id] else { continue }
+            var distance: Float = 0
+            try? sourcePrint.computeDistance(&distance, to: candidatePrint)
 
-            guard let candidatePrint =
-                await featurePrint(for: card)
-            else {
-                continue
-            }
-
-            let distance =
-                distance(
-                    between: sourcePrint,
-                    and: candidatePrint
-                )
-
-            print(
-                "[Artwork Match]",
-                card.set,
-                card.collectorNumber,
-                distance
-            )
-
-            // Same artwork threshold
             if distance < 0.08 {
-
                 matches.append(card)
             }
         }
-
         return matches
-    }
-    
-    func artworkMatches(
-        scannedObservation: VNFeaturePrintObservation,
-        candidates: [MTGCard]
-    ) async -> [ArtworkMatch] {
-
-        var results: [ArtworkMatch] = []
-
-        for card in candidates {
-
-            let candidateObservation: VNFeaturePrintObservation
-
-            if let cached = await featurePrint(for: card) {
-
-                candidateObservation = cached
-
-            } else {
-
-                guard let generated =
-                    await featurePrint(for: card)
-                else {
-                    continue
-                }
-
-                candidateObservation = generated
-            }
-
-            let distance = distance(
-                between: scannedObservation,
-                and: candidateObservation
-            )
-
-            print(
-                "[Vision]",
-                card.set,
-                "#\(card.collectorNumber)",
-                distance
-            )
-
-            results.append(
-                ArtworkMatch(
-                    card: card,
-                    distance: distance
-                )
-            )
-        }
-
-        return results.sorted {
-            $0.distance < $1.distance
-        }
-    }
-    
-    func distance(
-        between a: VNFeaturePrintObservation,
-        and b: VNFeaturePrintObservation
-    ) -> Float {
-
-        var distance: Float = 0
-
-        try? a.computeDistance(
-            &distance,
-            to: b
-        )
-
-        return distance
-    }
-}
-
-
-extension UIImage {
-
-    func artworkCrop() -> UIImage? {
-
-        guard let cgImage else {
-            return nil
-        }
-
-        let rect = CGRect(
-            x: size.width * 0.07,
-            y: size.height * 0.12,
-            width: size.width * 0.86,
-            height: size.height * 0.32
-        )
-
-        let scale = self.scale
-
-        let cropRect = CGRect(
-            x: rect.origin.x * scale,
-            y: rect.origin.y * scale,
-            width: rect.width * scale,
-            height: rect.height * scale
-        )
-
-        guard let cropped =
-            cgImage.cropping(to: cropRect)
-        else {
-            return nil
-        }
-
-        return UIImage(
-            cgImage: cropped,
-            scale: scale,
-            orientation: imageOrientation
-        )
     }
 }

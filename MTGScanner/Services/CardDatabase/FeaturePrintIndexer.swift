@@ -7,6 +7,8 @@
 
 import Foundation
 import UIKit
+import Vision
+import SQLite3
 
 final class FeaturePrintIndexer {
 

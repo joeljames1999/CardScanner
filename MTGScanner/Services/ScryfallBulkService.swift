@@ -84,7 +84,7 @@ final class ScryfallBulkService: NSObject, ObservableObject {
     private func downloadAndImport() async {
         do {
             await setState(.fetchingManifest)
-            let (uri, remoteSize) = try await fetchManifest(type: "unique_artwork")
+            let (uri, remoteSize) = try await fetchManifest(type: "default_cards")
 
             await setState(.downloading(progress: 0, totalBytes: remoteSize))
             let rawFile = try await downloadToFile(from: uri, expectedSize: remoteSize)

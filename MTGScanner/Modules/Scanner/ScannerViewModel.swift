@@ -43,6 +43,9 @@ final class ScannerViewModel: ObservableObject {
     private var lastFoundCardName: String = ""
     private var lastAcceptedCardID: String?
     private var isMatchingVision = false
+    
+    // Clock for precision benchmarking
+    private let clock = ContinuousClock()
 
     // MARK: - Public
 
@@ -85,25 +88,12 @@ final class ScannerViewModel: ObservableObject {
             
             lastFoundCardName = recognisedName
             
-            let matches = CardDatabaseService.shared.findCards(
-                fuzzyName: recognisedName
-            )
+            // --- TIMER START: DB Query ---
+            let dbStart = clock.now
+            let matches = CardDatabaseService.shared.findCards(fuzzyName: recognisedName)
+            let dbDuration = clock.now - dbStart
+            print("[Timer] DB Name Lookup took: \(dbDuration)")
             
-            for card in matches {
-
-                print(
-                    "[Scanner]",
-                    card.set,
-                    card.collectorNumber,
-                    "illustration:",
-                    card.illustrationID ?? "nil"
-                )
-                let matches =
-                    CardDatabaseService.shared.findCards(
-                        fuzzyName: recognisedName
-                    )
-                print (matches.count)
-            }
             print(
                 "[Scanner] Found cards:",
                 matches.map {
@@ -121,15 +111,12 @@ final class ScannerViewModel: ObservableObject {
             }
             
             if matches.count > 1 {
-
                 Task {
-
                     await resolvePrinting(
                         image: image,
                         candidates: matches
                     )
                 }
-
                 return
             }
             return
@@ -142,83 +129,63 @@ final class ScannerViewModel: ObservableObject {
         image: UIImage,
         candidates: [MTGCard]
     ) async {
-
-        guard !isMatchingVision else {
-            return
-        }
-
+        guard !isMatchingVision else { return }
         isMatchingVision = true
+        defer { isMatchingVision = false }
 
-        defer {
-            isMatchingVision = false
-        }
+        let artworkImage = image.artworkCrop()?.normalizedLandscape()
 
-        let artworkImage =
-            image
-                .artworkCrop()?
-                .normalizedLandscape()
-
-        guard let livePrint =
-            await VisionFeaturePrintService.shared
-                .generateFeaturePrint(
-                    from: artworkImage ?? image
-                )
+        // 1. Generate the live print
+        let visionStart = clock.now
+        guard let livePrint = await VisionFeaturePrintService.shared
+            .generateFeaturePrint(from: artworkImage ?? image)
         else {
+            state = .selectPrinting(candidates)
+            return
+        }
+        let visionDuration = clock.now - visionStart
+        print("[Timer] Vision Feature Print Generation took: \(visionDuration)")
 
+        // 2. Offload matching loop to a parallelized background task!
+        let matchStart = clock.now
+        
+        // Using detached task pushes this completely off the MainActor thread
+        let bestMatch = await Task.detached(priority: .userInitiated) {
+            return await VisionFeaturePrintService.shared
+                .bestMatch(scannedObservation: livePrint, candidates: candidates)
+        }.value
+
+        let matchDuration = clock.now - matchStart
+        print("[Timer] Vision Best Match Comparison took: \(matchDuration)")
+
+        guard let bestMatch else {
             state = .selectPrinting(candidates)
             return
         }
 
-        guard let bestMatch =
-            await VisionFeaturePrintService.shared
-                .bestMatch(
-                    scannedObservation: livePrint,
-                    candidates: candidates
-                )
-        else {
+        print("[Scanner] Best match:", bestMatch.name, bestMatch.set, bestMatch.collectorNumber)
 
-            state = .selectPrinting(candidates)
-            return
-        }
-
-        print(
-            "[Scanner] Best match:",
-            bestMatch.name,
-            bestMatch.set,
-            bestMatch.collectorNumber
-        )
-
-        // Find all printings that use the same artwork
-        let artworkPrintings =
-            await VisionFeaturePrintService.shared
-                .matchingArtworkPrintings(
-                    sourceCard: bestMatch,
-                    candidates: candidates
-                )
-
-        print(
-            "[Scanner] Artwork printings:",
-            artworkPrintings.count
-        )
-
-        for card in artworkPrintings {
-
-            print(
-                "[Scanner] Artwork card:",
-                "\(card.set.uppercased()) #\(card.collectorNumber)"
-            )
-        }
-
-        if artworkPrintings.count > 1 {
-
-            state = .selectPrinting(
-                artworkPrintings.sorted {
-                    $0.setName < $1.setName
-                }
-            )
-
+        // 3. Fast SQL grouping (Now instant thanks to your new index)
+        let groupStart = clock.now
+        let sharedArtworkPrintings: [MTGCard]
+        
+        if let illustrationID = bestMatch.illustrationID, !illustrationID.isEmpty {
+            // Fetch matching items from the local DB
+            sharedArtworkPrintings = CardDatabaseService.shared.cards(withIllustrationID: illustrationID)
+            
+            let groupDuration = clock.now - groupStart
+            print("[Timer] DB Illustration ID Fetch (\(sharedArtworkPrintings.count) prints) took: \(groupDuration)")
         } else {
+            sharedArtworkPrintings = await VisionFeaturePrintService.shared
+                .matchingArtworkPrintings(sourceCard: bestMatch, candidates: candidates)
+        }
 
+        // 4. Update UI State safely back on MainActor
+        if sharedArtworkPrintings.count > 1 {
+            state = .selectPrinting(
+                sharedArtworkPrintings.sorted { $0.setName < $1.setName }
+            )
+        } else {
             handleMatchedCard(bestMatch)
         }
     }
@@ -226,50 +193,8 @@ final class ScannerViewModel: ObservableObject {
     // MARK: - Result Handling
 
     private func handleMatchedCard(_ card: MTGCard) {
-
         guard lastAcceptedCardID != card.id else { return }
-
         lastAcceptedCardID = card.id
-
         state = .found(card)
-    }
-}
-
-
-extension UIImage {
-
-    func normalizedLandscape() -> UIImage {
-
-        if size.width > size.height {
-            return self
-        }
-
-        let renderer = UIGraphicsImageRenderer(
-            size: CGSize(
-                width: size.height,
-                height: size.width
-            )
-        )
-
-        return renderer.image { context in
-
-            context.cgContext.translateBy(
-                x: size.height / 2,
-                y: size.width / 2
-            )
-
-            context.cgContext.rotate(
-                by: -.pi / 2
-            )
-
-            draw(
-                in: CGRect(
-                    x: -size.width / 2,
-                    y: -size.height / 2,
-                    width: size.width,
-                    height: size.height
-                )
-            )
-        }
     }
 }

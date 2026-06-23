@@ -52,6 +52,7 @@
 		98CB31C92FE6ACE50029CA7F /* RecentlyViewedStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB31C82FE6ACE50029CA7F /* RecentlyViewedStore.swift */; };
 		98CB31CB2FE6ADC20029CA7F /* RecentCardCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB31CA2FE6ADC20029CA7F /* RecentCardCell.swift */; };
 		98CB31CD2FE6AEA00029CA7F /* RecentCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB31CC2FE6AEA00029CA7F /* RecentCard.swift */; };
+		98CB31FB2FEAB6880029CA7F /* UIImageHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB31FA2FEAB6880029CA7F /* UIImageHelpers.swift */; };
 		98EEA85F2FA54A4800EFA5F8 /* ScryfallBulkService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98EEA85E2FA54A4800EFA5F8 /* ScryfallBulkService.swift */; };
 		98EEA8662FA97E0B00EFA5F8 /* StreamingJSONParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98EEA8652FA97E0B00EFA5F8 /* StreamingJSONParser.swift */; };
 /* End PBXBuildFile section */
@@ -104,6 +105,7 @@
 		98CB31C82FE6ACE50029CA7F /* RecentlyViewedStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentlyViewedStore.swift; sourceTree = "<group>"; };
 		98CB31CA2FE6ADC20029CA7F /* RecentCardCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentCardCell.swift; sourceTree = "<group>"; };
 		98CB31CC2FE6AEA00029CA7F /* RecentCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentCard.swift; sourceTree = "<group>"; };
+		98CB31FA2FEAB6880029CA7F /* UIImageHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIImageHelpers.swift; sourceTree = "<group>"; };
 		98EEA85E2FA54A4800EFA5F8 /* ScryfallBulkService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScryfallBulkService.swift; sourceTree = "<group>"; };
 		98EEA8652FA97E0B00EFA5F8 /* StreamingJSONParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamingJSONParser.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -288,6 +290,7 @@
 				986A78B42F96EC2300EAEBEC /* ScryfallService.swift */,
 				986A78662F96E98800EAEBEC /* CSVService.swift */,
 				986A78672F96E98800EAEBEC /* SessionStore.swift */,
+				98CB31FA2FEAB6880029CA7F /* UIImageHelpers.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -448,6 +451,7 @@
 				98CB31722FD1E8740029CA7F /* CardSearchCell.swift in Sources */,
 				98CB31C32FE5F91A0029CA7F /* SettingsCell.swift in Sources */,
 				986A787A2F96E9FA00EAEBEC /* MTGCard.swift in Sources */,
+				98CB31FB2FEAB6880029CA7F /* UIImageHelpers.swift in Sources */,
 				98CB318C2FDC5E0C0029CA7F /* FilterColorModeCell.swift in Sources */,
 				98CB316D2FD1875B0029CA7F /* SettingsViewController.swift in Sources */,
 				9875E0DA2F96FB0F002929D0 /* SceneDelegate.swift in Sources */,
