@@ -200,7 +200,8 @@ enum CardRowMapper {
             
             setType: col(stmt, CardColumn.setType),
             illustrationID: col(stmt,CardColumn.illustrationID),
-            legalities: legalities
+            legalities: legalities,
+            digital: (col(stmt,CardColumn.digital) != nil)
         )
     }
 }

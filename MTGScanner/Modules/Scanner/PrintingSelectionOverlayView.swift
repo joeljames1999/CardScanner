@@ -348,32 +348,32 @@ final class PrintingCell: UITableViewCell {
 
     func configure(with card: MTGCard) {
 
-        titleLabel.text =
-        "\(card.set.uppercased()) #\(card.collectorNumber)"
-
-        subtitleLabel.text =
-        card.setName
-
+        titleLabel.text = "\(card.set.uppercased()) #\(card.collectorNumber)"
+        subtitleLabel.text = card.setName
         cardImageView.image = nil
 
-        if let url = card.imageUris?.small {
-
-            URLSession.shared.dataTask(
-                with: url
-            ) { data, _, _ in
-
-                guard
-                    let data,
-                    let image = UIImage(data: data)
-                else {
-                    return
-                }
-
-                DispatchQueue.main.async {
-                    self.cardImageView.image = image
-                }
-
-            }.resume()
+        guard let url = card.imageUris?.normal ?? card.imageUris?.artCrop else {
+            return
         }
+
+        URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
+            guard
+                let self,
+                let data,
+                let image = UIImage(data: data)
+            else {
+                return
+            }
+
+            DispatchQueue.main.async {
+                self.cardImageView.image = image
+            }
+        }.resume()
+    }
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        cardImageView.image = nil
+        titleLabel.text = nil
+        subtitleLabel.text = nil
     }
 }

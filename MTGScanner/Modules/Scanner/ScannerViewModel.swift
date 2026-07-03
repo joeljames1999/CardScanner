@@ -44,6 +44,11 @@ final class ScannerViewModel: ObservableObject {
     private var lastAcceptedCardID: String?
     private var isMatchingVision = false
     
+    // MARK: - Voting state
+    private var ocrVotes: [(name: String, setCode: String?, collectorNumber: String?)] = []
+    private let requiredVotes = 3
+    private let maxVotes = 5
+    
     // Clock for precision benchmarking
     private let clock = ContinuousClock()
 
@@ -54,6 +59,7 @@ final class ScannerViewModel: ObservableObject {
         state = .scanning
         lastFoundCardName = ""
         lastAcceptedCardID = nil
+        ocrVotes.removeAll()
     }
 
     func stopScanning() {
@@ -66,6 +72,7 @@ final class ScannerViewModel: ObservableObject {
         lookupTask?.cancel()
         state = .scanning
         lastFoundCardName = ""
+        ocrVotes.removeAll()
 
         Task {
             try? await Task.sleep(for: .seconds(2))
@@ -77,50 +84,117 @@ final class ScannerViewModel: ObservableObject {
 
     func processCardImage(
         _ image: UIImage,
-        recognisedName: String?
+        ocrResult: OCRResult?
     ) {
         guard isScanning, case .scanning = state else { return }
-        
-        // 1. OCR PATH (fast win)
-        if let recognisedName,
-           recognisedName.count > 2,
-           recognisedName != lastFoundCardName {
-            
-            lastFoundCardName = recognisedName
-            
-            // --- TIMER START: DB Query ---
-            let dbStart = clock.now
-            let matches = CardDatabaseService.shared.findCards(fuzzyName: recognisedName)
-            let dbDuration = clock.now - dbStart
-            print("[Timer] DB Name Lookup took: \(dbDuration)")
-            
-            print(
-                "[Scanner] Found cards:",
-                matches.map {
-                    "\($0.set.uppercased()) #\($0.collectorNumber)"
-                }
-            )
-            print(
-                "[Scanner] OCR matches:",
-                matches.count
-            )
-            
-            if matches.count == 1 {
-                handleMatchedCard(matches[0])
-                return
-            }
-            
-            if matches.count > 1 {
-                Task {
-                    await resolvePrinting(
-                        image: image,
-                        candidates: matches
-                    )
-                }
-                return
+
+        // Accumulate vote
+        if let name = ocrResult?.cardName?.trimmingCharacters(in: .whitespacesAndNewlines),
+           name.count > 2 {
+            ocrVotes.append((
+                name: name,
+                setCode: ocrResult?.setCode?.lowercased(),
+                collectorNumber: ocrResult?.collectorNumber
+            ))
+            print("[Scanner] Vote \(ocrVotes.count)/\(requiredVotes): '\(name)' \(ocrResult?.setCode ?? "?") #\(ocrResult?.collectorNumber ?? "?")")
+        }
+
+        guard ocrVotes.count >= requiredVotes else { return }
+
+        // Find dominant name (must have at least 2 agreeing votes)
+        let nameCounts = Dictionary(grouping: ocrVotes, by: { $0.name }).mapValues { $0.count }
+        guard let dominantName = nameCounts.max(by: { $0.value < $1.value })?.key,
+              nameCounts[dominantName]! >= 2 else {
+            if ocrVotes.count >= maxVotes {
+                print("[Scanner] No name consensus after \(maxVotes) votes — resetting")
+                ocrVotes.removeAll()
             }
             return
         }
+
+        // Among dominant name votes, find most common set+number
+        let dominantVotes = ocrVotes.filter { $0.name == dominantName }
+        let printingCounts = Dictionary(
+            grouping: dominantVotes,
+            by: { "\($0.setCode ?? "")|\($0.collectorNumber ?? "")" }
+        ).mapValues { $0.count }
+
+        let dominantPrinting = printingCounts.max(by: { $0.value < $1.value })?.key
+        let parts = dominantPrinting?.components(separatedBy: "|")
+        let dominantSetCode = parts?.first.flatMap { $0.isEmpty ? nil : $0 }
+        let dominantCollectorNumber = parts?.last.flatMap { $0.isEmpty ? nil : $0 }
+
+        print("[Scanner] Consensus: '\(dominantName)' set=\(dominantSetCode ?? "nil") num=\(dominantCollectorNumber ?? "nil") from \(ocrVotes.count) votes")
+
+        ocrVotes.removeAll()
+
+        processConsensusResult(
+            image: image,
+            name: dominantName,
+            setCode: dominantSetCode,
+            collectorNumber: dominantCollectorNumber
+        )
+    }
+
+    private func processConsensusResult(
+        image: UIImage,
+        name: String,
+        setCode: String?,
+        collectorNumber: String?
+    ) {
+        // --------------------------------------------------
+        // 1. EXACT PRINTING LOOKUP
+        // --------------------------------------------------
+        if let setCode, let collectorNumber {
+
+            let exactStart = clock.now
+
+            let exactMatches = CardDatabaseService.shared.findCards(
+                setCode: setCode,
+                collectorNumber: collectorNumber
+            )
+
+            print("[Timer] Exact Printing Lookup took:", clock.now - exactStart)
+            print("[Scanner] Exact lookup: \(setCode) #\(collectorNumber)")
+            print("[Scanner] Exact matches:", exactMatches.count)
+
+            if exactMatches.count == 1 {
+                print("[Scanner] Exact match found:", exactMatches[0].name, exactMatches[0].set, exactMatches[0].collectorNumber)
+                handleMatchedCard(exactMatches[0])
+                return
+            }
+
+            if exactMatches.count > 1 {
+                Task { await resolvePrinting(image: image, candidates: exactMatches) }
+                return
+            }
+        }
+
+        // --------------------------------------------------
+        // 2. NAME LOOKUP FALLBACK
+        // --------------------------------------------------
+        guard name != lastFoundCardName else { return }
+        lastFoundCardName = name
+
+        let dbStart = clock.now
+
+        let matches = CardDatabaseService.shared.findCards(fuzzyName: name)
+
+        print("[Timer] DB Name Lookup took:", clock.now - dbStart)
+        print("[Scanner] Found cards:", matches.map { "\($0.set.uppercased()) #\($0.collectorNumber)" })
+        print("[Scanner] OCR matches:", matches.count)
+
+        if matches.count == 1 {
+            handleMatchedCard(matches[0])
+            return
+        }
+
+        if matches.count > 1 {
+            Task { await resolvePrinting(image: image, candidates: matches) }
+            return
+        }
+
+        print("[Scanner] No matches found")
     }
     
     // MARK: - Vision Matching

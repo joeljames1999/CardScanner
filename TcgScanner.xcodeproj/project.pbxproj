@@ -53,6 +53,8 @@
 		98CB31CB2FE6ADC20029CA7F /* RecentCardCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB31CA2FE6ADC20029CA7F /* RecentCardCell.swift */; };
 		98CB31CD2FE6AEA00029CA7F /* RecentCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB31CC2FE6AEA00029CA7F /* RecentCard.swift */; };
 		98CB31FB2FEAB6880029CA7F /* UIImageHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB31FA2FEAB6880029CA7F /* UIImageHelpers.swift */; };
+		98CB32012FEC9A5C0029CA7F /* UIColorHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB32002FEC9A5C0029CA7F /* UIColorHelpers.swift */; };
+		98CB32032FEC9DDD0029CA7F /* ActionCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB32022FEC9DDD0029CA7F /* ActionCardView.swift */; };
 		98EEA85F2FA54A4800EFA5F8 /* ScryfallBulkService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98EEA85E2FA54A4800EFA5F8 /* ScryfallBulkService.swift */; };
 		98EEA8662FA97E0B00EFA5F8 /* StreamingJSONParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98EEA8652FA97E0B00EFA5F8 /* StreamingJSONParser.swift */; };
 /* End PBXBuildFile section */
@@ -106,6 +108,8 @@
 		98CB31CA2FE6ADC20029CA7F /* RecentCardCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentCardCell.swift; sourceTree = "<group>"; };
 		98CB31CC2FE6AEA00029CA7F /* RecentCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentCard.swift; sourceTree = "<group>"; };
 		98CB31FA2FEAB6880029CA7F /* UIImageHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIImageHelpers.swift; sourceTree = "<group>"; };
+		98CB32002FEC9A5C0029CA7F /* UIColorHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIColorHelpers.swift; sourceTree = "<group>"; };
+		98CB32022FEC9DDD0029CA7F /* ActionCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionCardView.swift; sourceTree = "<group>"; };
 		98EEA85E2FA54A4800EFA5F8 /* ScryfallBulkService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScryfallBulkService.swift; sourceTree = "<group>"; };
 		98EEA8652FA97E0B00EFA5F8 /* StreamingJSONParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamingJSONParser.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -212,6 +216,7 @@
 			isa = PBXGroup;
 			children = (
 				986A785A2F96E98800EAEBEC /* HomeViewController.swift */,
+				98CB32022FEC9DDD0029CA7F /* ActionCardView.swift */,
 				98CB31CA2FE6ADC20029CA7F /* RecentCardCell.swift */,
 			);
 			path = Home;
@@ -291,6 +296,7 @@
 				986A78662F96E98800EAEBEC /* CSVService.swift */,
 				986A78672F96E98800EAEBEC /* SessionStore.swift */,
 				98CB31FA2FEAB6880029CA7F /* UIImageHelpers.swift */,
+				98CB32002FEC9A5C0029CA7F /* UIColorHelpers.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -426,6 +432,7 @@
 				98CB319E2FE311820029CA7F /* CardNameRecognizer.swift in Sources */,
 				986A78B52F96EC2300EAEBEC /* ScryfallService.swift in Sources */,
 				986A78822F96EA1D00EAEBEC /* CollectionStore.swift in Sources */,
+				98CB32012FEC9A5C0029CA7F /* UIColorHelpers.swift in Sources */,
 				98CB31762FD45F120029CA7F /* SearchFilter.swift in Sources */,
 				98CB31872FDC47190029CA7F /* FilterManaCostRowCell.swift in Sources */,
 				98EEA8662FA97E0B00EFA5F8 /* StreamingJSONParser.swift in Sources */,
@@ -459,6 +466,7 @@
 				98CB318A2FDC5A6E0029CA7F /* FilterColorCell.swift in Sources */,
 				986A78792F96E9F700EAEBEC /* MainTabBarController.swift in Sources */,
 				98CB31CD2FE6AEA00029CA7F /* RecentCard.swift in Sources */,
+				98CB32032FEC9DDD0029CA7F /* ActionCardView.swift in Sources */,
 				986A78782F96E9F300EAEBEC /* AppDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -12,7 +12,7 @@ final class CardDatabaseService {
         label: "com.tcgcompanion.database"
     )
 
-    let schemaVersion = 3
+    let schemaVersion = 4
 
     let dbURL: URL = {
         let appSupport = FileManager.default.urls(

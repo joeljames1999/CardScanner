@@ -4,12 +4,9 @@ final class HomeViewController: UIViewController {
 
     // MARK: - Constants
 
-    private let accentColor = UIColor(
-        red: 85 / 255,
-        green: 189 / 255,
-        blue: 251 / 255,
-        alpha: 1
-    )
+    private let headerGlow = UIView()
+    
+    
 
     // MARK: - UI
 
@@ -36,14 +33,18 @@ final class HomeViewController: UIViewController {
         return label
     }()
 
-    private lazy var scanButton = makeActionButton(
+    private lazy var scanCard = ActionCardView(
         title: "Scan Cards",
-        image: "viewfinder"
+        subtitle: "Identify cards instantly",
+        symbol: "viewfinder",
+        accentColor: UIColor.accentColor
     )
 
-    private lazy var searchButton = makeActionButton(
-        title: "Search Cards",
-        image: "magnifyingglass"
+    private lazy var searchCard = ActionCardView(
+        title: "Search Database",
+        subtitle: "Browse every MTG card",
+        symbol: "magnifyingglass",
+        accentColor: UIColor.accentColor
     )
 
     private let recentTitleLabel: UILabel = {
@@ -92,6 +93,17 @@ final class HomeViewController: UIViewController {
         title = "Home"
         view.backgroundColor = .systemBackground
 
+        headerGlow.translatesAutoresizingMaskIntoConstraints = false
+        headerGlow.isUserInteractionEnabled = false
+
+        view.insertSubview(
+            headerGlow,
+            at: 0
+        )
+
+        headerGlow.backgroundColor =
+        UIColor.accentColor.withAlphaComponent(0.15)
+        
         setupLayout()
     }
 
@@ -104,6 +116,29 @@ final class HomeViewController: UIViewController {
         RecentlyViewedStore.shared.cards
 
         recentCollectionView.reloadData()
+    }
+    
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+
+        if headerGlow.layer.sublayers?.isEmpty ?? true {
+
+            let gradient = CAGradientLayer()
+
+            gradient.frame = headerGlow.bounds
+
+            gradient.colors = [
+                UIColor.accentColor.withAlphaComponent(0.35).cgColor,
+                UIColor.clear.cgColor
+            ]
+
+            gradient.startPoint = CGPoint(x: 0.5, y: 0)
+            gradient.endPoint = CGPoint(x: 0.5, y: 1)
+
+            headerGlow.layer.addSublayer(
+                gradient
+            )
+        }
     }
     
     // MARK: - Layout
@@ -119,8 +154,8 @@ final class HomeViewController: UIViewController {
         [
             titleLabel,
             subtitleLabel,
-            scanButton,
-            searchButton,
+            scanCard,
+            searchCard,
             recentTitleLabel,
             recentCollectionView
         ].forEach {
@@ -159,91 +194,141 @@ final class HomeViewController: UIViewController {
                 equalTo: scrollView.widthAnchor
             ),
 
+            // Header
+
             titleLabel.topAnchor.constraint(
                 equalTo: contentView.topAnchor,
-                constant: 24
+                constant: 16
             ),
+
             titleLabel.leadingAnchor.constraint(
                 equalTo: contentView.leadingAnchor,
-                constant: 20
+                constant: 24
+            ),
+
+            titleLabel.trailingAnchor.constraint(
+                lessThanOrEqualTo: contentView.trailingAnchor,
+                constant: -24
             ),
 
             subtitleLabel.topAnchor.constraint(
                 equalTo: titleLabel.bottomAnchor,
-                constant: 4
+                constant: 8
             ),
+
             subtitleLabel.leadingAnchor.constraint(
                 equalTo: titleLabel.leadingAnchor
             ),
 
-            scanButton.topAnchor.constraint(
+            // Primary Actions
+
+            scanCard.topAnchor.constraint(
                 equalTo: subtitleLabel.bottomAnchor,
-                constant: 24
-            ),
-            scanButton.leadingAnchor.constraint(
-                equalTo: contentView.leadingAnchor,
-                constant: 20
-            ),
-            scanButton.trailingAnchor.constraint(
-                equalTo: contentView.trailingAnchor,
-                constant: -20
-            ),
-            scanButton.heightAnchor.constraint(
-                equalToConstant: 72
-            ),
-
-            searchButton.topAnchor.constraint(
-                equalTo: scanButton.bottomAnchor,
-                constant: 12
-            ),
-            searchButton.leadingAnchor.constraint(
-                equalTo: scanButton.leadingAnchor
-            ),
-            searchButton.trailingAnchor.constraint(
-                equalTo: scanButton.trailingAnchor
-            ),
-            searchButton.heightAnchor.constraint(
-                equalToConstant: 72
-            ),
-
-            recentTitleLabel.topAnchor.constraint(
-                equalTo: searchButton.bottomAnchor,
                 constant: 32
             ),
-            recentTitleLabel.leadingAnchor.constraint(
-                equalTo: scanButton.leadingAnchor
+
+            scanCard.leadingAnchor.constraint(
+                equalTo: contentView.leadingAnchor,
+                constant: 24
+            ),
+
+            scanCard.trailingAnchor.constraint(
+                equalTo: contentView.trailingAnchor,
+                constant: -24
+            ),
+
+            scanCard.heightAnchor.constraint(
+                equalToConstant: 150
+            ),
+
+            searchCard.topAnchor.constraint(
+                equalTo: scanCard.bottomAnchor,
+                constant: 16
+            ),
+
+            searchCard.leadingAnchor.constraint(
+                equalTo: scanCard.leadingAnchor
+            ),
+
+            searchCard.trailingAnchor.constraint(
+                equalTo: scanCard.trailingAnchor
+            ),
+
+            searchCard.heightAnchor.constraint(
+                equalToConstant: 150
+            ),
+            
+            recentTitleLabel.topAnchor.constraint(
+                equalTo: searchCard.bottomAnchor,
+                constant: 44
             ),
 
             recentCollectionView.topAnchor.constraint(
                 equalTo: recentTitleLabel.bottomAnchor,
-                constant: 12
+                constant: 16
             ),
 
             recentCollectionView.leadingAnchor.constraint(
-                equalTo: recentTitleLabel.leadingAnchor
+                equalTo: contentView.leadingAnchor
             ),
 
             recentCollectionView.trailingAnchor.constraint(
-                equalTo: scanButton.trailingAnchor
+                equalTo: contentView.trailingAnchor
             ),
 
             recentCollectionView.heightAnchor.constraint(
-                equalToConstant: 180
+                equalToConstant: 200
             ),
 
             recentCollectionView.bottomAnchor.constraint(
                 equalTo: contentView.bottomAnchor,
                 constant: -40
+            ),
+
+            // Glow
+
+            headerGlow.topAnchor.constraint(
+                equalTo: view.topAnchor
+            ),
+
+            headerGlow.leadingAnchor.constraint(
+                equalTo: view.leadingAnchor
+            ),
+
+            headerGlow.trailingAnchor.constraint(
+                equalTo: view.trailingAnchor
+            ),
+
+            headerGlow.heightAnchor.constraint(
+                equalToConstant: 260
             )
         ])
 
-        scanButton.addTarget(
+        recentCollectionView.contentInset =
+            UIEdgeInsets(
+                top: 0,
+                left: 4,
+                bottom: 0,
+                right: 20
+            )
+        
+        titleLabel.font = .systemFont(
+            ofSize: 38,
+            weight: .bold
+        )
+        
+        recentTitleLabel.font = .systemFont(
+            ofSize: 28,
+            weight: .bold
+        )
+        
+        scanCard.addTarget(
             self,
             action: #selector(scanTapped),
             for: .touchUpInside
         )
 
-        searchButton.addTarget(
+        searchCard.addTarget(
             self,
             action: #selector(searchTapped),
             for: .touchUpInside
@@ -260,14 +345,34 @@ final class HomeViewController: UIViewController {
         var config = UIButton.Configuration.filled()
 
         config.title = title
-        config.image = UIImage(systemName: image)
-        config.imagePadding = 10
-        config.cornerStyle = .large
 
-        let button = UIButton(configuration: config)
+        config.image =
+            UIImage(systemName: image)
 
-        button.tintColor = .white
-        button.configuration?.baseBackgroundColor = accentColor
+        config.imagePadding = 12
+
+        config.cornerStyle = .fixed
+
+        config.baseBackgroundColor =
+        UIColor.accentColor
+
+        config.baseForegroundColor =
+            .white
+
+        let button =
+            UIButton(configuration: config)
+
+        button.layer.cornerRadius = 24
+
+        button.layer.shadowColor =
+        UIColor.accentColor.cgColor
+
+        button.layer.shadowOpacity = 0.25
+
+        button.layer.shadowRadius = 18
+
+        button.layer.shadowOffset =
+            CGSize(width: 0, height: 8)
 
         return button
     }

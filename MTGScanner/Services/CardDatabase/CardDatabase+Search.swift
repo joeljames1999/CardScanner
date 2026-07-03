@@ -401,4 +401,48 @@ extension CardDatabaseService {
 
         return result
     }
+    
+    func findCards(
+        setCode: String,
+        collectorNumber: String
+    ) -> [MTGCard] {
+        databaseQueue.sync {
+            
+            print ("Set Code: \(setCode) + collector number: \(collectorNumber)")
+            
+            let sql = """
+            SELECT *
+            FROM cards
+            WHERE lower(set_code) = lower(?)
+            AND (collector_number = ? OR collector_number = ?)
+            """
+            
+            var stmt: OpaquePointer?
+            
+            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+                print("[CardDB] findCards prepare failed:", String(cString: sqlite3_errmsg(db)))
+                return []
+            }
+            
+            defer { sqlite3_finalize(stmt) }
+            
+            let TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+            
+            // Try both "237" and "0237" style
+            let stripped = String(Int(collectorNumber) ?? 0)
+            
+            sqlite3_bind_text(stmt, 1, setCode, -1, TRANSIENT)
+            sqlite3_bind_text(stmt, 2, collectorNumber, -1, TRANSIENT)
+            sqlite3_bind_text(stmt, 3, stripped, -1, TRANSIENT)
+            
+            var cards: [MTGCard] = []
+            
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                if let card = CardRowMapper.map(stmt) {
+                    cards.append(card)
+                }
+            }
+            return cards
+        }
+    }
 }

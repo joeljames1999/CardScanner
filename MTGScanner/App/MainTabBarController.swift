@@ -6,8 +6,10 @@ final class MainTabBarController: UITabBarController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+
         setupTabs()
         styleTabBar()
+        styleNavigationBars()
     }
 
     // MARK: Setup
@@ -21,7 +23,7 @@ final class MainTabBarController: UITabBarController {
             makeNav(MenuViewController(),       title: "Menu",       icon: "line.3.horizontal", tag: 4),
         ]
         // opening screen
-        selectedIndex = 1
+        selectedIndex = 0
     }
 
     private func makeNav(_ root: UIViewController, title: String, icon: String, tag: Int) -> UINavigationController {
@@ -36,41 +38,110 @@ final class MainTabBarController: UITabBarController {
     }
 
     private func makeScannerTab() -> UINavigationController {
+
         let vc = ScannerViewController()
+
         vc.tabBarItem = UITabBarItem(
             title: "Scan",
-            image: UIImage(systemName: "viewfinder"),
-            tag: 2
+            image: UIImage(
+                systemName: "viewfinder.circle"
+            ),
+            selectedImage: UIImage(
+                systemName: "viewfinder.circle.fill"
+            )
         )
-        // Use a filled viewfinder for the selected state
-        vc.tabBarItem.selectedImage = UIImage(systemName: "viewfinder.circle.fill")
-        let nav = UINavigationController(rootViewController: vc)
+        
+        tabBar.tintColor = UIColor.accentColor
+
+        vc.tabBarItem.imageInsets =
+            UIEdgeInsets(
+                top: -2,
+                left: 0,
+                bottom: 2,
+                right: 0
+            )
+        
+        let nav =
+            UINavigationController(
+                rootViewController: vc
+            )
+
         nav.navigationBar.prefersLargeTitles = true
+
         return nav
     }
 
     // MARK: Style
 
     private func styleTabBar() {
+
         let appearance = UITabBarAppearance()
-        appearance.configureWithOpaqueBackground()
-        appearance.backgroundColor = .systemBackground
 
-        // Normal item
-        appearance.stackedLayoutAppearance.normal.iconColor        = .secondaryLabel
-        appearance.stackedLayoutAppearance.normal.titleTextAttributes = [
-            .foregroundColor: UIColor.secondaryLabel,
-            .font: UIFont.systemFont(ofSize: 10, weight: .medium)
+        appearance.configureWithDefaultBackground()
+
+        appearance.backgroundEffect = UIBlurEffect(
+            style: .systemUltraThinMaterial
+        )
+
+        appearance.backgroundColor =
+            UIColor.systemBackground.withAlphaComponent(0.85)
+
+        appearance.shadowColor =
+            UIColor.separator.withAlphaComponent(0.3)
+
+        let itemAppearance =
+            appearance.stackedLayoutAppearance
+
+        // MARK: Normal
+
+        itemAppearance.normal.iconColor =
+            .secondaryLabel
+
+        itemAppearance.normal.titleTextAttributes = [
+            .foregroundColor: UIColor.secondaryLabel
         ]
 
-        // Selected item
-        appearance.stackedLayoutAppearance.selected.iconColor        = .systemBlue
-        appearance.stackedLayoutAppearance.selected.titleTextAttributes = [
-            .foregroundColor: UIColor.systemBlue,
-            .font: UIFont.systemFont(ofSize: 10, weight: .semibold)
+        // MARK: Selected
+
+        itemAppearance.selected.iconColor =
+        UIColor.brandBlue
+
+        itemAppearance.selected.titleTextAttributes = [
+            .foregroundColor: UIColor.brandBlue
         ]
 
-        tabBar.standardAppearance    = appearance
-        tabBar.scrollEdgeAppearance  = appearance
+        tabBar.standardAppearance = appearance
+        tabBar.scrollEdgeAppearance = appearance
+
+        tabBar.tintColor =
+        UIColor.brandBlue
+
+        tabBar.unselectedItemTintColor = UIColor.systemGray2
+
+        tabBar.isTranslucent = true
+    }
+    
+    private func styleNavigationBars() {
+
+        let appearance =
+            UINavigationBarAppearance()
+
+        appearance.configureWithTransparentBackground()
+
+        appearance.backgroundEffect =
+            UIBlurEffect(
+                style: .systemMaterial
+            )
+
+        appearance.shadowColor = .clear
+
+        UINavigationBar.appearance()
+            .standardAppearance = appearance
+
+        UINavigationBar.appearance()
+            .scrollEdgeAppearance = appearance
+
+        UINavigationBar.appearance()
+            .tintColor = UIColor.brandBlue
     }
 }

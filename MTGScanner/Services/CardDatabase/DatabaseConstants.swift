@@ -25,5 +25,6 @@ enum CardColumn {
     static let setType: Int32 = 21
     static let illustrationID: Int32 = 22
     static let legalities: Int32 = 23
+    static let digital: Int32 = 24
 }
 

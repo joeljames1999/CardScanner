@@ -6,7 +6,7 @@ final class OCRService {
         ((VNRectangleObservation?) -> Void)?
 
     var onCardImageCaptured:
-        ((UIImage) -> Void)?
+        ((UIImage, OCRResult?) -> Void)?
 
     private let detector =
         CardRectangleDetector()
@@ -22,7 +22,7 @@ final class OCRService {
 
     private var isLocked = false
 
-    private(set) var recognisedCardName: String?
+    private(set) var recognisedResult: OCRResult?
 
     func processFrame(
         _ pixelBuffer: CVPixelBuffer
@@ -41,7 +41,7 @@ final class OCRService {
 
         isLocked = false
 
-        recognisedCardName = nil
+        recognisedResult = nil
 
         detector.reset()
     }
@@ -211,6 +211,19 @@ extension OCRService {
             "[OCR] ✅ Card captured — size:",
             cardImage.size
         )
+        if let cg = cardImage.cgImage {
+
+            let width = cg.width
+            let height = cg.height
+
+            print(
+                "[OCR] Image orientation check:",
+                width,
+                "x",
+                height
+            )
+        }
+        
         
         Task { [weak self] in
 
@@ -219,25 +232,64 @@ extension OCRService {
             defer {
                    self.isLocked = false
                }
-            
-            let cardName =
+
+            let upscaled =
+                upscale(cardImage)
+
+            let result =
             await nameRecognizer.recognise(
-                from: cardImage
+                from: upscaled
             )
-
-            recognisedCardName = cardName
-
+            
+            recognisedResult = result
+            
             print(
                 "[OCR] Card name:",
-                cardName ?? "none"
+                result.cardName ?? "none"
             )
+
+            print(
+                "[OCR] Set:",
+                result.setCode ?? "none"
+            )
+
+            print(
+                "[OCR] Number:",
+                result.collectorNumber ?? "none"
+            )
+
 
             await MainActor.run {
 
                 self.onCardImageCaptured?(
-                    cardImage
+                    cardImage,
+                    result
                 )
             }
+        }
+    }
+    func upscale(
+        _ image: UIImage,
+        scale: CGFloat = 6
+    ) -> UIImage {
+
+        let size = CGSize(
+            width: image.size.width * scale,
+            height: image.size.height * scale
+        )
+
+        let renderer =
+            UIGraphicsImageRenderer(
+                size: size
+            )
+
+        return renderer.image { _ in
+            image.draw(
+                in: CGRect(
+                    origin: .zero,
+                    size: size
+                )
+            )
         }
     }
 }

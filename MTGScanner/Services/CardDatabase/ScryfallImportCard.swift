@@ -25,9 +25,10 @@ struct ScryfallImportCard: Decodable {
     let imageUriNormal: String?
     let imageUriArtCrop: String?
     let legalitiesJSON: String?
+    let digital: Bool?
 
     enum CodingKeys: String, CodingKey {
-        case id, name, cmc, artist, rarity, layout, power, toughness, legalities
+        case id, name, cmc, artist, rarity, layout, power, toughness, legalities, digital
         case manaCost = "mana_cost"
         case typeLine = "type_line"
         case oracleText = "oracle_text"
@@ -63,6 +64,7 @@ struct ScryfallImportCard: Decodable {
         self.setType = try container.decodeIfPresent(String.self, forKey: .setType)
         self.illustrationId = try container.decodeIfPresent(String.self, forKey: .illustrationId)
         self.artist = try container.decodeIfPresent(String.self, forKey: .artist)
+        self.digital = try container.decodeIfPresent(Bool.self, forKey: .digital) ?? false
 
         // Flatten array structures into comma-separated text variants
         self.colors = (try container.decodeIfPresent([String].self, forKey: .colors))?.sorted().joined(separator: ",")

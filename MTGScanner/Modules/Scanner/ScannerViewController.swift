@@ -37,22 +37,13 @@ final class ScannerViewController: UIViewController {
         lbl.textAlignment      = .center
         lbl.font               = .systemFont(ofSize: 14, weight: .medium)
         lbl.numberOfLines      = 2
-        lbl.backgroundColor    = UIColor.black.withAlphaComponent(0.5)
+        lbl.backgroundColor = .clear
+        lbl.font = .systemFont(
+            ofSize: 24,
+            weight: .semibold
+        )
         lbl.layer.cornerRadius = 8
         lbl.clipsToBounds      = true
-        return lbl
-    }()
-
-    private lazy var indexBadge: UILabel = {
-        let lbl = UILabel()
-        lbl.translatesAutoresizingMaskIntoConstraints = false
-        lbl.font               = .systemFont(ofSize: 11, weight: .medium)
-        lbl.textColor          = .white
-        lbl.textAlignment      = .center
-        lbl.backgroundColor    = UIColor.systemBlue.withAlphaComponent(0.75)
-        lbl.layer.cornerRadius = 10
-        lbl.clipsToBounds      = true
-        lbl.text               = "0 cards indexed"
         return lbl
     }()
 
@@ -64,6 +55,12 @@ final class ScannerViewController: UIViewController {
             action: #selector(openSession)
         )
     }()
+    
+    private let bottomPanel = UIVisualEffectView(
+        effect: UIBlurEffect(style: .systemUltraThinMaterialDark)
+    )
+    
+    private let scannerGlow = UIView()
 
     // MARK: - Lifecycle
 
@@ -97,17 +94,35 @@ final class ScannerViewController: UIViewController {
 
     private func setupLayout() {
         view.backgroundColor = .black
+        scannerGlow.backgroundColor =
+        UIColor.brandBlue.withAlphaComponent(0.25)
+        
+        let gradient = CAGradientLayer()
 
+        gradient.colors = [
+            UIColor.brandBlue.withAlphaComponent(0.35).cgColor,
+            UIColor.clear.cgColor
+        ]
         view.addSubview(cameraContainerView)
         view.addSubview(overlayView)
         view.addSubview(statusLabel)
-        view.addSubview(indexBadge)
 
         NSLayoutConstraint.activate([
-            cameraContainerView.topAnchor.constraint(equalTo: view.topAnchor),
-            cameraContainerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            cameraContainerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            cameraContainerView.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.72),
+            cameraContainerView.topAnchor.constraint(
+                equalTo: view.topAnchor
+            ),
+
+            cameraContainerView.leadingAnchor.constraint(
+                equalTo: view.leadingAnchor
+            ),
+
+            cameraContainerView.trailingAnchor.constraint(
+                equalTo: view.trailingAnchor
+            ),
+
+            cameraContainerView.bottomAnchor.constraint(
+                equalTo: view.bottomAnchor
+            ),
 
             overlayView.topAnchor.constraint(equalTo: cameraContainerView.topAnchor),
             overlayView.leadingAnchor.constraint(equalTo: cameraContainerView.leadingAnchor),
@@ -117,11 +132,10 @@ final class ScannerViewController: UIViewController {
             statusLabel.topAnchor.constraint(equalTo: cameraContainerView.bottomAnchor, constant: 12),
             statusLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
             statusLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
-
-            indexBadge.topAnchor.constraint(equalTo: statusLabel.bottomAnchor, constant: 8),
-            indexBadge.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            indexBadge.widthAnchor.constraint(greaterThanOrEqualToConstant: 140),
-            indexBadge.heightAnchor.constraint(equalToConstant: 22),
+            
+            bottomPanel.heightAnchor.constraint(
+                equalToConstant: 140
+            )
         ])
     }
 
@@ -148,15 +162,13 @@ final class ScannerViewController: UIViewController {
             self.ocrService.processFrame(pixelBuffer)
         }
 
-        ocrService.onCardImageCaptured = { [weak self] cardImage in
+        ocrService.onCardImageCaptured = { [weak self] cardImage, result in
             guard let self else { return }
-
-            let recognisedName = self.ocrService.recognisedCardName
 
             Task { @MainActor in
                 self.viewModel.processCardImage(
                     cardImage,
-                    recognisedName: recognisedName
+                    ocrResult: result
                 )
             }
         }

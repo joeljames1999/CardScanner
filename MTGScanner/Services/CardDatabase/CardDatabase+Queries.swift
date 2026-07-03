@@ -89,7 +89,6 @@ extension CardDatabaseService {
                 WHERE name LIKE ?
                 COLLATE NOCASE
                 GROUP BY illustration_id
-                ORDER BY release_date DESC
                 LIMIT 100;
                 """,
                 param: "%\(cleaned)%"

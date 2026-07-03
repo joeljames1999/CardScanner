@@ -58,7 +58,8 @@ extension CardDatabaseService {
             layout           TEXT,
             set_type         TEXT,
             illustration_id TEXT,
-            legalities       TEXT
+            legalities       TEXT,
+            digital         TEXT
         
         );
         
@@ -103,14 +104,15 @@ extension CardDatabaseService {
             layout,
             set_type,
             illustration_id,
-            legalities
+            legalities,
+            digital
         )
         VALUES
         (
             ?,?,?,?,?,?,
             ?,?,?,?,?,?,
             ?,?,?,?,?,?,
-            ?,?,?,?,?,?
+            ?,?,?,?,?,?,?
         );
         """
 
@@ -132,19 +134,3 @@ extension CardDatabaseService {
     }
     
 }
-
-
-
-
-/*
- 3. CardDatabase+Schema.swift
-
- Everything related to:
-
- openDatabase()
- migrateIfNeeded()
- createTablesIfNeeded()
- prepareInsertStatement()
-
- moves here.
- */

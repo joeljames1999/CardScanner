@@ -32,6 +32,7 @@ struct MTGCard: Decodable {
     let setType: String?
     let illustrationID: String?
     let legalities: Legalities?
+    let digital: Bool
 
     
     struct ImageUris: Decodable {
@@ -87,6 +88,7 @@ struct MTGCard: Decodable {
         case setType = "set_type"
         case illustrationID = "illustration_id"
         case legalities
+        case digital
     }
 }
 

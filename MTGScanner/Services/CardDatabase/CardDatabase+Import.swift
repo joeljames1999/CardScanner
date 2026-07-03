@@ -46,11 +46,14 @@ extension CardDatabaseService {
                     let sType = card.setType?.lowercased() ?? ""
                     let sName = card.setName.lowercased()
                     let cNum = card.collectorNumber.lowercased()
+                    let digitalOnly = card.digital
                     
                     if sType == "alchemy" ||
                         sType == "arena" ||
                         sName.contains("through the omenpaths") ||
-                        cNum.hasPrefix("a-") {
+                        cNum.hasPrefix("a-") ||
+                        digitalOnly == true
+                    {
                         if cNum == "UNF#237" {
                             print(card)
                         }
@@ -108,6 +111,12 @@ extension CardDatabaseService {
         sqlite3_bind_text(stmt, 22, card.setType, -1, SQLITE_TRANSIENT)
         sqlite3_bind_text(stmt, 23, card.illustrationId, -1, SQLITE_TRANSIENT)
         sqlite3_bind_text(stmt, 24, card.legalitiesJSON, -1, SQLITE_TRANSIENT)
+        if let digital = card.digital {
+            sqlite3_bind_int(stmt, 25, digital ? 1 : 0)
+        } else {
+            sqlite3_bind_null(stmt, 25)
+        }
+        
         
         let result = sqlite3_step(stmt)
         if result != SQLITE_DONE {

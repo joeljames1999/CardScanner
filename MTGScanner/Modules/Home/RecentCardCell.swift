@@ -29,6 +29,15 @@ final class RecentCardCell: UICollectionViewCell {
             imageView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
             imageView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor)
         ])
+        
+        layer.cornerRadius = 14
+
+        layer.shadowOpacity = 0.15
+
+        layer.shadowRadius = 12
+
+        layer.shadowOffset =
+            CGSize(width: 0, height: 6)
     }
 
     required init?(coder: NSCoder) {
@@ -56,4 +65,24 @@ final class RecentCardCell: UICollectionViewCell {
             }
         }
     }
+    
+    override var isHighlighted: Bool {
+
+        didSet {
+
+            UIView.animate(
+                withDuration: 0.15
+            ) {
+
+                self.transform =
+                    self.isHighlighted
+                    ? CGAffineTransform(
+                        scaleX: 0.95,
+                        y: 0.95
+                      )
+                    : .identity
+            }
+        }
+    }
+    
 }
