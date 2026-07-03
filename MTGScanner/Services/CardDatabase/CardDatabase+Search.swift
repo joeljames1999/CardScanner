@@ -445,4 +445,81 @@ extension CardDatabaseService {
             return cards
         }
     }
+    
+    func findCard(
+        named name: String,
+        set: String,
+        collectorNumber: String
+    ) -> MTGCard? {
+
+        databaseQueue.sync {
+
+            let sql = """
+            SELECT *
+            FROM cards
+            WHERE lower(name) = lower(?)
+            AND lower(set_code) = lower(?)
+            AND collector_number = ?
+            LIMIT 1
+            """
+
+            var stmt: OpaquePointer?
+
+            guard sqlite3_prepare_v2(
+                db,
+                sql,
+                -1,
+                &stmt,
+                nil
+            ) == SQLITE_OK else {
+
+                print(
+                    "[CardDB] findCard prepare failed:",
+                    String(cString: sqlite3_errmsg(db))
+                )
+
+                return nil
+            }
+
+            defer {
+                sqlite3_finalize(stmt)
+            }
+
+            let SQLITE_TRANSIENT = unsafeBitCast(
+                -1,
+                to: sqlite3_destructor_type.self
+            )
+
+            sqlite3_bind_text(
+                stmt,
+                1,
+                name,
+                -1,
+                SQLITE_TRANSIENT
+            )
+
+            sqlite3_bind_text(
+                stmt,
+                2,
+                set,
+                -1,
+                SQLITE_TRANSIENT
+            )
+
+            sqlite3_bind_text(
+                stmt,
+                3,
+                collectorNumber,
+                -1,
+                SQLITE_TRANSIENT
+            )
+
+            if sqlite3_step(stmt) == SQLITE_ROW {
+                return CardRowMapper.map(stmt)
+            }
+
+            return nil
+        }
+    }
+    
 }

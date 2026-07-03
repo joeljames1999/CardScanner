@@ -59,6 +59,20 @@ final class CollectionViewController: UIViewController {
         return lbl
     }()
 
+    private let loadingView = UIVisualEffectView(
+        effect: UIBlurEffect(style: .systemMaterial)
+    )
+
+    private let activity = UIActivityIndicatorView(style: .large)
+
+    private let loadingLabel: UILabel = {
+        let label = UILabel()
+        label.text = "Importing collection..."
+        label.font = .preferredFont(forTextStyle: .headline)
+        label.textAlignment = .center
+        return label
+    }()
+    
     // MARK: Lifecycle
 
     override func viewDidLoad() {
@@ -122,6 +136,36 @@ final class CollectionViewController: UIViewController {
         ])
     }
 
+    private func showImportLoading() {
+
+        loadingView.translatesAutoresizingMaskIntoConstraints = false
+        activity.translatesAutoresizingMaskIntoConstraints = false
+        loadingLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        view.addSubview(loadingView)
+        loadingView.contentView.addSubview(activity)
+        loadingView.contentView.addSubview(loadingLabel)
+
+        NSLayoutConstraint.activate([
+            loadingView.topAnchor.constraint(equalTo: view.topAnchor),
+            loadingView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            loadingView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            loadingView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+
+            activity.centerXAnchor.constraint(equalTo: loadingView.centerXAnchor),
+            activity.centerYAnchor.constraint(equalTo: loadingView.centerYAnchor),
+
+            loadingLabel.topAnchor.constraint(equalTo: activity.bottomAnchor, constant: 16),
+            loadingLabel.centerXAnchor.constraint(equalTo: activity.centerXAnchor)
+        ])
+
+        activity.startAnimating()
+    }
+
+    private func hideImportLoading() {
+        activity.stopAnimating()
+        loadingView.removeFromSuperview()
+    }
     // MARK: Data
 
     private func reload() {
@@ -267,23 +311,60 @@ extension CollectionViewController: UISearchResultsUpdating {
 // MARK: - UIDocumentPickerDelegate (Import)
 
 extension CollectionViewController: UIDocumentPickerDelegate {
-    func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+
+    func documentPicker(
+        _ controller: UIDocumentPickerViewController,
+        didPickDocumentsAt urls: [URL]
+    ) {
+
         guard let url = urls.first else { return }
 
         guard url.startAccessingSecurityScopedResource() else { return }
         defer { url.stopAccessingSecurityScopedResource() }
 
-        do {
-            let csv = try String(contentsOf: url, encoding: .utf8)
-            let result = CSVService.shared.importCSV(csv)
+        showImportLoading()
 
-            CollectionStore.shared.merge(result.entries)
+        DispatchQueue.global(qos: .userInitiated).async {
 
-            let msg = "Imported \(result.entries.count) card\(result.entries.count == 1 ? "" : "s")."
-                + (result.skippedRows > 0 ? " Skipped \(result.skippedRows) rows." : "")
-            showAlert(title: "Import Complete", message: msg)
-        } catch {
-            showAlert(title: "Import Failed", message: error.localizedDescription)
+            do {
+
+                let csv = try String(contentsOf: url, encoding: .utf8)
+
+                let result = CSVService.shared.importCSV(csv)
+
+                CollectionStore.shared.merge(result.entries)
+
+                DispatchQueue.main.async {
+
+                    self.hideImportLoading()
+
+                    self.reload()
+
+                    let message =
+                    """
+                    Imported \(result.entries.count) cards.
+
+                    \(result.skippedRows > 0 ? "Skipped \(result.skippedRows) rows." : "")
+                    """
+
+                    self.showAlert(
+                        title: "Import Complete",
+                        message: message
+                    )
+                }
+
+            } catch {
+
+                DispatchQueue.main.async {
+
+                    self.hideImportLoading()
+
+                    self.showAlert(
+                        title: "Import Failed",
+                        message: error.localizedDescription
+                    )
+                }
+            }
         }
     }
 }

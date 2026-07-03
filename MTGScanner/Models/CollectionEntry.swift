@@ -50,4 +50,41 @@ struct CollectionEntry: Codable, Identifiable {
         self.imageURL = card.imageUris?.normal
         self.dateAdded = Date()
     }
+    
+    init(
+        id: UUID = UUID(),
+        count: Int,
+        cardID: String,
+        name: String,
+        setCode: String,
+        setName: String,
+        collectorNumber: String,
+        rarity: String,
+        condition: CardCondition,
+        isFoil: Bool,
+        isAltered: Bool,
+        language: String,
+        purchasePrice: Double?,
+        usdPrice: String?,
+        imageURL: URL?,
+        dateAdded: Date = Date()
+    ) {
+        self.id = id
+        self.count = count
+        self.cardID = cardID
+        self.name = name
+        self.setCode = setCode
+        self.setName = setName
+        self.collectorNumber = collectorNumber
+        self.rarity = rarity
+        self.condition = condition
+        self.isFoil = isFoil
+        self.isAltered = isAltered
+        self.language = language
+        self.purchasePrice = purchasePrice
+        self.usdPrice = usdPrice
+        self.imageURL = imageURL
+        self.dateAdded = dateAdded
+    }
+    
 }
