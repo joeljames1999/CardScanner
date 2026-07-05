@@ -1,486 +1,654 @@
-import UIKit
-import UniformTypeIdentifiers
+//
+//  CollectionViewController.swift
+//  TcgScanner
+//
 
-// MARK: - CollectionViewController
+import UIKit
+import Combine
+import UniformTypeIdentifiers
 
 final class CollectionViewController: UIViewController {
 
-    // MARK: Data
+    // MARK: - ViewModel
 
-    private var allEntries: [CollectionEntry] = []
-    private var filteredEntries: [CollectionEntry] = []
-    private var searchText: String = ""
+    private let viewModel = CollectionViewModel()
+    private var cancellables = Set<AnyCancellable>()
+    private let dashboardView = CollectionDashboardView()
 
-    // MARK: UI
+    // MARK: - UI
 
-    private lazy var tableView: UITableView = {
-        let tv = UITableView(frame: .zero, style: .insetGrouped)
-        tv.translatesAutoresizingMaskIntoConstraints = false
-        tv.register(CollectionCardCell.self, forCellReuseIdentifier: CollectionCardCell.reuseID)
-        tv.dataSource = self
-        tv.delegate   = self
-        return tv
+    private lazy var collectionView: UICollectionView = {
+
+        let view = UICollectionView(
+            frame: .zero,
+            collectionViewLayout: createLayout()
+        )
+
+        view.translatesAutoresizingMaskIntoConstraints = false
+        view.backgroundColor = .systemBackground
+        view.alwaysBounceVertical = true
+
+        view.register(
+            CollectionCardCell.self,
+            forCellWithReuseIdentifier: CollectionCardCell.reuseIdentifier
+        )
+
+        view.delegate = self
+        view.dataSource = self
+
+        return view
     }()
 
     private lazy var searchController: UISearchController = {
-        let sc = UISearchController(searchResultsController: nil)
-        sc.searchResultsUpdater          = self
-        sc.obscuresBackgroundDuringPresentation = false
-        sc.searchBar.placeholder         = "Search cards…"
-        return sc
+
+        let search = UISearchController(searchResultsController: nil)
+
+        search.searchResultsUpdater = self
+        search.obscuresBackgroundDuringPresentation = false
+        search.searchBar.placeholder = "Search Collection"
+
+        return search
     }()
 
-    private lazy var statsBar: UIView = {
-        let v = UIView()
-        v.translatesAutoresizingMaskIntoConstraints = false
-        v.backgroundColor = .secondarySystemBackground
-        v.layer.borderColor = UIColor.separator.cgColor
-        v.layer.borderWidth = 0.5
-        return v
+    private lazy var emptyStateLabel: UILabel = {
+
+        let label = UILabel()
+
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.textAlignment = .center
+        label.numberOfLines = 0
+        label.font = .preferredFont(forTextStyle: .headline)
+        label.textColor = .secondaryLabel
+
+        label.text =
+        """
+        Your collection is empty.
+
+        Scan cards or import a CSV to get started.
+        """
+
+        label.isHidden = true
+
+        return label
+
     }()
 
-    private lazy var statsLabel: UILabel = {
-        let lbl = UILabel()
-        lbl.translatesAutoresizingMaskIntoConstraints = false
-        lbl.font      = .systemFont(ofSize: 13)
-        lbl.textColor = .secondaryLabel
-        return lbl
-    }()
-
-    private lazy var emptyLabel: UILabel = {
-        let lbl = UILabel()
-        lbl.translatesAutoresizingMaskIntoConstraints = false
-        lbl.text          = "Your collection is empty.\nScan some cards to get started!"
-        lbl.textColor     = .secondaryLabel
-        lbl.textAlignment = .center
-        lbl.font          = .systemFont(ofSize: 15)
-        lbl.numberOfLines = 0
-        lbl.isHidden      = true
-        return lbl
-    }()
+    // MARK: Import Overlay
 
     private let loadingView = UIVisualEffectView(
         effect: UIBlurEffect(style: .systemMaterial)
     )
 
-    private let activity = UIActivityIndicatorView(style: .large)
+    private let spinner = UIActivityIndicatorView(style: .large)
 
     private let loadingLabel: UILabel = {
+
         let label = UILabel()
-        label.text = "Importing collection..."
+
+        label.translatesAutoresizingMaskIntoConstraints = false
         label.font = .preferredFont(forTextStyle: .headline)
-        label.textAlignment = .center
+        label.text = "Importing Collection..."
+
         return label
+
     }()
-    
+
     // MARK: Lifecycle
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "Collection"
-        navigationItem.largeTitleDisplayMode = .automatic
-        navigationItem.searchController      = searchController
-        navigationItem.hidesSearchBarWhenScrolling = false
 
-        setupNav()
-        setupLayout()
+        view.backgroundColor = .systemBackground
 
-        NotificationCenter.default.addObserver(self, selector: #selector(collectionChanged), name: CollectionStore.didChangeNotification, object: nil)
+        navigationItem.largeTitleDisplayMode = .never
+        navigationItem.searchController = searchController
+
+        configureLayout()
+        
+        dashboardView.onImport = { [weak self] in
+            self?.importTapped()
+        }
+
+        dashboardView.onExport = { [weak self] in
+            self?.exportTapped()
+        }
+
+        dashboardView.onSort = { [weak self] in
+            self?.showSortMenu()
+        }
+
+        dashboardView.onFilter = { [weak self] in
+            self?.showFilterMenu()
+        }
+
+        dashboardView.onSearch = { [weak self] in
+            self?.navigationItem.searchController?.searchBar.becomeFirstResponder()
+        }
+        
+        bindViewModel()
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        reload()
-    }
 
-    deinit {
-        NotificationCenter.default.removeObserver(self)
-    }
-
-    // MARK: Nav
-
-    private func setupNav() {
-        let exportBtn = UIBarButtonItem(image: UIImage(systemName: "square.and.arrow.up"), style: .plain, target: self, action: #selector(exportTapped))
-        let importBtn = UIBarButtonItem(image: UIImage(systemName: "square.and.arrow.down"), style: .plain, target: self, action: #selector(importTapped))
-        let moreBtn   = UIBarButtonItem(image: UIImage(systemName: "ellipsis.circle"), style: .plain, target: self, action: #selector(moreTapped))
-        navigationItem.rightBarButtonItems = [moreBtn, exportBtn, importBtn]
+        viewModel.refresh()
     }
 
     // MARK: Layout
 
-    private func setupLayout() {
-        view.backgroundColor = .systemGroupedBackground
-        view.addSubview(tableView)
-        view.addSubview(statsBar)
-        view.addSubview(emptyLabel)
-        statsBar.addSubview(statsLabel)
+    private func configureLayout() {
+
+        dashboardView.translatesAutoresizingMaskIntoConstraints = false
+        collectionView.translatesAutoresizingMaskIntoConstraints = false
+        emptyStateLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        view.addSubview(dashboardView)
+        view.addSubview(collectionView)
+        view.addSubview(emptyStateLabel)
 
         NSLayoutConstraint.activate([
-            statsBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            statsBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            statsBar.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
-            statsBar.heightAnchor.constraint(equalToConstant: 44),
 
-            statsLabel.centerXAnchor.constraint(equalTo: statsBar.centerXAnchor),
-            statsLabel.centerYAnchor.constraint(equalTo: statsBar.centerYAnchor),
+            dashboardView.topAnchor.constraint(
+                equalTo: view.safeAreaLayoutGuide.topAnchor
+            ),
 
-            tableView.topAnchor.constraint(equalTo: view.topAnchor),
-            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            tableView.bottomAnchor.constraint(equalTo: statsBar.topAnchor),
+            dashboardView.leadingAnchor.constraint(
+                equalTo: view.leadingAnchor
+            ),
 
-            emptyLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            emptyLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor, constant: -40),
-            emptyLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 32),
-            emptyLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -32),
+            dashboardView.trailingAnchor.constraint(
+                equalTo: view.trailingAnchor
+            ),
+
+            dashboardView.bottomAnchor.constraint(
+                equalTo: collectionView.topAnchor
+            ),
+            
+            collectionView.topAnchor.constraint(
+                equalTo: dashboardView.bottomAnchor
+            ),
+
+            collectionView.leadingAnchor.constraint(
+                equalTo: view.leadingAnchor
+            ),
+
+            collectionView.trailingAnchor.constraint(
+                equalTo: view.trailingAnchor
+            ),
+
+            collectionView.bottomAnchor.constraint(
+                equalTo: view.bottomAnchor
+            ),
+
+            emptyStateLabel.centerXAnchor.constraint(
+                equalTo: collectionView.centerXAnchor
+            ),
+
+            emptyStateLabel.centerYAnchor.constraint(
+                equalTo: collectionView.centerYAnchor
+            ),
+
+            emptyStateLabel.leadingAnchor.constraint(
+                equalTo: view.leadingAnchor,
+                constant: 32
+            ),
+
+            emptyStateLabel.trailingAnchor.constraint(
+                equalTo: view.trailingAnchor,
+                constant: -32
+            )
         ])
     }
 
-    private func showImportLoading() {
+    // MARK: ViewModel
 
-        loadingView.translatesAutoresizingMaskIntoConstraints = false
-        activity.translatesAutoresizingMaskIntoConstraints = false
-        loadingLabel.translatesAutoresizingMaskIntoConstraints = false
+    private func bindViewModel() {
 
-        view.addSubview(loadingView)
-        loadingView.contentView.addSubview(activity)
-        loadingView.contentView.addSubview(loadingLabel)
+        viewModel.$filteredEntries
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] entries in
 
-        NSLayoutConstraint.activate([
-            loadingView.topAnchor.constraint(equalTo: view.topAnchor),
-            loadingView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            loadingView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            loadingView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+                guard let self else { return }
 
-            activity.centerXAnchor.constraint(equalTo: loadingView.centerXAnchor),
-            activity.centerYAnchor.constraint(equalTo: loadingView.centerYAnchor),
+                self.emptyStateLabel.isHidden = !entries.isEmpty
 
-            loadingLabel.topAnchor.constraint(equalTo: activity.bottomAnchor, constant: 16),
-            loadingLabel.centerXAnchor.constraint(equalTo: activity.centerXAnchor)
-        ])
+                self.collectionView.reloadData()
 
-        activity.startAnimating()
+                self.refreshDashboard()
+            }
+            .store(in: &cancellables)
     }
 
-    private func hideImportLoading() {
-        activity.stopAnimating()
-        loadingView.removeFromSuperview()
-    }
-    // MARK: Data
+    // MARK: Layout
 
-    private func reload() {
-        allEntries      = CollectionStore.shared.entries
-        filteredEntries = filter(allEntries, query: searchText)
-        emptyLabel.isHidden = !allEntries.isEmpty
-        updateStats()
-        tableView.reloadData()
-    }
+    private func createLayout() -> UICollectionViewLayout {
 
-    private func filter(_ entries: [CollectionEntry], query: String) -> [CollectionEntry] {
-        guard !query.isEmpty else { return entries }
-        return entries.filter { $0.name.localizedCaseInsensitiveContains(query) || $0.setName.localizedCaseInsensitiveContains(query) }
-    }
+        UICollectionViewCompositionalLayout { _, environment in
 
-    private func updateStats() {
-        let total = CollectionStore.shared.totalCards
-        let value = CollectionStore.shared.estimatedValue
-        if total == 0 {
-            statsLabel.text = "Empty collection"
-        } else {
-            statsLabel.text = "\(total) card\(total == 1 ? "" : "s")  ·  Est. $\(String(format: "%.2f", value))"
+            let columns = environment.container.effectiveContentSize.width > 700 ? 5 : 3
+
+            let spacing: CGFloat = 10
+
+            let availableWidth =
+                environment.container.effectiveContentSize.width
+
+            let totalSpacing =
+                spacing * CGFloat(columns + 1)
+
+            let width =
+                (availableWidth - totalSpacing) / CGFloat(columns)
+
+            let cardRatio: CGFloat = 63.0 / 88.0
+
+            let footerHeight: CGFloat = 42
+
+            let height =
+                (width / cardRatio) + footerHeight
+
+            let itemSize = NSCollectionLayoutSize(
+                widthDimension: .absolute(width),
+                heightDimension: .absolute(height)
+            )
+
+            let item = NSCollectionLayoutItem(
+                layoutSize: itemSize
+            )
+
+            let groupSize = NSCollectionLayoutSize(
+                widthDimension: .fractionalWidth(1),
+                heightDimension: .absolute(height)
+            )
+
+            let group = NSCollectionLayoutGroup.horizontal(
+                layoutSize: groupSize,
+                subitems: Array(
+                    repeating: item,
+                    count: columns
+                )
+            )
+
+            group.interItemSpacing = .fixed(spacing)
+
+            let section = NSCollectionLayoutSection(
+                group: group
+            )
+
+            section.interGroupSpacing = spacing
+
+            section.contentInsets = NSDirectionalEdgeInsets(
+                top: spacing,
+                leading: spacing,
+                bottom: spacing,
+                trailing: spacing
+            )
+
+            return section
         }
     }
+    
+    private func refreshDashboard() {
 
-    @objc private func collectionChanged() {
-        DispatchQueue.main.async { self.reload() }
-    }
-
-    // MARK: Actions
-
-    @objc private func exportTapped() {
-        guard !allEntries.isEmpty else {
-            showAlert(title: "Nothing to Export", message: "Your collection is empty.")
-            return
-        }
-
-        guard let url = CSVService.shared.saveToFile(allEntries) else {
-            showAlert(title: "Export Failed", message: "Could not write CSV file.")
-            return
-        }
-
-        let ac = UIActivityViewController(activityItems: [url], applicationActivities: nil)
-        present(ac, animated: true)
-    }
-
-    @objc private func importTapped() {
-        let types: [UTType] = [.commaSeparatedText, .text, .plainText]
-        let picker = UIDocumentPickerViewController(forOpeningContentTypes: types)
-        picker.delegate = self
-        present(picker, animated: true)
-    }
-
-    @objc private func moreTapped() {
-        let alert = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
-
-        alert.addAction(UIAlertAction(title: "Sort by Name", style: .default) { [weak self] _ in
-            self?.sortEntries(by: .name)
-        })
-        alert.addAction(UIAlertAction(title: "Sort by Set", style: .default) { [weak self] _ in
-            self?.sortEntries(by: .set)
-        })
-        alert.addAction(UIAlertAction(title: "Sort by Price", style: .default) { [weak self] _ in
-            self?.sortEntries(by: .price)
-        })
-        alert.addAction(UIAlertAction(title: "Sort by Date Added", style: .default) { [weak self] _ in
-            self?.sortEntries(by: .date)
-        })
-
-        if !allEntries.isEmpty {
-            alert.addAction(UIAlertAction(title: "Clear Collection", style: .destructive) { [weak self] _ in
-                self?.confirmClear()
-            })
-        }
-
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        present(alert, animated: true)
-    }
-
-
-    private func sortEntries(by key: CollectionStore.SortKey) {
-        CollectionStore.shared.sort(by: key)
-    }
-
-    private func confirmClear() {
-        let total = CollectionStore.shared.totalCards
-        let alert = UIAlertController(
-            title: "Clear Collection",
-            message: "This will permanently delete all \(total) cards. This cannot be undone.",
-            preferredStyle: .alert
+        dashboardView.configure(
+            cards: viewModel.totalCards,
+            value: viewModel.totalValue
         )
-        alert.addAction(UIAlertAction(title: "Delete All", style: .destructive) { _ in
-            CollectionStore.shared.removeAll()
-        })
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        present(alert, animated: true)
     }
-
-    private func showAlert(title: String, message: String) {
-        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default))
-        present(alert, animated: true)
-    }
+    
 }
 
-// MARK: - UITableViewDataSource
+// MARK: - Collection View
 
-extension CollectionViewController: UITableViewDataSource {
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        filteredEntries.count
+extension CollectionViewController: UICollectionViewDataSource {
+    
+    func numberOfSections(
+        in collectionView: UICollectionView
+    ) -> Int {
+        
+        1
     }
-
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: CollectionCardCell.reuseID, for: indexPath) as! CollectionCardCell
-        cell.configure(with: filteredEntries[indexPath.row])
+    
+    func collectionView(
+        _ collectionView: UICollectionView,
+        numberOfItemsInSection section: Int
+    ) -> Int {
+        
+        viewModel.filteredEntries.count
+    }
+    
+    func collectionView(
+        _ collectionView: UICollectionView,
+        cellForItemAt indexPath: IndexPath
+    ) -> UICollectionViewCell {
+        
+        guard
+            let cell = collectionView.dequeueReusableCell(
+                withReuseIdentifier: CollectionCardCell.reuseIdentifier,
+                for: indexPath
+            ) as? CollectionCardCell
+        else {
+            
+            return UICollectionViewCell()
+        }
+        
+        let entry = viewModel.filteredEntries[indexPath.item]
+        
+        cell.configure(with: entry)
+        
         return cell
     }
+}
 
-    func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
-        if editingStyle == .delete {
-            let entry = filteredEntries[indexPath.row]
-            CollectionStore.shared.remove(id: entry.id)
+// MARK: - Delegate
+
+extension CollectionViewController: UICollectionViewDelegate {
+
+    func collectionView(
+        _ collectionView: UICollectionView,
+        didSelectItemAt indexPath: IndexPath
+    ) {
+
+        let entry = viewModel.filteredEntries[indexPath.item]
+
+        guard
+            let card = CardDatabaseService.shared.findCard(
+                named: entry.name,
+                set: entry.setCode,
+                collectorNumber: entry.collectorNumber
+            )
+        else {
+            return
         }
+
+        let vc = CardDetailViewController(card: card)
+
+        navigationController?.pushViewController(
+            vc,
+            animated: true
+        )
     }
 }
 
-// MARK: - UITableViewDelegate
-
-extension CollectionViewController: UITableViewDelegate {
-    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat { 72 }
-}
-
-// MARK: - UISearchResultsUpdating
+// MARK: - Search
 
 extension CollectionViewController: UISearchResultsUpdating {
-    func updateSearchResults(for searchController: UISearchController) {
-        searchText      = searchController.searchBar.text ?? ""
-        filteredEntries = filter(allEntries, query: searchText)
-        tableView.reloadData()
+
+    func updateSearchResults(
+        for searchController: UISearchController
+    ) {
+
+        viewModel.searchText =
+            searchController.searchBar.text ?? ""
     }
 }
 
-// MARK: - UIDocumentPickerDelegate (Import)
+// MARK: - Dashboard Actions
+
+private extension CollectionViewController {
+
+    func showSortMenu() {
+
+        let alert = UIAlertController(
+            title: "Sort Collection",
+            message: nil,
+            preferredStyle: .actionSheet
+        )
+
+        alert.addAction(
+            UIAlertAction(
+                title: "Name",
+                style: .default
+            ) { _ in
+
+                CollectionStore.shared.sort(by: .name)
+            }
+        )
+
+        alert.addAction(
+            UIAlertAction(
+                title: "Set",
+                style: .default
+            ) { _ in
+
+                CollectionStore.shared.sort(by: .set)
+            }
+        )
+
+        alert.addAction(
+            UIAlertAction(
+                title: "Price",
+                style: .default
+            ) { _ in
+
+                CollectionStore.shared.sort(by: .price)
+            }
+        )
+
+        alert.addAction(
+            UIAlertAction(
+                title: "Recently Added",
+                style: .default
+            ) { _ in
+
+                CollectionStore.shared.sort(by: .date)
+            }
+        )
+
+        alert.addAction(
+            UIAlertAction(
+                title: "Cancel",
+                style: .cancel
+            )
+        )
+
+        present(
+            alert,
+            animated: true
+        )
+    }
+
+    func showFilterMenu() {
+
+        let alert = UIAlertController(
+            title: "Filter",
+            message: "Coming Soon",
+            preferredStyle: .alert
+        )
+
+        alert.addAction(
+            UIAlertAction(
+                title: "OK",
+                style: .default
+            )
+        )
+
+        present(
+            alert,
+            animated: true
+        )
+    }
+}
+
+// MARK: - Import / Export
 
 extension CollectionViewController: UIDocumentPickerDelegate {
+
+    @objc
+    func exportTapped() {
+
+        guard !viewModel.entries.isEmpty else {
+
+            showAlert(
+                title: "Nothing to Export",
+                message: "Your collection is empty."
+            )
+
+            return
+        }
+
+        guard
+            let url = CSVService.shared.saveToFile(
+                viewModel.entries
+            )
+        else {
+
+            showAlert(
+                title: "Export Failed",
+                message: "Unable to create CSV."
+            )
+
+            return
+        }
+
+        let activity = UIActivityViewController(
+            activityItems: [url],
+            applicationActivities: nil
+        )
+
+        present(
+            activity,
+            animated: true
+        )
+    }
+
+    @objc
+    func importTapped() {
+
+        let picker = UIDocumentPickerViewController(
+            forOpeningContentTypes: [
+                .commaSeparatedText,
+                .text
+            ]
+        )
+
+        picker.delegate = self
+
+        present(
+            picker,
+            animated: true
+        )
+    }
 
     func documentPicker(
         _ controller: UIDocumentPickerViewController,
         didPickDocumentsAt urls: [URL]
     ) {
 
-        guard let url = urls.first else { return }
+        guard
+            let url = urls.first,
+            url.startAccessingSecurityScopedResource()
+        else {
 
-        guard url.startAccessingSecurityScopedResource() else { return }
-        defer { url.stopAccessingSecurityScopedResource() }
+            return
+        }
+
+        defer {
+
+            url.stopAccessingSecurityScopedResource()
+        }
 
         showImportLoading()
 
-        DispatchQueue.global(qos: .userInitiated).async {
+        DispatchQueue.global(
+            qos: .userInitiated
+        ).async {
 
-            do {
+            let result =
+                CSVService.shared.importFile(at: url)
 
-                let csv = try String(contentsOf: url, encoding: .utf8)
+            CollectionStore.shared.merge(
+                result.entries
+            )
 
-                let result = CSVService.shared.importCSV(csv)
+            DispatchQueue.main.async {
 
-                CollectionStore.shared.merge(result.entries)
+                self.hideImportLoading()
 
-                DispatchQueue.main.async {
+                self.viewModel.refresh()
 
-                    self.hideImportLoading()
+                self.collectionView.reloadData()
 
-                    self.reload()
-
-                    let message =
-                    """
-                    Imported \(result.entries.count) cards.
-
-                    \(result.skippedRows > 0 ? "Skipped \(result.skippedRows) rows." : "")
-                    """
-
-                    self.showAlert(
-                        title: "Import Complete",
-                        message: message
-                    )
-                }
-
-            } catch {
-
-                DispatchQueue.main.async {
-
-                    self.hideImportLoading()
-
-                    self.showAlert(
-                        title: "Import Failed",
-                        message: error.localizedDescription
-                    )
-                }
+                self.showAlert(
+                    title: "Import Complete",
+                    message:
+                    "Imported \(result.entries.count) cards" +
+                    (result.skippedRows > 0
+                        ? "\nSkipped \(result.skippedRows) rows."
+                        : "")
+                )
             }
         }
     }
 }
 
-// MARK: - CollectionCardCell
+// MARK: - Loading
 
-final class CollectionCardCell: UITableViewCell {
-    static let reuseID = "CollectionCardCell"
+private extension CollectionViewController {
 
-    private let thumbImageView: UIImageView = {
-        let imageView = UIImageView()
-        imageView.translatesAutoresizingMaskIntoConstraints = false
-        imageView.contentMode        = .scaleAspectFill
-        imageView.clipsToBounds      = true
-        imageView.layer.cornerRadius = 4
-        imageView.backgroundColor    = .secondarySystemBackground
-        return imageView
-    }()
+    func showImportLoading() {
 
-    private let nameLabel: UILabel = {
-        let label = UILabel()
-        label.font          = .systemFont(ofSize: 15, weight: .semibold)
-        label.numberOfLines = 1
-        return label
-    }()
+        loadingView.translatesAutoresizingMaskIntoConstraints = false
+        spinner.translatesAutoresizingMaskIntoConstraints = false
 
-    private let setLabel: UILabel = {
-        let label = UILabel()
-        label.font      = .systemFont(ofSize: 12)
-        label.textColor = .secondaryLabel
-        return label
-    }()
+        view.addSubview(loadingView)
 
-    private let countBadge: UILabel = {
-        let label = UILabel()
-        label.font                  = .systemFont(ofSize: 12, weight: .semibold)
-        label.textColor             = .white
-        label.backgroundColor       = .systemBlue
-        label.textAlignment         = .center
-        label.layer.cornerRadius    = 10
-        label.clipsToBounds         = true
-        label.translatesAutoresizingMaskIntoConstraints = false
-        label.widthAnchor.constraint(greaterThanOrEqualToConstant: 28).isActive = true
-        label.heightAnchor.constraint(equalToConstant: 20).isActive = true
-        return label
-    }()
-
-    private let priceLabel: UILabel = {
-        let label = UILabel()
-        label.font      = .systemFont(ofSize: 12, weight: .medium)
-        label.textColor = .systemGreen
-        return label
-    }()
-
-    private let conditionLabel: UILabel = {
-        let label = UILabel()
-        label.font      = .systemFont(ofSize: 11)
-        label.textColor = .tertiaryLabel
-        return label
-    }()
-
-    override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
-        super.init(style: style, reuseIdentifier: reuseIdentifier)
-
-        let infoStack = UIStackView(arrangedSubviews: [nameLabel, setLabel, conditionLabel])
-        infoStack.axis    = .vertical
-        infoStack.spacing = 2
-        infoStack.translatesAutoresizingMaskIntoConstraints = false
-
-        let rightStack = UIStackView(arrangedSubviews: [countBadge, priceLabel])
-        rightStack.axis      = .vertical
-        rightStack.spacing   = 4
-        rightStack.alignment = .center
-        rightStack.translatesAutoresizingMaskIntoConstraints = false
-
-        contentView.addSubview(thumbImageView)
-        contentView.addSubview(infoStack)
-        contentView.addSubview(rightStack)
+        loadingView.contentView.addSubview(spinner)
+        loadingView.contentView.addSubview(loadingLabel)
 
         NSLayoutConstraint.activate([
-            thumbImageView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-            thumbImageView.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
-            thumbImageView.widthAnchor.constraint(equalToConstant: 36),
-            thumbImageView.heightAnchor.constraint(equalToConstant: 50),
 
-            infoStack.leadingAnchor.constraint(equalTo: thumbImageView.trailingAnchor, constant: 12),
-            infoStack.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
-            infoStack.trailingAnchor.constraint(lessThanOrEqualTo: rightStack.leadingAnchor, constant: -8),
+            loadingView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            loadingView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            loadingView.topAnchor.constraint(equalTo: view.topAnchor),
+            loadingView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
 
-            rightStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-            rightStack.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
+            spinner.centerXAnchor.constraint(equalTo: loadingView.centerXAnchor),
+            spinner.centerYAnchor.constraint(equalTo: loadingView.centerYAnchor),
+
+            loadingLabel.topAnchor.constraint(
+                equalTo: spinner.bottomAnchor,
+                constant: 20
+            ),
+
+            loadingLabel.centerXAnchor.constraint(
+                equalTo: loadingView.centerXAnchor
+            )
         ])
+
+        spinner.startAnimating()
     }
 
-    required init?(coder: NSCoder) { fatalError() }
+    func hideImportLoading() {
 
-    func configure(with entry: CollectionEntry) {
-        nameLabel.text      = entry.name
-        setLabel.text       = "\(entry.setName) · \(entry.rarity.capitalized)"
-        conditionLabel.text = "\(entry.condition.rawValue)\(entry.isFoil ? " · Foil" : "")"
-        countBadge.text     = "×\(entry.count)"
-        priceLabel.text     = entry.usdPrice.map { "$\($0)" } ?? ""
-        thumbImageView.image = nil
-
-        if let url = entry.imageURL {
-            Task {
-                if let (data, _) = try? await URLSession.shared.data(from: url),
-                   let img = UIImage(data: data) {
-                    await MainActor.run { self.thumbImageView.image = img }
-                }
-            }
-        }
+        spinner.stopAnimating()
+        loadingView.removeFromSuperview()
     }
+}
 
-    override func prepareForReuse() {
-        super.prepareForReuse()
-        thumbImageView.image = nil
+// MARK: - Alerts
+
+private extension CollectionViewController {
+
+    func showAlert(
+        title: String,
+        message: String
+    ) {
+
+        let alert = UIAlertController(
+            title: title,
+            message: message,
+            preferredStyle: .alert
+        )
+
+        alert.addAction(
+            UIAlertAction(
+                title: "OK",
+                style: .default
+            )
+        )
+
+        present(
+            alert,
+            animated: true
+        )
     }
 }
