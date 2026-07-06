@@ -14,13 +14,25 @@ final class CSVImporter {
         progress: ((Double) -> Void)? = nil
     ) -> CSVImportResult {
 
+        print("===== IMPORT STARTED =====")
+        
         CardLookupCache.shared.build()
-
+        print(csv.prefix(500))
         let rows = csv
             .split(whereSeparator: \.isNewline)
             .map(String.init)
-
+        print("Rows:", rows.count)
         guard rows.count > 1 else {
+            // Detect separator automatically
+            let delimiter: Character
+
+            if rows[0].contains("\t") {
+                delimiter = "\t"
+            } else {
+                delimiter = ","
+            }
+
+            print("[CSV] Using delimiter:", delimiter == "\t" ? "TAB" : "COMMA")
             return CSVImportResult(
                 entries: [],
                 skippedRows: 0,
@@ -28,12 +40,23 @@ final class CSVImporter {
             )
         }
 
-        let headers = parseCSVLine(rows[0])
-            .map {
-                $0
-                    .lowercased()
-                    .trimmingCharacters(in: .whitespacesAndNewlines)
-            }
+        let delimiter: Character
+
+        if rows[0].contains("\t") {
+            delimiter = "\t"
+        } else {
+            delimiter = ","
+        }
+        
+        let headers = parseSeparatedLine(
+            rows[0],
+            delimiter: delimiter
+        ).map {
+            $0
+                .replacingOccurrences(of: "\u{FEFF}", with: "")
+                .lowercased()
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        }
 
         var imported: [CollectionEntry] = []
         imported.reserveCapacity(rows.count - 1)
@@ -44,15 +67,17 @@ final class CSVImporter {
         let totalRows = rows.count - 1
 
         for (index, line) in rows.dropFirst().enumerated() {
-
+            
             if index % 100 == 0 {
                 progress?(Double(index) / Double(totalRows))
             }
 
-            let values = parseCSVLine(line)
+            let values = parseSeparatedLine(
+                line,
+                delimiter: delimiter
+            )
 
             func value(_ names: [String]) -> String {
-
                 for name in names {
 
                     guard let column = headers.firstIndex(of: name),
@@ -67,7 +92,11 @@ final class CSVImporter {
             }
 
             let quantity = Int(
-                value(["count", "quantity", "qty"])
+                value([
+                    "count",
+                    "quantity",
+                    "qty"
+                ])
             ) ?? 1
 
             let name = value([
@@ -86,6 +115,11 @@ final class CSVImporter {
                 continue
             }
 
+            let scryfallID = value([
+                "scryfall id",
+                "scryfall_id"
+            ])
+
             let setCode = value([
                 "edition",
                 "set",
@@ -98,11 +132,15 @@ final class CSVImporter {
                 "number"
             ])
 
-            let language = value(["language"]).isEmpty
+            let language = value([
+                "language"
+            ]).isEmpty
                 ? "English"
                 : value(["language"])
 
-            let foilValue = value(["foil"]).lowercased()
+            let foilValue = value([
+                "foil"
+            ]).lowercased()
 
             let isFoil =
                 foilValue == "foil" ||
@@ -118,14 +156,30 @@ final class CSVImporter {
             )
 
             let condition = CardCondition.fromCSV(
-                value(["condition"])
+                value([
+                    "condition"
+                ])
             )
 
-            if let card = CardLookupCache.shared.card(
-                name: name,
-                set: setCode,
-                collector: collectorNumber
-            ) {
+            var card: MTGCard?
+
+            // Fastest lookup (ManaBox)
+            if !scryfallID.isEmpty {
+                card = CardLookupCache.shared.card(
+                    id: scryfallID
+                )
+            }
+
+            // Fallback for Moxfield / generic CSVs
+            if card == nil {
+                card = CardLookupCache.shared.card(
+                    name: name,
+                    set: setCode,
+                    collector: collectorNumber
+                )
+            }
+
+            if let card {
 
                 imported.append(
                     CollectionEntry(
@@ -177,12 +231,15 @@ final class CSVImporter {
 
 private extension CSVImporter {
 
-    private func parseCSVLine(_ line: String) -> [String] {
+    private func parseSeparatedLine(
+        _ line: String,
+        delimiter: Character
+    ) -> [String] {
 
         var fields: [String] = []
         var current = ""
-
         var insideQuotes = false
+
         var index = line.startIndex
 
         while index < line.endIndex {
@@ -197,7 +254,6 @@ private extension CSVImporter {
                     next < line.endIndex &&
                     line[next] == "\"" {
 
-                    // Escaped quote ("")
                     current.append("\"")
                     index = next
 
@@ -206,7 +262,7 @@ private extension CSVImporter {
                     insideQuotes.toggle()
                 }
 
-            } else if character == "," && !insideQuotes {
+            } else if character == delimiter && !insideQuotes {
 
                 fields.append(current)
                 current.removeAll(keepingCapacity: true)
@@ -238,16 +294,24 @@ private extension CardCondition {
         case "M", "MI", "MINT":
             return .mint
 
-        case "NM", "NEAR MINT":
+        case "NM",
+             "NEAR MINT",
+             "NEAR_MINT":
             return .nearMint
 
-        case "LP", "LIGHTLY PLAYED":
+        case "LP",
+             "LIGHTLY PLAYED",
+             "LIGHTLY_PLAYED":
             return .lightlyPlayed
 
-        case "MP", "MODERATELY PLAYED":
+        case "MP",
+             "MODERATELY PLAYED",
+             "MODERATELY_PLAYED":
             return .good
 
-        case "HP", "HEAVILY PLAYED":
+        case "HP",
+             "HEAVILY PLAYED",
+             "HEAVILY_PLAYED":
             return .poor
 
         case "DMG", "DAMAGED":

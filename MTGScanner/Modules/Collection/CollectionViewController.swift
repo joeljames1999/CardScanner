@@ -101,17 +101,16 @@ final class CollectionViewController: UIViewController {
         view.backgroundColor = .systemBackground
 
         navigationItem.largeTitleDisplayMode = .never
+        navigationItem.title = nil
         navigationItem.searchController = searchController
 
+        navigationItem.rightBarButtonItem = UIBarButtonItem(
+            image: UIImage(systemName: "ellipsis.circle.fill"),
+            menu: makeMenu()
+        )
+        
         configureLayout()
         
-        dashboardView.onImport = { [weak self] in
-            self?.importTapped()
-        }
-
-        dashboardView.onExport = { [weak self] in
-            self?.exportTapped()
-        }
 
         dashboardView.onSort = { [weak self] in
             self?.showSortMenu()
@@ -121,9 +120,9 @@ final class CollectionViewController: UIViewController {
             self?.showFilterMenu()
         }
 
-        dashboardView.onSearch = { [weak self] in
-            self?.navigationItem.searchController?.searchBar.becomeFirstResponder()
-        }
+//        dashboardView.onSearch = { [weak self] in
+//            self?.navigationItem.searchController?.searchBar.becomeFirstResponder()
+//        }
         
         bindViewModel()
     }
@@ -222,76 +221,50 @@ final class CollectionViewController: UIViewController {
     // MARK: Layout
 
     private func createLayout() -> UICollectionViewLayout {
-
-        UICollectionViewCompositionalLayout { _, environment in
-
-            let columns = environment.container.effectiveContentSize.width > 700 ? 5 : 3
-
-            let spacing: CGFloat = 10
-
-            let availableWidth =
-                environment.container.effectiveContentSize.width
-
-            let totalSpacing =
-                spacing * CGFloat(columns + 1)
-
-            let width =
-                (availableWidth - totalSpacing) / CGFloat(columns)
-
-            let cardRatio: CGFloat = 63.0 / 88.0
-
-            let footerHeight: CGFloat = 42
-
-            let height =
-                (width / cardRatio) + footerHeight
-
-            let itemSize = NSCollectionLayoutSize(
-                widthDimension: .absolute(width),
-                heightDimension: .absolute(height)
-            )
-
-            let item = NSCollectionLayoutItem(
-                layoutSize: itemSize
-            )
-
-            let groupSize = NSCollectionLayoutSize(
-                widthDimension: .fractionalWidth(1),
-                heightDimension: .absolute(height)
-            )
-
-            let group = NSCollectionLayoutGroup.horizontal(
-                layoutSize: groupSize,
-                subitems: Array(
-                    repeating: item,
-                    count: columns
-                )
-            )
-
-            group.interItemSpacing = .fixed(spacing)
-
-            let section = NSCollectionLayoutSection(
-                group: group
-            )
-
-            section.interGroupSpacing = spacing
-
-            section.contentInsets = NSDirectionalEdgeInsets(
-                top: spacing,
-                leading: spacing,
-                bottom: spacing,
-                trailing: spacing
-            )
-
-            return section
-        }
+        CollectionLayoutFactory.makeCollectionLayout()
     }
     
     private func refreshDashboard() {
 
+        let summary = CollectionSummary(entries: viewModel.filteredEntries)
         dashboardView.configure(
-            cards: viewModel.totalCards,
-            value: viewModel.totalValue
+            cards: summary.totalCards,
+            value: summary.totalValue
         )
+    }
+    
+    private func makeMenu() -> UIMenu {
+
+        UIMenu(children: [
+
+            UIAction(
+                title: "Import Collection",
+                image: UIImage(systemName: "square.and.arrow.down")
+            ) { [weak self] _ in
+                self?.importTapped()
+            },
+
+            UIAction(
+                title: "Export Collection",
+                image: UIImage(systemName: "square.and.arrow.up")
+            ) { [weak self] _ in
+                self?.exportTapped()
+            },
+
+            UIMenu(
+                title: "",
+                options: .displayInline,
+                children: [
+
+                    UIAction(
+                        title: "Settings",
+                        image: UIImage(systemName: "gear")
+                    ) { _ in
+
+                    }
+                ]
+            )
+        ])
     }
     
 }
@@ -533,48 +506,50 @@ extension CollectionViewController: UIDocumentPickerDelegate {
         didPickDocumentsAt urls: [URL]
     ) {
 
-        guard
-            let url = urls.first,
-            url.startAccessingSecurityScopedResource()
-        else {
-
+        guard let url = urls.first else {
             return
         }
 
-        defer {
-
-            url.stopAccessingSecurityScopedResource()
+        guard url.startAccessingSecurityScopedResource() else {
+            return
         }
+
+        print(url)
 
         showImportLoading()
 
-        DispatchQueue.global(
-            qos: .userInitiated
-        ).async {
+        DispatchQueue.global(qos: .userInitiated).async {
 
-            let result =
-                CSVService.shared.importFile(at: url)
+            defer {
+                url.stopAccessingSecurityScopedResource()
+            }
 
-            CollectionStore.shared.merge(
-                result.entries
-            )
+            do {
 
-            DispatchQueue.main.async {
+                let csv = try String(contentsOf: url, encoding: .utf8)
 
-                self.hideImportLoading()
+                let result = CSVService.shared.importCSV(csv)
 
-                self.viewModel.refresh()
+                CollectionStore.shared.merge(result.entries)
 
-                self.collectionView.reloadData()
+                DispatchQueue.main.async {
+                    self.hideImportLoading()
+                    self.viewModel.refresh()
+                    self.collectionView.reloadData()
+                    // show alert...
+                }
 
-                self.showAlert(
-                    title: "Import Complete",
-                    message:
-                    "Imported \(result.entries.count) cards" +
-                    (result.skippedRows > 0
-                        ? "\nSkipped \(result.skippedRows) rows."
-                        : "")
-                )
+            } catch {
+
+                DispatchQueue.main.async {
+
+                    self.hideImportLoading()
+
+                    self.showAlert(
+                        title: "Import Failed",
+                        message: error.localizedDescription
+                    )
+                }
             }
         }
     }
@@ -586,6 +561,7 @@ private extension CollectionViewController {
 
     func showImportLoading() {
 
+        
         loadingView.translatesAutoresizingMaskIntoConstraints = false
         spinner.translatesAutoresizingMaskIntoConstraints = false
 

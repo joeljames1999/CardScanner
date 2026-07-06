@@ -12,6 +12,8 @@ final class CardLookupCache {
     static let shared = CardLookupCache()
 
     private var lookup: [String: MTGCard] = [:]
+    
+    private var cardsByID: [String: MTGCard] = [:]
 
     private init() {}
 
@@ -35,9 +37,25 @@ final class CardLookupCache {
             lookup[key] = card
         }
 
+        cardsByID.removeAll()
+
+        for card in cards {
+
+            cardsByID[card.id.lowercased()] = card
+
+            let key =
+                "\(card.name.lowercased())|\(card.set.lowercased())|\(card.collectorNumber)"
+
+            cardsByID[key] = card
+        }
+        
         print("[CSV] Cached \(lookup.count) cards")
     }
 
+    func card(id: String) -> MTGCard? {
+        cardsByID[id.lowercased()]
+    }
+    
     func card(
         name: String,
         set: String,

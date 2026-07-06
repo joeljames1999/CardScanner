@@ -16,6 +16,8 @@ final class CardDetailPrintingCell: UICollectionViewCell {
 
     private let setLabel = UILabel()
 
+    private var showingBack = false
+    
     override init(frame: CGRect) {
         super.init(frame: frame)
 
@@ -98,4 +100,37 @@ final class CardDetailPrintingCell: UICollectionViewCell {
             }
         }
     }
+    
+//    private func updateArtwork() {
+//
+//        let url: URL?
+//
+//        if showingBack {
+//
+//            url = card.backFace?.imageUris?.normal
+//
+//        } else {
+//
+//            url = card.displayImage
+//        }
+//
+//        imageView.load(url)
+//    }
+//    
+//    @objc
+//    func flipCard() {
+//
+//        showingBack.toggle()
+//
+//        UIView.transition(
+//            with: imageView,
+//            duration: 0.35,
+//            options: .transitionFlipFromLeft
+//        ) {
+//
+//            self.updateArtwork()
+//
+//        }
+//    }
+//    
 }

@@ -70,20 +70,25 @@ final class CSVService {
         return importer.importCSV(csv)
     }
 
-    func importFile(
-        at url: URL
-    ) -> CSVImportResult {
+    func importFile(at url: URL) -> CSVImportResult {
+
+        print("Reading:", url)
 
         do {
 
-            let csv = try String(
-                contentsOf: url,
-                encoding: .utf8
-            )
+            let data = try Data(contentsOf: url)
+            print("Read \(data.count) bytes")
+
+            let csv = String(decoding: data, as: UTF8.self)
+
+            print("CSV preview:")
+            print(csv.prefix(200))
 
             return importer.importCSV(csv)
 
         } catch {
+
+            print("READ FAILED:", error)
 
             return CSVImportResult(
                 entries: [],
@@ -92,6 +97,29 @@ final class CSVService {
             )
         }
     }
+    
+//    func importFile(
+//        at url: URL
+//    ) -> CSVImportResult {
+//
+//        do {
+//
+//            let csv = try String(
+//                contentsOf: url,
+//                encoding: .utf8
+//            )
+//
+//            return importer.importCSV(csv)
+//
+//        } catch {
+//
+//            return CSVImportResult(
+//                entries: [],
+//                skippedRows: 0,
+//                errors: [error.localizedDescription]
+//            )
+//        }
+//    }
 
     // MARK: - Helpers
 
