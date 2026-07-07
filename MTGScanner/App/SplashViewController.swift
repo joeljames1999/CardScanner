@@ -25,10 +25,42 @@ final class SplashViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        view.backgroundColor = .black
-
         setupLayout()
         animateLaser()
+
+        DispatchQueue.global(qos: .userInitiated).async {
+
+            CardDatabaseService.shared.openDatabase()
+
+            DispatchQueue.main.async {
+                self.finishLaunching()
+            }
+        }
+    }
+    
+    private func finishLaunching() {
+
+        UIView.animate(withDuration: 0.25) {
+            self.view.alpha = 0
+        } completion: { _ in
+
+            let mainVC = MainTabBarController()
+
+            guard
+                let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                let window = windowScene.windows.first
+            else {
+                return
+            }
+
+            window.rootViewController = mainVC
+
+            UIView.transition(
+                with: window,
+                duration: 0.3,
+                options: .transitionCrossDissolve, animations: .none
+            )
+        }
     }
 
     private func setupLayout() {

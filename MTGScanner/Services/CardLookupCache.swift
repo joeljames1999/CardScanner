@@ -11,59 +11,73 @@ final class CardLookupCache {
 
     static let shared = CardLookupCache()
 
-    private var lookup: [String: MTGCard] = [:]
-    
-    private var cardsByID: [String: MTGCard] = [:]
-
     private init() {}
 
-    func build() {
+    private var cardsByID: [String: MTGCard] = [:]
+    private var cardsByKey: [String: MTGCard] = [:]
 
-        if !lookup.isEmpty {
-            return
-        }
+    // MARK: - Build
 
-        let cards = CardDatabaseService.shared.allCards()
+    func build(with cards: [MTGCard]) {
 
-        lookup.reserveCapacity(cards.count)
+        cardsByID.removeAll(keepingCapacity: true)
+        cardsByKey.removeAll(keepingCapacity: true)
 
-        for card in cards {
-
-            let key =
-                "\(card.name.lowercased())|" +
-                "\(card.set.lowercased())|" +
-                "\(card.collectorNumber)"
-
-            lookup[key] = card
-        }
-
-        cardsByID.removeAll()
+        cardsByID.reserveCapacity(cards.count)
+        cardsByKey.reserveCapacity(cards.count)
 
         for card in cards {
 
             cardsByID[card.id.lowercased()] = card
 
-            let key =
-                "\(card.name.lowercased())|\(card.set.lowercased())|\(card.collectorNumber)"
+            let key = makeKey(
+                name: card.name,
+                set: card.set,
+                collector: card.collectorNumber
+            )
 
-            cardsByID[key] = card
+            cardsByKey[key] = card
         }
-        
-        print("[CSV] Cached \(lookup.count) cards")
+
+        print("[CardLookupCache] Cached \(cards.count) cards")
     }
+
+    func clear() {
+
+        cardsByID.removeAll()
+        cardsByKey.removeAll()
+    }
+
+    // MARK: - Lookup
 
     func card(id: String) -> MTGCard? {
+
         cardsByID[id.lowercased()]
     }
-    
+
     func card(
         name: String,
         set: String,
         collector: String
     ) -> MTGCard? {
 
-        lookup[
-            "\(name.lowercased())|\(set.lowercased())|\(collector)"
+        cardsByKey[
+            makeKey(
+                name: name,
+                set: set,
+                collector: collector
+            )
         ]
+    }
+
+    // MARK: - Helpers
+
+    private func makeKey(
+        name: String,
+        set: String,
+        collector: String
+    ) -> String {
+
+        "\(name.lowercased())|\(set.lowercased())|\(collector)"
     }
 }

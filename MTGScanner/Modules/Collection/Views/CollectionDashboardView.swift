@@ -68,11 +68,11 @@ final class CollectionDashboardView: UIView {
     }
 
     // MARK: Configure
-
     func configure(
         cards: Int,
-        value: Double
-    ) {
+        value: Double,
+        activeFilters: Int
+    ){
 
         let number = NumberFormatter()
         number.numberStyle = .decimal
@@ -87,60 +87,79 @@ final class CollectionDashboardView: UIView {
         valueLabel.text =
         currency.string(from: NSNumber(value: value))
     }
+    
 }
 
-private extension CollectionDashboardView {
-
-        func setup() {
-
-            let topRow = UIStackView(arrangedSubviews: [
-                titleLabel,
-                UIView(),
-                valueLabel
-            ])
-
-            topRow.alignment = .bottom
-
-            let buttonRow = UIStackView(arrangedSubviews: [
-                sortButton,
-                filterButton
-            ])
-
-            buttonRow.axis = .horizontal
-            buttonRow.spacing = 12
-            buttonRow.distribution = .fillEqually
-
-            let stack = UIStackView(arrangedSubviews: [
-                topRow,
-                cardsLabel,
-                buttonRow
-            ])
-
-            stack.axis = .vertical
-            stack.spacing = 18
-            stack.translatesAutoresizingMaskIntoConstraints = false
-
-            addSubview(stack)
-
-            NSLayoutConstraint.activate([
-
-                stack.topAnchor.constraint(equalTo: topAnchor, constant: 18),
-                stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 20),
-                stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -20),
-                stack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -18)
-
-            ])
+extension CollectionDashboardView {
+    
+    func setup() {
+        
+        let topRow = UIStackView(arrangedSubviews: [
+            titleLabel,
+            UIView(),
+            valueLabel
+        ])
+        
+        topRow.alignment = .bottom
+        
+        let buttonRow = UIStackView(arrangedSubviews: [
+            sortButton,
+            filterButton
+        ])
+        
+        buttonRow.axis = .horizontal
+        buttonRow.spacing = 12
+        buttonRow.distribution = .fillEqually
+        
+        let stack = UIStackView(arrangedSubviews: [
+            topRow,
+            cardsLabel,
+            buttonRow
+        ])
+        
+        stack.axis = .vertical
+        stack.spacing = 18
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        
+        addSubview(stack)
+        
+        NSLayoutConstraint.activate([
+            
+            stack.topAnchor.constraint(equalTo: topAnchor, constant: 18),
+            stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 20),
+            stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -20),
+            stack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -18)
+            
+        ])
+    }
+    
+    @objc
+    func sortTapped() {
+        onSort?()
+    }
+    
+    @objc
+    func filterTapped() {
+        onFilter?()
+    }
+    
+    func updateFilterBadge(_ filter: SearchFilter) {
+        
+        let count =
+        filter.selectedSets.count +
+        filter.selectedRarities.count +
+        filter.selectedManaCosts.count +
+        filter.selectedManaColors.count
+        
+        if count == 0 {
+            
+            filterButton.configuration?.subtitle = nil
+            
+        } else {
+            
+            filterButton.configuration?.subtitle = "\(count)"
         }
-
-        @objc
-        func sortTapped() {
-            onSort?()
-        }
-
-        @objc
-        func filterTapped() {
-            onFilter?()
-        }
+    }
     
     
     func makeCapsule(
@@ -148,36 +167,13 @@ private extension CollectionDashboardView {
         image: String,
         action: Selector
     ) -> UIButton {
-
+        
         var config = UIButton.Configuration.tinted()
-
+        
         config.title = title
         config.image = UIImage(systemName: image)
         config.cornerStyle = .capsule
-
-        let button = UIButton(configuration: config)
-
-        button.addTarget(
-            self,
-            action: action,
-            for: .touchUpInside
-        )
-
-        return button
-    }
-
-    func makeTextButton(
-        title: String,
-        image: String,
-        action: Selector
-    ) -> UIButton {
-
-        var config = UIButton.Configuration.plain()
-
-        config.title = title
-        config.image = UIImage(systemName: image)
-        config.imagePlacement = .leading
-
+        
         let button = UIButton(configuration: config)
         
         button.addTarget(
@@ -185,7 +181,30 @@ private extension CollectionDashboardView {
             action: action,
             for: .touchUpInside
         )
-
+        
+        return button
+    }
+    
+    func makeTextButton(
+        title: String,
+        image: String,
+        action: Selector
+    ) -> UIButton {
+        
+        var config = UIButton.Configuration.plain()
+        
+        config.title = title
+        config.image = UIImage(systemName: image)
+        config.imagePlacement = .leading
+        
+        let button = UIButton(configuration: config)
+        
+        button.addTarget(
+            self,
+            action: action,
+            for: .touchUpInside
+        )
+        
         return button
     }
 }

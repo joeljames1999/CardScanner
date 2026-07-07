@@ -112,112 +112,12 @@ extension CardDatabaseService {
             print("Params:")
             print(params)
             
-            var results = executeFilteredQuery(
-                sql,
-                params: params
+            var results = executeFilteredQuery(sql, params: params)
+            
+            results = CardFilterEngine.filter(
+                results,
+                using: filter
             )
-            
-            print("SQL Results Before Colour Filter: \(results.count)")
-            
-            if filter.legalCardsOnly {
-                
-                results = results.filter { card in
-                    
-                    let layout = card.cardLayout?.lowercased() ?? ""
-                    let typeLine = card.typeLine.lowercased()
-                    let setName = card.setName.lowercased()
-                    
-                    if [
-                        "token",
-                        "emblem",
-                        "art_series",
-                        "planar",
-                        "scheme",
-                        "vanguard",
-                        "double_faced_token",
-                        "playtest"
-                    ].contains(layout) {
-                        return false
-                    }
-                    
-                    if typeLine.contains("token") {
-                        return false
-                    }
-                    
-                    if setName.contains("tokens") {
-                        return false
-                    }
-                    
-                    if setName.contains("playtest") {
-                        return false
-                    }
-                    if !(card.legalities?.isLegalSomewhere ?? false) {
-                        return false
-                    }
-                    
-                    return true
-                }
-            }
-            
-            if !filter.selectedManaColors.isEmpty {
-                
-                results = results.filter { card in
-                    
-                    let cardColors = SearchFilter.extractManaColors(
-                        from: card.colors
-                    )
-                    
-                    return SearchFilter.cardColorsMatch(
-                        cardColors,
-                        selectedColors: filter.selectedManaColors,
-                        mode: filter.colorFilterMode
-                    )
-                }
-                
-                print(
-                    "Results After Colour Filter:",
-                    results.count
-                )
-            }
-            
-            if !filter.selectedFormats.isEmpty {
-                
-                results = results.filter { card in
-                    
-                    guard let legalities = card.legalities else {
-                        return false
-                    }
-                    
-                    return filter.selectedFormats.contains { format in
-                        legalities.isLegal(in: format)
-                    }
-                }
-                
-                print(
-                    "Results After Format Filter:",
-                    results.count
-                )
-            }
-            
-            if filter.groupPrintings {
-                
-                var uniqueCards: [MTGCard] = []
-                var seenNames = Set<String>()
-                
-                for card in results {
-                    
-                    let key = card.name.lowercased()
-                    
-                    guard !seenNames.contains(key) else {
-                        continue
-                    }
-                    
-                    seenNames.insert(key)
-                    uniqueCards.append(card)
-                }
-                
-                return uniqueCards
-            }
             
             return results
         }
@@ -521,5 +421,59 @@ extension CardDatabaseService {
             return nil
         }
     }
-    
+    func cards(ids: [String]) -> [MTGCard] {
+
+        guard !ids.isEmpty else {
+            return []
+        }
+
+        let placeholders = Array(repeating: "?", count: ids.count)
+            .joined(separator: ",")
+
+        let sql = """
+        SELECT *
+        FROM cards
+        WHERE card_id IN (\(placeholders))
+        """
+
+        var statement: OpaquePointer?
+
+        guard sqlite3_prepare_v2(
+            db,
+            sql,
+            -1,
+            &statement,
+            nil
+        ) == SQLITE_OK else {
+
+            return []
+        }
+
+        defer {
+            sqlite3_finalize(statement)
+        }
+
+        for (index, id) in ids.enumerated() {
+
+            sqlite3_bind_text(
+                statement,
+                Int32(index + 1),
+                id,
+                -1,
+                SQLITE_TRANSIENT
+            )
+        }
+
+        var cards: [MTGCard] = []
+        cards.reserveCapacity(ids.count)
+
+        while sqlite3_step(statement) == SQLITE_ROW {
+
+            if let card = CardRowMapper.map(statement) {
+                cards.append(card)
+            }
+        }
+
+        return cards
+    }
 }

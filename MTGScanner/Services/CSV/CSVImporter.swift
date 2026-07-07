@@ -16,7 +16,6 @@ final class CSVImporter {
 
         print("===== IMPORT STARTED =====")
         
-        CardLookupCache.shared.build()
         print(csv.prefix(500))
         let rows = csv
             .split(whereSeparator: \.isNewline)

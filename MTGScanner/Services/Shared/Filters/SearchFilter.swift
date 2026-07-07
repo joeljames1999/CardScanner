@@ -1,3 +1,10 @@
+//
+//  SearchFilter.swift
+//  TcgScanner
+//
+//  Created by Joel James on 07/07/2026.
+//
+
 import Foundation
 import UIKit
 
@@ -6,27 +13,6 @@ import UIKit
 enum ColorFilterMode: String, CaseIterable {
     case includesOnlyThese = "Includes Only These Colors"
     case includesAnyOfThese = "Includes Any of These Colors"
-}
-
-
-//MARK: - Format filter
-enum FormatFilter: String, CaseIterable, Codable {
-
-    case standard
-    case pioneer
-    case modern
-    case legacy
-    case vintage
-    case commander
-    case pauper
-    case brawl
-    case historic
-    case timeless
-    case explorer
-
-    var displayName: String {
-        rawValue.capitalized
-    }
 }
 
 // MARK: - SearchFilter
@@ -200,6 +186,19 @@ extension SearchFilter {
             return matchesColorless || matchesColours
         }
     }
+    
+    var isEmpty: Bool {
+            !hasActiveFilters
+        }
+    
+    var activeFilterCount: Int {
+        selectedRarities.count +
+        selectedSets.count +
+        selectedManaCosts.count +
+        selectedManaColors.count
+    }
+    
+    
 }
 
 extension Legalities {

@@ -7,6 +7,12 @@
 
 import Foundation
 
+struct CollectionCard {
+
+    let entry: CollectionEntry
+    let card: MTGCard
+}
+
 struct CollectionEntry: Codable, Identifiable {
     let id: UUID
     var count: Int

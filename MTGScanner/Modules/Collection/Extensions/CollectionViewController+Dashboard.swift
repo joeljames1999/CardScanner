@@ -6,3 +6,16 @@
 //
 
 import Foundation
+import UIKit
+
+extension CollectionViewController {
+
+    func refreshDashboard() {
+
+        dashboardView.configure(
+            cards: viewModel.totalCards,
+            value: viewModel.totalValue,
+            activeFilters: viewModel.filteredEntries.count
+        )
+    }
+}
