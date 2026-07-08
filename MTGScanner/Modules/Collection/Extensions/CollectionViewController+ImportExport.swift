@@ -89,9 +89,9 @@ extension CollectionViewController: UIDocumentPickerDelegate {
 
                 let result = CSVService.shared.importCSV(csv)
 
-                CollectionStore.shared.merge(result.entries)
-
                 DispatchQueue.main.async {
+
+                    CollectionStore.shared.merge(result.entries)
 
                     self.hideImportLoading()
 

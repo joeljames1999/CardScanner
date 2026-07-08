@@ -50,6 +50,8 @@ enum CardRowMapper {
             set: text(statement, Column.setCode) ?? "",
             setName: text(statement, Column.setName) ?? "",
             collectorNumber: text(statement, Column.collectorNumber) ?? "",
+            releasedAt: text(statement, Column.releasedAt),
+            language: text(statement, Column.language),
 
             imageUris: imageUris,
             prices: prices,
@@ -104,6 +106,8 @@ private extension CardRowMapper {
         static let legalities = 23
         static let digital = 24
         static let cardFacesJSON = 25
+        static let releasedAt = 26
+        static let language = 27
     }
 }
 

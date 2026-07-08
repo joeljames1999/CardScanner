@@ -22,7 +22,7 @@ enum SearchQueryBuilder {
 
         var sql = CardQueries.searchBase
 
-        var clauses: [String] = []
+        var clauses: [String] = ["COALESCE(lang, 'en') = 'en'"]
         var parameters: [Any] = []
 
         // MARK: Name

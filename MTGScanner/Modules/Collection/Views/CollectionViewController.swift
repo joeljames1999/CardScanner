@@ -89,11 +89,8 @@ final class CollectionViewController: UIViewController {
         configureLayout()
         bindViewModel()
         configureDashboardActions()
-    }
-
-    override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
-
+        configureEmptyStateActions()
+        viewModel.startObservingCollectionChanges()
         viewModel.refresh()
     }
 }
@@ -111,6 +108,28 @@ private extension CollectionViewController {
         }
     }
 
+    func configureEmptyStateActions() {
+
+        emptyStateView.onImport = { [weak self] in
+            self?.importTapped()
+        }
+    }
+
+    func prefetchVisibleThumbnailImages(from entries: [CollectionEntry]) {
+
+        let urls = entries
+            .prefix(36)
+            .compactMap(\.imageURL)
+
+        guard !urls.isEmpty else {
+            return
+        }
+
+        Task {
+            await ImageLoader.shared.prefetch(Array(urls))
+        }
+    }
+
     private func bindViewModel() {
 
         viewModel.$filteredEntries
@@ -120,12 +139,13 @@ private extension CollectionViewController {
                 guard let self else { return }
 
                 collectionView.reloadData()
+                prefetchVisibleThumbnailImages(from: entries)
                 emptyStateView.isHidden = !(viewModel.totalCards == 0)
 
                 dashboardView.configure(
                     cards: viewModel.totalCards,
                     value: viewModel.totalValue,
-                    activeFilters: viewModel.filter.activeFilterCount
+                    activeFilters: viewModel.activeFilterCount
                 )
             }
             .store(in: &cancellables)
@@ -141,7 +161,7 @@ private extension CollectionViewController {
                 dashboardView.configure(
                     cards: viewModel.totalCards,
                     value: viewModel.totalValue,
-                    activeFilters: filter.activeFilterCount
+                    activeFilters: viewModel.activeFilterCount
                 )
             }
             .store(in: &cancellables)

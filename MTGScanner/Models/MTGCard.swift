@@ -24,6 +24,8 @@ struct MTGCard: Decodable {
     let set: String
     let setName: String
     let collectorNumber: String
+    let releasedAt: String?
+    let language: String?
 
     let imageUris: ImageUris?
     let prices: Prices?
@@ -107,6 +109,8 @@ struct MTGCard: Decodable {
 
         case setName = "set_name"
         case collectorNumber = "collector_number"
+        case releasedAt = "released_at"
+        case language = "lang"
 
         case imageUris = "image_uris"
         case scryfallUri = "scryfall_uri"

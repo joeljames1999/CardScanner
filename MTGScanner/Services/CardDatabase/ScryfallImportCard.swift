@@ -13,6 +13,8 @@ struct ScryfallImportCard: Decodable {
     let setCode: String
     let setName: String
     let collectorNumber: String
+    let releasedAt: String?
+    let language: String?
     let priceUsd: String?
     let priceUsdF: String?
     let scryfUri: String?
@@ -30,12 +32,14 @@ struct ScryfallImportCard: Decodable {
 
     enum CodingKeys: String, CodingKey {
         case id, name, cmc, artist, rarity, layout, power, toughness, legalities, digital
+        case language = "lang"
         case manaCost = "mana_cost"
         case typeLine = "type_line"
         case oracleText = "oracle_text"
         case setCode = "set"
         case setName = "set_name"
         case collectorNumber = "collector_number"
+        case releasedAt = "released_at"
         case priceList = "prices"
         case scryfUri = "scryfall_uri"
         case setType = "set_type"
@@ -61,6 +65,8 @@ struct ScryfallImportCard: Decodable {
         self.setCode = try container.decode(String.self, forKey: .setCode)
         self.setName = try container.decode(String.self, forKey: .setName)
         self.collectorNumber = try container.decode(String.self, forKey: .collectorNumber)
+        self.releasedAt = try container.decodeIfPresent(String.self, forKey: .releasedAt)
+        self.language = try container.decodeIfPresent(String.self, forKey: .language)
         self.scryfUri = try container.decodeIfPresent(String.self, forKey: .scryfUri)
         self.cardLayout = try container.decodeIfPresent(String.self, forKey: .layout)
         self.setType = try container.decodeIfPresent(String.self, forKey: .setType)

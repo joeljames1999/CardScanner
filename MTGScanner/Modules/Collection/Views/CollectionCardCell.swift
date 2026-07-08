@@ -21,12 +21,14 @@ final class CollectionCardCell: UICollectionViewCell {
     private let priceBadge = PaddingLabel()
 
     private let bottomBlur = UIVisualEffectView(
-        effect: UIBlurEffect(style: .systemUltraThinMaterialDark)
+        effect: UIBlurEffect(style: .systemUltraThinMaterialLight)
     )
 
     private let setImageView = UIImageView()
 
     private let collectorLabel = UILabel()
+
+    private let foilImageView = UIImageView()
 
     private var imageLoadTask: Task<Void, Never>?
     private var representedImageURL: URL?
@@ -65,13 +67,22 @@ final class CollectionCardCell: UICollectionViewCell {
         representedSetCode = nil
         cardImageView.image = UIImage(systemName: "photo")
         setImageView.image = nil
+        foilImageView.isHidden = true
     }
 
     // MARK: Configure
 
-    func configure(with entry: CollectionEntry) {
+    func configure(
+        with entry: CollectionEntry,
+        card: MTGCard? = nil
+    ) {
 
-        collectorLabel.text = "\(entry.setCode) #\(entry.collectorNumber)"
+        let setCode = entry.setCode.isEmpty ? card?.set ?? "" : entry.setCode
+        let collectorNumber = entry.collectorNumber.isEmpty ? card?.collectorNumber ?? "" : entry.collectorNumber
+        let rarity = entry.rarity == "unknown" ? card?.rarity ?? entry.rarity : entry.rarity
+
+        collectorLabel.text = "\(setCode.uppercased()): #\(collectorNumber)"
+        foilImageView.isHidden = !entry.isFoil
 
         quantityBadge.text = "×\(entry.count)"
 
@@ -81,11 +92,11 @@ final class CollectionCardCell: UICollectionViewCell {
             priceBadge.text = "--"
         }
 
-        loadImage(entry.imageURL)
+        loadImage(entry.imageURL ?? card?.displayImage)
 
         loadSetSymbol(
-            set: entry.setCode,
-            rarity: entry.rarity
+            set: setCode,
+            rarity: rarity
         )
     }
 
@@ -94,8 +105,9 @@ final class CollectionCardCell: UICollectionViewCell {
     private func configureViews() {
 
         cardImageView.translatesAutoresizingMaskIntoConstraints = false
-        cardImageView.contentMode = .scaleAspectFill
-        cardImageView.clipsToBounds = true
+        cardImageView.contentMode = .scaleAspectFit
+        cardImageView.clipsToBounds = false
+        cardImageView.backgroundColor = .black
 
         quantityBadge.translatesAutoresizingMaskIntoConstraints = false
         quantityBadge.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.9)
@@ -117,12 +129,23 @@ final class CollectionCardCell: UICollectionViewCell {
         setImageView.contentMode = .scaleAspectFit
 
         collectorLabel.translatesAutoresizingMaskIntoConstraints = false
-        collectorLabel.textColor = .white
+        collectorLabel.textColor = .label
         collectorLabel.font = .boldSystemFont(ofSize: 12)
         collectorLabel.numberOfLines = 2
         collectorLabel.textAlignment = .center
         collectorLabel.adjustsFontSizeToFitWidth = true
         collectorLabel.minimumScaleFactor = 0.8
+
+        foilImageView.translatesAutoresizingMaskIntoConstraints = false
+        foilImageView.image = UIImage(systemName: "star.fill")
+        foilImageView.contentMode = .scaleAspectFit
+        foilImageView.tintColor = UIColor(
+            red: 0.95,
+            green: 0.72,
+            blue: 0.18,
+            alpha: 1
+        )
+        foilImageView.isHidden = true
     }
 
     private func layoutViews() {
@@ -136,19 +159,20 @@ final class CollectionCardCell: UICollectionViewCell {
 
         bottomBlur.contentView.addSubview(setImageView)
         bottomBlur.contentView.addSubview(collectorLabel)
+        bottomBlur.contentView.addSubview(foilImageView)
 
         NSLayoutConstraint.activate([
 
             cardImageView.topAnchor.constraint(equalTo: contentView.topAnchor),
             cardImageView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
             cardImageView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
-            cardImageView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
+            cardImageView.bottomAnchor.constraint(equalTo: bottomBlur.topAnchor),
 
-            quantityBadge.bottomAnchor.constraint(equalTo: collectorLabel.topAnchor, constant: -10),
-            quantityBadge.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 5),
+            quantityBadge.topAnchor.constraint(equalTo: cardImageView.topAnchor, constant: 5),
+            quantityBadge.leadingAnchor.constraint(equalTo: cardImageView.leadingAnchor, constant: 5),
 
-            priceBadge.bottomAnchor.constraint(equalTo: collectorLabel.topAnchor, constant: -10),
-            priceBadge.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -5),
+            priceBadge.topAnchor.constraint(equalTo: cardImageView.topAnchor, constant: 5),
+            priceBadge.trailingAnchor.constraint(equalTo: cardImageView.trailingAnchor, constant: -5),
 
             bottomBlur.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
             bottomBlur.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
@@ -161,8 +185,15 @@ final class CollectionCardCell: UICollectionViewCell {
             setImageView.heightAnchor.constraint(equalToConstant: 14),
 
             collectorLabel.leadingAnchor.constraint(equalTo: setImageView.trailingAnchor, constant: 4),
-            collectorLabel.trailingAnchor.constraint(lessThanOrEqualTo: bottomBlur.trailingAnchor, constant: -6),
-            collectorLabel.centerYAnchor.constraint(equalTo: setImageView.centerYAnchor)
+            collectorLabel.trailingAnchor.constraint(lessThanOrEqualTo: foilImageView.leadingAnchor, constant: -4),
+            collectorLabel.topAnchor.constraint(greaterThanOrEqualTo: bottomBlur.topAnchor, constant: 4),
+            collectorLabel.bottomAnchor.constraint(lessThanOrEqualTo: bottomBlur.bottomAnchor, constant: -4),
+            collectorLabel.centerYAnchor.constraint(equalTo: setImageView.centerYAnchor),
+
+            foilImageView.trailingAnchor.constraint(equalTo: bottomBlur.trailingAnchor, constant: -6),
+            foilImageView.centerYAnchor.constraint(equalTo: bottomBlur.centerYAnchor),
+            foilImageView.widthAnchor.constraint(equalToConstant: 14),
+            foilImageView.heightAnchor.constraint(equalToConstant: 14)
         ])
     }
 
@@ -181,9 +212,8 @@ final class CollectionCardCell: UICollectionViewCell {
         imageLoadTask = Task { [weak self] in
 
             guard
-                let (data, _) = try? await URLSession.shared.data(from: url),
-                !Task.isCancelled,
-                let image = UIImage(data: data)
+                let image = await ImageLoader.shared.image(for: url),
+                !Task.isCancelled
             else { return }
 
             await MainActor.run {
@@ -227,21 +257,31 @@ final class CollectionCardCell: UICollectionViewCell {
         switch rarity.lowercased() {
 
         case "common":
-            return .lightGray
+            return .black
 
         case "uncommon":
             return UIColor(
-                red: 0.72,
-                green: 0.72,
-                blue: 0.72,
+                red: 0.75,
+                green: 0.75,
+                blue: 0.75,
                 alpha: 1
             )
 
         case "rare":
-            return UIColor.systemYellow
+            return UIColor(
+                red: 0.86,
+                green: 0.65,
+                blue: 0.13,
+                alpha: 1
+            )
 
-        case "mythic":
-            return UIColor.systemOrange
+        case "mythic", "mythic rare":
+            return UIColor(
+                red: 0.92,
+                green: 0.36,
+                blue: 0.08,
+                alpha: 1
+            )
 
         case "special":
             return UIColor.systemPurple

@@ -29,6 +29,7 @@ final class CardSearchViewController: UIViewController {
 
         cv.translatesAutoresizingMaskIntoConstraints = false
         cv.backgroundColor = .systemBackground
+        cv.keyboardDismissMode = .onDrag
 
         cv.register(
             CardSearchCell.self,
@@ -103,6 +104,7 @@ final class CardSearchViewController: UIViewController {
 
         setupUI()
         bindViewModel()
+        configureKeyboardDismissal()
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -264,6 +266,19 @@ final class CardSearchViewController: UIViewController {
         }
     }
     
+    private func configureKeyboardDismissal() {
+        let tapGesture = UITapGestureRecognizer(
+            target: self,
+            action: #selector(dismissKeyboard)
+        )
+        tapGesture.cancelsTouchesInView = false
+        view.addGestureRecognizer(tapGesture)
+    }
+
+    @objc private func dismissKeyboard() {
+        view.endEditing(true)
+    }
+
     private func bindViewModel() {
         
         // Update collection view when cards change
@@ -327,6 +342,14 @@ UISearchBarDelegate {
         textDidChange searchText: String
     ) {
         viewModel.searchText = searchText
+    }
+
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        searchBar.resignFirstResponder()
+    }
+
+    func searchBarCancelButtonClicked(_ searchBar: UISearchBar) {
+        searchBar.resignFirstResponder()
     }
 }
 

@@ -27,7 +27,27 @@ extension CardQueries {
         name = ?
         AND set_code = ?
         AND collector_number = ?
+    ORDER BY
+        CASE COALESCE(lang, 'en')
+            WHEN 'en' THEN 0
+            ELSE 1
+        END
     LIMIT 1;
+    """
+
+    static let languagesByPrinting = """
+    SELECT DISTINCT COALESCE(lang, 'en')
+    FROM cards
+    WHERE
+        name = ? COLLATE NOCASE
+        AND set_code = ? COLLATE NOCASE
+        AND collector_number = ?
+    ORDER BY
+        CASE COALESCE(lang, 'en')
+            WHEN 'en' THEN 0
+            ELSE 1
+        END,
+        lang COLLATE NOCASE;
     """
 
     static let allPrintings = """
@@ -35,6 +55,7 @@ extension CardQueries {
     FROM cards
     WHERE name = ?
     COLLATE NOCASE
+        AND COALESCE(lang, 'en') = 'en'
     ORDER BY
         set_name,
         collector_number;
@@ -209,7 +230,9 @@ extension CardQueries {
         illustration_id,
         legalities,
         digital,
-        card_faces_json
+        card_faces_json,
+        released_at,
+        lang
     )
     VALUES
     (
@@ -217,7 +240,7 @@ extension CardQueries {
         ?,?,?,?,?,?,
         ?,?,?,?,?,?,
         ?,?,?,?,?,?,
-        ?,?
+        ?,?,?,?
     );
     """
 
@@ -294,7 +317,9 @@ extension CardQueries {
         illustration_id TEXT,
         legalities TEXT,
         digital TEXT,
-        card_faces_json TEXT
+        card_faces_json TEXT,
+        released_at TEXT,
+        lang TEXT
     );
     """
 
@@ -338,6 +363,7 @@ extension CardQueries {
     SELECT *
     FROM cards
     WHERE illustration_id = ?
+        AND COALESCE(lang, 'en') = 'en'
     ORDER BY set_name, collector_number;
     """
 }
@@ -347,6 +373,7 @@ extension CardQueries {
     static let allCards = """
     SELECT *
     FROM cards
+    WHERE COALESCE(lang, 'en') = 'en'
     ORDER BY name COLLATE NOCASE;
     """
 }

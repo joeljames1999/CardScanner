@@ -190,7 +190,7 @@ private extension ScryfallBulkService {
             await setState(.fetchingManifest)
 
             let manifest = try await fetchManifest(
-                type: "default_cards"
+                type: "all_cards"
             )
 
             await setState(

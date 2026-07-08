@@ -2,6 +2,7 @@ import Foundation
 
 // MARK: - Collection Store
 
+@MainActor
 final class CollectionStore {
 
     static let shared = CollectionStore()
@@ -126,9 +127,19 @@ final class CollectionStore {
         for entry in imported {
             if let idx = entries.firstIndex(where: {
                 $0.name.lowercased() == entry.name.lowercased() &&
-                $0.setCode.lowercased() == entry.setCode.lowercased()
+                $0.setCode.lowercased() == entry.setCode.lowercased() &&
+                $0.collectorNumber == entry.collectorNumber &&
+                $0.condition == entry.condition &&
+                $0.isFoil == entry.isFoil &&
+                $0.language == entry.language
             }) {
                 entries[idx].count += entry.count
+                entries[idx].cardID = entry.cardID
+                entries[idx].setName = entry.setName
+                entries[idx].rarity = entry.rarity
+                entries[idx].purchasePrice = entry.purchasePrice ?? entries[idx].purchasePrice
+                entries[idx].usdPrice = entry.usdPrice ?? entries[idx].usdPrice
+                entries[idx].imageURL = entry.imageURL ?? entries[idx].imageURL
             } else {
                 entries.append(entry)
             }
@@ -168,3 +179,4 @@ final class CollectionStore {
 extension CollectionEntry {
     var priceValue: Double { usdPrice.flatMap { Double($0) } ?? 0 }
 }
+

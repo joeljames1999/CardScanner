@@ -8,6 +8,9 @@ final class CardFilterViewController: UIViewController {
     
     var currentFilter: SearchFilter = SearchFilter()
     var onFilterChange: ((SearchFilter) -> Void)?
+    var showsFoilFilter = false
+    var isFoilFilterSelected = false
+    var onFoilFilterChange: ((Bool) -> Void)?
     
     private var allSets: [String] = []
     private var setSearchText: String = ""
@@ -77,7 +80,9 @@ final class CardFilterViewController: UIViewController {
     
     @objc private func resetFilters() {
         currentFilter.reset()
+        isFoilFilterSelected = false
         onFilterChange?(currentFilter)
+        onFoilFilterChange?(false)
         tableView.reloadData()
     }
     
@@ -100,7 +105,7 @@ extension CardFilterViewController: UITableViewDataSource {
         switch section {
 
         case 0:
-            return 2 // Legal Cards + Group Printings
+            return showsFoilFilter ? 3 : 2
 
         case 1:
             return 2
@@ -162,7 +167,7 @@ extension CardFilterViewController: UITableViewDataSource {
                     )
                 }
 
-            } else {
+            } else if indexPath.row == 1 {
 
                 cell.configure(
                     title: "Group Printings",
@@ -174,6 +179,24 @@ extension CardFilterViewController: UITableViewDataSource {
                     self.currentFilter.groupPrintings.toggle()
 
                     self.updateFilter()
+
+                    tableView.reloadRows(
+                        at: [indexPath],
+                        with: .none
+                    )
+                }
+
+            } else {
+
+                cell.configure(
+                    title: "Foil Cards Only",
+                    isSelected: isFoilFilterSelected
+                ) { [weak self] in
+
+                    guard let self else { return }
+
+                    self.isFoilFilterSelected.toggle()
+                    self.onFoilFilterChange?(self.isFoilFilterSelected)
 
                     tableView.reloadRows(
                         at: [indexPath],

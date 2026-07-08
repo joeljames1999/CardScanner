@@ -47,6 +47,8 @@
 		9875E0DA2F96FB0F002929D0 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9875E0D92F96FB0F002929D0 /* SceneDelegate.swift */; };
 		9879F37B2FFE6FF10039F2DF /* LifeCounterViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9879F37A2FFE6FF10039F2DF /* LifeCounterViewController.swift */; };
 		9879F3B52FFE9DC80039F2DF /* SearchFilter+UIKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9879F3B42FFE9DC80039F2DF /* SearchFilter+UIKit.swift */; };
+		9879F3B72FFEB32B0039F2DF /* ImageLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9879F3B62FFEB32B0039F2DF /* ImageLoader.swift */; };
+		9879F3B92FFF04CC0039F2DF /* ScannerLanguage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9879F3B82FFF04CC0039F2DF /* ScannerLanguage.swift */; };
 		98CB316D2FD1875B0029CA7F /* SettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB316C2FD1875B0029CA7F /* SettingsViewController.swift */; };
 		98CB31702FD1E7D40029CA7F /* CardSearchViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB316F2FD1E7D40029CA7F /* CardSearchViewModel.swift */; };
 		98CB31722FD1E8740029CA7F /* CardSearchCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB31712FD1E8740029CA7F /* CardSearchCell.swift */; };
@@ -165,6 +167,8 @@
 		9879F37A2FFE6FF10039F2DF /* LifeCounterViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LifeCounterViewController.swift; sourceTree = "<group>"; };
 		9879F3992FFE91210039F2DF /* TcgScannerUnitTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TcgScannerUnitTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9879F3B42FFE9DC80039F2DF /* SearchFilter+UIKit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SearchFilter+UIKit.swift"; sourceTree = "<group>"; };
+		9879F3B62FFEB32B0039F2DF /* ImageLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageLoader.swift; sourceTree = "<group>"; };
+		9879F3B82FFF04CC0039F2DF /* ScannerLanguage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScannerLanguage.swift; sourceTree = "<group>"; };
 		98CB316C2FD1875B0029CA7F /* SettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewController.swift; sourceTree = "<group>"; };
 		98CB316F2FD1E7D40029CA7F /* CardSearchViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSearchViewModel.swift; sourceTree = "<group>"; };
 		98CB31712FD1E8740029CA7F /* CardSearchCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSearchCell.swift; sourceTree = "<group>"; };
@@ -442,6 +446,7 @@
 				98CB31B82FE463380029CA7F /* AddCardOverlayView.swift */,
 				986A78AC2F96EBD900EAEBEC /* ScannerViewModel.swift */,
 				986A78AE2F96EBEA00EAEBEC /* ScannerOverlayView.swift */,
+				9879F3B82FFF04CC0039F2DF /* ScannerLanguage.swift */,
 			);
 			path = Scanner;
 			sourceTree = "<group>";
@@ -502,6 +507,7 @@
 				98CB31FA2FEAB6880029CA7F /* UIImageHelpers.swift */,
 				98CB32132FF870730029CA7F /* CardLookupCache.swift */,
 				98CB32002FEC9A5C0029CA7F /* UIColorHelpers.swift */,
+				9879F3B62FFEB32B0039F2DF /* ImageLoader.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -781,6 +787,7 @@
 				982414F02FFD6EDB00AB1C14 /* CardRowMapper.swift in Sources */,
 				986A78AD2F96EBD900EAEBEC /* ScannerViewModel.swift in Sources */,
 				98CB31C52FE5F93C0029CA7F /* BulkDataCell.swift in Sources */,
+				9879F3B92FFF04CC0039F2DF /* ScannerLanguage.swift in Sources */,
 				98CB32592FFBCDFA0029CA7F /* CollectionViewController+Layout.swift in Sources */,
 				98CB32722FFC6B9F0029CA7F /* FormatFilter.swift in Sources */,
 				98CB320C2FF80E730029CA7F /* CSVHeaderMapper.swift in Sources */,
@@ -823,6 +830,7 @@
 				982414CF2FFD6AE100AB1C14 /* DatabaseError.swift in Sources */,
 				98CB325D2FFBCE0B0029CA7F /* CollectionViewController+Search.swift in Sources */,
 				98CB318C2FDC5E0C0029CA7F /* FilterColorModeCell.swift in Sources */,
+				9879F3B72FFEB32B0039F2DF /* ImageLoader.swift in Sources */,
 				982414CD2FFD6ADB00AB1C14 /* DatabaseQueue.swift in Sources */,
 				982414FC2FFD712B00AB1C14 /* SearchQueryBuilder.swift in Sources */,
 				98CB316D2FD1875B0029CA7F /* SettingsViewController.swift in Sources */,

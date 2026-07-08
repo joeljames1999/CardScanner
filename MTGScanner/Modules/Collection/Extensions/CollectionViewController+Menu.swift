@@ -32,6 +32,16 @@ extension CollectionViewController {
 
             },
 
+            UIAction(
+                title: "Delete Collection",
+                image: UIImage(systemName: "trash"),
+                attributes: .destructive
+            ) { [weak self] _ in
+
+                self?.confirmDeleteCollection()
+
+            },
+
             UIDeferredMenuElement.uncached { completion in
 
                 completion([

@@ -13,6 +13,7 @@ final class CardDetailViewController: UIViewController {
     private let actionMode: ActionMode
     private var currentFaceIndex = 0
     private var imageLoadTask: Task<Void, Never>?
+    private weak var addedToast: UIView?
     var onDismiss: (() -> Void)?
 
     // MARK: - UI
@@ -615,20 +616,103 @@ final class CardDetailViewController: UIViewController {
 
     @objc
     private func handlePrimaryAction() {
+        let subtitle: String
+
         switch actionMode {
         case .addToCollection:
             CollectionStore.shared.addSessionEntries([
                 SessionEntry(card: card)
             ])
+            subtitle = "Added to collection"
 
         case .addToSession:
             SessionStore.shared.addOrIncrement(card: card)
+            subtitle = "Added to session"
         }
 
         UINotificationFeedbackGenerator()
             .notificationOccurred(.success)
 
         updateActionButton()
+        showAddedToast(subtitle: subtitle)
+    }
+
+    private func showAddedToast(subtitle: String) {
+        addedToast?.removeFromSuperview()
+
+        let toast = UIView()
+        toast.backgroundColor = UIColor.systemGreen.withAlphaComponent(0.94)
+        toast.layer.cornerRadius = 14
+        toast.clipsToBounds = true
+        toast.translatesAutoresizingMaskIntoConstraints = false
+        toast.alpha = 0
+
+        let icon = UIImageView(image: UIImage(systemName: "checkmark.circle.fill"))
+        icon.tintColor = .white
+        icon.contentMode = .scaleAspectFit
+        icon.translatesAutoresizingMaskIntoConstraints = false
+
+        let nameLabel = UILabel()
+        nameLabel.text = card.name
+        nameLabel.font = .systemFont(ofSize: 15, weight: .semibold)
+        nameLabel.textColor = .white
+        nameLabel.numberOfLines = 1
+        nameLabel.lineBreakMode = .byTruncatingTail
+
+        let subLabel = UILabel()
+        subLabel.text = subtitle
+        subLabel.font = .systemFont(ofSize: 12)
+        subLabel.textColor = UIColor.white.withAlphaComponent(0.85)
+
+        let textStack = UIStackView(arrangedSubviews: [nameLabel, subLabel])
+        textStack.axis = .vertical
+        textStack.spacing = 2
+        textStack.translatesAutoresizingMaskIntoConstraints = false
+
+        let hStack = UIStackView(arrangedSubviews: [icon, textStack])
+        hStack.axis = .horizontal
+        hStack.spacing = 10
+        hStack.alignment = .center
+        hStack.translatesAutoresizingMaskIntoConstraints = false
+
+        toast.addSubview(hStack)
+        view.addSubview(toast)
+        addedToast = toast
+
+        NSLayoutConstraint.activate([
+            icon.widthAnchor.constraint(equalToConstant: 24),
+            icon.heightAnchor.constraint(equalToConstant: 24),
+
+            hStack.topAnchor.constraint(equalTo: toast.topAnchor, constant: 12),
+            hStack.bottomAnchor.constraint(equalTo: toast.bottomAnchor, constant: -12),
+            hStack.leadingAnchor.constraint(equalTo: toast.leadingAnchor, constant: 16),
+            hStack.trailingAnchor.constraint(equalTo: toast.trailingAnchor, constant: -16),
+
+            toast.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 12),
+            toast.leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: 16),
+            toast.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -16),
+            toast.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            toast.widthAnchor.constraint(lessThanOrEqualToConstant: 360)
+        ])
+
+        UIView.animate(withDuration: 0.25) {
+            toast.alpha = 1
+        }
+
+        UIView.animate(
+            withDuration: 0.25,
+            delay: 1.6,
+            options: .curveEaseIn
+        ) {
+            toast.alpha = 0
+        } completion: { [weak self, weak toast] _ in
+            guard self?.addedToast === toast else {
+                return
+            }
+
+            toast?.removeFromSuperview()
+            self?.addedToast = nil
+        }
     }
 
     // MARK: - Actions

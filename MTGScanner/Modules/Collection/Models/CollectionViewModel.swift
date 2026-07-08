@@ -16,7 +16,7 @@ import Combine
 struct CollectionCard: Identifiable {
 
     let entry: CollectionEntry
-    let card: MTGCard
+    let card: MTGCard?
 
     var id: UUID {
         entry.id
@@ -124,41 +124,72 @@ final class CollectionViewModel: ObservableObject {
         let savedEntries = CollectionStore.shared.entries
         entries = savedEntries
 
+        collectionCards = savedEntries.map {
+            CollectionCard(
+                entry: $0,
+                card: nil
+            )
+        }
+        applyFilters()
+
         let ids = savedEntries.map(\.cardID)
 
         loadTask = Task { [repository] in
 
             do {
 
-                let cards = try await Task.detached(
+                let cardsByEntryID = try await Task.detached(
                     priority: .userInitiated
                 ) {
-                    try repository.cards(
+                    let cards = try repository.cards(
                         ids: ids
                     )
+
+                    var cardsByID: [String: MTGCard] = [:]
+                    cardsByID.reserveCapacity(cards.count)
+
+                    for card in cards {
+                        cardsByID[card.id.lowercased()] = card
+                    }
+
+                    var resolvedCards: [UUID: MTGCard] = [:]
+                    resolvedCards.reserveCapacity(savedEntries.count)
+
+                    for entry in savedEntries {
+                        if let card = cardsByID[entry.cardID.lowercased()] {
+                            resolvedCards[entry.id] = card
+                            continue
+                        }
+
+                        guard
+                            !entry.name.isEmpty,
+                            !entry.setCode.isEmpty,
+                            !entry.collectorNumber.isEmpty,
+                            let card = try repository.card(
+                                name: entry.name,
+                                set: entry.setCode,
+                                collectorNumber: entry.collectorNumber
+                            )
+                        else {
+                            continue
+                        }
+
+                        cardsByID[entry.cardID.lowercased()] = card
+                        resolvedCards[entry.id] = card
+                    }
+
+                    return resolvedCards
                 }.value
 
                 guard !Task.isCancelled else {
                     return
                 }
 
-                let cardsByID = Dictionary(
-                    uniqueKeysWithValues: cards.map {
-                        ($0.id.lowercased(), $0)
-                    }
-                )
+                let joined = savedEntries.map { entry in
 
-                let joined = savedEntries.compactMap { entry -> CollectionCard? in
-
-                    guard let card = cardsByID[
-                        entry.cardID.lowercased()
-                    ] else {
-                        return nil
-                    }
-
-                    return CollectionCard(
+                    CollectionCard(
                         entry: entry,
-                        card: card
+                        card: cardsByEntryID[entry.id]
                     )
                 }
 
@@ -196,6 +227,12 @@ final class CollectionViewModel: ObservableObject {
         filter = newFilter
     }
 
+    func updateFoilsOnly(
+        _ showFoilsOnly: Bool
+    ) {
+        self.showFoilsOnly = showFoilsOnly
+    }
+
     func updateSort(
         _ option: CollectionSortOption
     ) {
@@ -220,8 +257,8 @@ final class CollectionViewModel: ObservableObject {
                 item.entry.setCode.lowercased().contains(query) ||
                 item.entry.setName.lowercased().contains(query) ||
                 item.entry.collectorNumber.lowercased().contains(query) ||
-                item.card.name.lowercased().contains(query) ||
-                item.card.typeLine.lowercased().contains(query)
+                item.card?.name.lowercased().contains(query) == true ||
+                item.card?.typeLine.lowercased().contains(query) == true
             }
         }
 
@@ -233,8 +270,12 @@ final class CollectionViewModel: ObservableObject {
 
         if filter.hasActiveFilters {
             cards = cards.filter {
-                CardFilterEngine.matches(
-                    $0.card,
+                guard let card = $0.card else {
+                    return false
+                }
+
+                return CardFilterEngine.matches(
+                    card,
                     filter: filter
                 )
             }
@@ -288,6 +329,10 @@ final class CollectionViewModel: ObservableObject {
     }
 
     // MARK: - Stats
+
+    var activeFilterCount: Int {
+        filter.activeFilterCount + (showFoilsOnly ? 1 : 0)
+    }
 
     var totalCards: Int {
         filteredEntries.reduce(0) {

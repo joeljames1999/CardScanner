@@ -65,22 +65,29 @@ extension CollectionViewController {
         let vc = CardFilterViewController()
 
         vc.currentFilter = viewModel.filter
+        vc.showsFoilFilter = true
+        vc.isFoilFilterSelected = viewModel.showFoilsOnly
 
         vc.onFilterChange = { [weak self] filter in
 
             self?.viewModel.updateFilter(filter)
         }
 
+        vc.onFoilFilterChange = { [weak self] showFoilsOnly in
+
+            self?.viewModel.updateFoilsOnly(showFoilsOnly)
+        }
+
         let nav = UINavigationController(rootViewController: vc)
 
         if let sheet = nav.sheetPresentationController {
 
-            nav.sheetPresentationController?.detents = [
+            sheet.detents = [
                 .medium(),
                 .large()
             ]
 
-            nav.sheetPresentationController?.prefersGrabberVisible = true
+            sheet.prefersGrabberVisible = true
         }
 
         present(nav, animated: true)

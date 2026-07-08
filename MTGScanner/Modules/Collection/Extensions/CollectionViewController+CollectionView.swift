@@ -43,7 +43,10 @@ UICollectionViewDelegate {
 
         let entry = viewModel.filteredEntries[indexPath.item]
 
-        cell.configure(with: entry)
+        cell.configure(
+            with: entry,
+            card: viewModel.card(for: entry)
+        )
 
         return cell
     }

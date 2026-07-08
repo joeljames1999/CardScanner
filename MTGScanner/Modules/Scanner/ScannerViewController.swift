@@ -13,6 +13,26 @@ final class ScannerViewController: UIViewController {
     private let viewModel     = ScannerViewModel()
     private var cancellables  = Set<AnyCancellable>()
     private var printingOverlay: PrintingSelectionOverlayView?
+    private var addCardOverlay: AddCardOverlayView?
+
+    private var isFastScanEnabled: Bool {
+        get { UserDefaults.standard.bool(forKey: Self.fastScanDefaultsKey) }
+        set { UserDefaults.standard.set(newValue, forKey: Self.fastScanDefaultsKey) }
+    }
+
+    private var baseLanguage: ScannerLanguage {
+        get {
+            ScannerLanguages.language(
+                for: UserDefaults.standard.string(forKey: Self.baseLanguageDefaultsKey)
+            )
+        }
+        set {
+            UserDefaults.standard.set(newValue.code, forKey: Self.baseLanguageDefaultsKey)
+        }
+    }
+
+    private static let fastScanDefaultsKey = "scanner.fastScanEnabled"
+    private static let baseLanguageDefaultsKey = "scanner.baseLanguage"
 
     // MARK: - UI
 
@@ -67,7 +87,7 @@ final class ScannerViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "MTG Scanner"
-        navigationItem.rightBarButtonItem = sessionButton
+        configureNavigationItems()
         setupLayout()
         setupCamera()
         bindViewModel()
@@ -88,6 +108,50 @@ final class ScannerViewController: UIViewController {
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         cameraService.previewLayer?.frame = cameraContainerView.bounds
+    }
+
+    // MARK: - Navigation
+
+    private func configureNavigationItems() {
+        navigationItem.rightBarButtonItems = [
+            sessionButton,
+            UIBarButtonItem(
+                image: UIImage(systemName: "gearshape"),
+                menu: makeSettingsMenu()
+            )
+        ]
+    }
+
+    private func makeSettingsMenu() -> UIMenu {
+        let fastScanAction = UIAction(
+            title: "Fast Scan",
+            image: UIImage(systemName: "bolt.fill"),
+            state: isFastScanEnabled ? .on : .off
+        ) { [weak self] _ in
+            guard let self else { return }
+            self.isFastScanEnabled.toggle()
+            self.configureNavigationItems()
+        }
+
+        let languageMenu = UIMenu(
+            title: "Base Language",
+            image: UIImage(systemName: "globe"),
+            children: ScannerLanguages.all.map { language in
+                UIAction(
+                    title: language.name,
+                    state: language.code == baseLanguage.code ? .on : .off
+                ) { [weak self] _ in
+                    guard let self else { return }
+                    self.baseLanguage = language
+                    self.configureNavigationItems()
+                }
+            }
+        )
+
+        return UIMenu(
+            title: "Scanner Settings",
+            children: [fastScanAction, languageMenu]
+        )
     }
 
     // MARK: - Layout
@@ -213,6 +277,7 @@ final class ScannerViewController: UIViewController {
             guard let self else { return }
 
             overlay.removeFromSuperview()
+            self.printingOverlay = nil
 
             self.overlayView.resetToScanning()
             self.ocrService.resetForNextScan()
@@ -243,8 +308,12 @@ final class ScannerViewController: UIViewController {
         card: MTGCard
     ) {
 
+        addCardOverlay?.removeFromSuperview()
+
         let overlay = AddCardOverlayView(
-            card: card
+            card: card,
+            availableLanguages: availableLanguages(for: card),
+            baseLanguage: baseLanguage
         )
 
         overlay.translatesAutoresizingMaskIntoConstraints = false
@@ -257,12 +326,14 @@ final class ScannerViewController: UIViewController {
                 card: card,
                 count: details.quantity,
                 isFoil: details.isFoil,
+                isAltered: details.isAltered,
                 language: details.language
             )
 
             SessionStore.shared.add(entry)
 
             overlay.removeFromSuperview()
+            self.addCardOverlay = nil
 
             self.showAddedToast(for: card)
 
@@ -276,6 +347,7 @@ final class ScannerViewController: UIViewController {
             guard let self else { return }
 
             overlay.removeFromSuperview()
+            self.addCardOverlay = nil
 
             self.overlayView.resetToScanning()
             self.ocrService.resetForNextScan()
@@ -283,6 +355,7 @@ final class ScannerViewController: UIViewController {
         }
 
         view.addSubview(overlay)
+        addCardOverlay = overlay
 
         NSLayoutConstraint.activate([
             overlay.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -290,6 +363,16 @@ final class ScannerViewController: UIViewController {
             overlay.topAnchor.constraint(equalTo: view.topAnchor),
             overlay.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
+    }
+
+    private func availableLanguages(for card: MTGCard) -> [ScannerLanguage] {
+        let codes = (try? AppDatabase.shared.cards.languages(
+            name: card.name,
+            set: card.set,
+            collectorNumber: card.collectorNumber
+        )) ?? [card.language ?? "en"]
+
+        return ScannerLanguages.available(from: codes)
     }
 
     // MARK: - ViewModel Binding
@@ -315,9 +398,13 @@ final class ScannerViewController: UIViewController {
         case .found(let card):
 
             statusLabel.text = card.name
-            showAddCardOverlay(card: card)
-            
-            
+
+            if isFastScanEnabled {
+                autoAddScannedCard(card)
+            } else {
+                showAddCardOverlay(card: card)
+            }
+
         case .selectPrinting(let printings):
 
             print(
@@ -329,9 +416,14 @@ final class ScannerViewController: UIViewController {
                 cardName: printings.first?.name ?? ""
             )
 
-            showPrintingOverlay(
-                printings: printings
-            )
+            if isFastScanEnabled, let card = mostRecentPrinting(from: printings) {
+                statusLabel.text = card.name
+                autoAddScannedCard(card)
+            } else {
+                showPrintingOverlay(
+                    printings: printings
+                )
+            }
 
         case .error(let message):
             overlayView.resetToScanning()
@@ -341,6 +433,33 @@ final class ScannerViewController: UIViewController {
                 self?.ocrService.resetForNextScan()
             }
         }
+    }
+
+    // MARK: - Fast Scan
+
+    private func autoAddScannedCard(_ card: MTGCard) {
+        let languages = availableLanguages(for: card)
+        let language = languages.first {
+            $0.code == baseLanguage.code
+        } ?? languages.first ?? baseLanguage
+
+        SessionStore.shared.add(
+            SessionEntry(
+                card: card,
+                language: language.name
+            )
+        )
+
+        showAddedToast(for: card)
+        overlayView.resetToScanning()
+        ocrService.resetForNextScan()
+        viewModel.resetToScanning()
+    }
+
+    private func mostRecentPrinting(from printings: [MTGCard]) -> MTGCard? {
+        printings.max { lhs, rhs in
+            (lhs.releasedAt ?? "") < (rhs.releasedAt ?? "")
+        } ?? printings.first
     }
 
     // MARK: - Set Picker

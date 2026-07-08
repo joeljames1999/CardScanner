@@ -194,6 +194,37 @@ enum CardLookup {
         )
     }
 
+    // MARK: - Languages
+
+    static func languages(
+        name: String,
+        set: String,
+        collectorNumber: String,
+        database: Database
+    ) throws -> [String] {
+        let statement = try database.prepare(
+            CardQueries.languagesByPrinting
+        )
+
+        defer {
+            statement.finalize()
+        }
+
+        try statement.bind(name, at: 1)
+        try statement.bind(set, at: 2)
+        try statement.bind(collectorNumber, at: 3)
+
+        var languages: [String] = []
+
+        while statement.step() {
+            if let language = statement.string(at: 0), !language.isEmpty {
+                languages.append(language)
+            }
+        }
+
+        return languages.isEmpty ? ["en"] : languages
+    }
+
     // MARK: - All Printings
 
     static func allPrintings(

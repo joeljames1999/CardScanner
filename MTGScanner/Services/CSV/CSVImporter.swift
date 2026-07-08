@@ -125,6 +125,22 @@ final class CSVImporter {
                 "set code"
             ]).lowercased()
 
+            let setName = value([
+                "set name",
+                "set_name"
+            ])
+
+            let rarity = value([
+                "rarity"
+            ])
+
+            let imageURL = URL(string: value([
+                "image",
+                "image url",
+                "image_uri",
+                "imageuri"
+            ]))
+
             let collectorNumber = value([
                 "collector number",
                 "collector_number",
@@ -196,12 +212,12 @@ final class CSVImporter {
                 imported.append(
                     CollectionEntry(
                         count: quantity,
-                        cardID: UUID().uuidString,
+                        cardID: scryfallID.isEmpty ? UUID().uuidString : scryfallID,
                         name: name,
                         setCode: setCode,
-                        setName: setCode.uppercased(),
+                        setName: setName.isEmpty ? setCode.uppercased() : setName,
                         collectorNumber: collectorNumber,
-                        rarity: "unknown",
+                        rarity: rarity.isEmpty ? "unknown" : rarity.lowercased(),
                         condition: condition,
                         isFoil: isFoil,
                         isAltered: false,
@@ -210,7 +226,7 @@ final class CSVImporter {
                         usdPrice: purchasePrice.map {
                             String(format: "%.2f", $0)
                         },
-                        imageURL: nil
+                        imageURL: imageURL
                     )
                 )
             }
