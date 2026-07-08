@@ -352,7 +352,7 @@ final class PrintingCell: UITableViewCell {
         subtitleLabel.text = card.setName
         cardImageView.image = nil
 
-        guard let url = card.imageUris?.normal ?? card.imageUris?.artCrop else {
+        guard let url = card.displayImage ?? card.imageUris?.artCrop else {
             return
         }
 

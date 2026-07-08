@@ -58,7 +58,10 @@ UICollectionViewDelegate {
             return
         }
 
-        let vc = CardDetailViewController(card: card)
+        let vc = CardDetailViewController(
+            card: card,
+            actionMode: .addToCollection
+        )
 
         navigationController?.pushViewController(
             vc,

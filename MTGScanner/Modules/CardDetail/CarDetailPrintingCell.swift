@@ -1,5 +1,5 @@
 //
-//  CarDetailPrintingCell.swift
+//  CardDetailPrintingCell.swift
 //  TcgScanner
 //
 //  Created by Joel James on 04/07/2026.
@@ -82,7 +82,7 @@ final class CardDetailPrintingCell: UICollectionViewCell {
 
         imageView.image = nil
 
-        guard let url = card.imageUris?.normal else {
+        guard let url = card.displayImage else {
             return
         }
 

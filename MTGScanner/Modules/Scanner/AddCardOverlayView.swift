@@ -274,7 +274,7 @@ final class AddCardOverlayView: UIView {
 
         nameLabel.text = card.name
 
-        if let url = card.imageUris?.normal {
+        if let url = card.displayImage {
 
             Task {
 

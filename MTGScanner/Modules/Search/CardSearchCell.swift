@@ -87,7 +87,7 @@ final class CardSearchCell: UICollectionViewCell {
 
         nameLabel.text = card.name + " - " + card.set
 
-        guard let url = card.imageUris?.normal else {
+        guard let url = card.displayImage else {
             return
         }
 

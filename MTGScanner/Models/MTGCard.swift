@@ -33,10 +33,10 @@ struct MTGCard: Decodable {
     let illustrationID: String?
     let legalities: Legalities?
     let digital: Bool
-//    let cardFaces: [CardFace]?
+    let cardFaces: [CardFace]?
 
     
-    struct ImageUris: Decodable {
+    struct ImageUris: Codable {
         let small: URL?
         let normal: URL?
         let large: URL?
@@ -48,30 +48,30 @@ struct MTGCard: Decodable {
         }
     }
     
-//    struct CardFace: Decodable {
-//
-//        let name: String
-//        let manaCost: String?
-//        let typeLine: String?
-//        let oracleText: String?
-//
-//        let power: String?
-//        let toughness: String?
-//
-//        let imageUris: ImageUris?
-//
-//        enum CodingKeys: String, CodingKey {
-//            case name
-//            case power
-//            case toughness
-//
-//            case manaCost = "mana_cost"
-//            case typeLine = "type_line"
-//            case oracleText = "oracle_text"
-//
-//            case imageUris = "image_uris"
-//        }
-//    }
+    struct CardFace: Codable {
+
+        let name: String
+        let manaCost: String?
+        let typeLine: String?
+        let oracleText: String?
+
+        let power: String?
+        let toughness: String?
+
+        let imageUris: ImageUris?
+
+        enum CodingKeys: String, CodingKey {
+            case name
+            case power
+            case toughness
+
+            case manaCost = "mana_cost"
+            case typeLine = "type_line"
+            case oracleText = "oracle_text"
+
+            case imageUris = "image_uris"
+        }
+    }
 
 
     struct Prices: Decodable {
@@ -116,38 +116,46 @@ struct MTGCard: Decodable {
         case illustrationID = "illustration_id"
         case legalities
         case digital
-//        case cardFaces = "card_faces"
+        case cardFaces = "card_faces"
     }
 }
 
 extension MTGCard {
 
-//    var hasMultipleFaces: Bool {
-//        (cardFaces?.count ?? 0) > 1
-//    }
-//
-//    var frontFace: CardFace? {
-//        cardFaces?.first
-//    }
-//
-//    var backFace: CardFace? {
-//
-//        guard
-//            let faces = cardFaces,
-//            faces.count > 1
-//        else {
-//            return nil
-//        }
-//
-//        return faces[1]
-//    }
+    var hasMultipleFaces: Bool {
+        (cardFaces?.count ?? 0) > 1
+    }
 
-//    var displayImage: URL? {
-//
-//        if let image = imageUris?.normal {
-//            return image
-//        }
-//
-//        return frontFace?.imageUris?.normal
-//    }
+    var frontFace: CardFace? {
+        cardFaces?.first
+    }
+
+    var backFace: CardFace? {
+
+        guard
+            let faces = cardFaces,
+            faces.count > 1
+        else {
+            return nil
+        }
+
+        return faces[1]
+    }
+
+    var displayImage: URL? {
+
+        if let image = imageUris?.normal {
+            return image
+        }
+
+        return frontFace?.imageUris?.normal
+    }
+
+    func face(at index: Int) -> CardFace? {
+        guard let cardFaces, cardFaces.indices.contains(index) else {
+            return nil
+        }
+
+        return cardFaces[index]
+    }
 }

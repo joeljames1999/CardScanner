@@ -123,7 +123,7 @@ final class SetPickerViewController: UIViewController {
         subtitleLabel.text = "\(printings.count) printing\(printings.count == 1 ? "" : "s") available"
 
         // Load art crop from the first (most recent) printing
-        let artURL = printings.first?.imageUris?.artCrop ?? printings.first?.imageUris?.normal
+        let artURL = printings.first?.imageUris?.artCrop ?? printings.first?.displayImage
         if let url = artURL {
             Task {
                 if let (data, _) = try? await URLSession.shared.data(from: url),
@@ -272,7 +272,7 @@ final class SetPickerPrintingCell: UITableViewCell {
         rarityDot.backgroundColor     = rarityColour(card.rarity)
         cardImageView.image           = nil
 
-        if let url = card.imageUris?.normal {
+        if let url = card.displayImage {
             Task {
                 if let (data, _) = try? await URLSession.shared.data(from: url),
                    let img = UIImage(data: data) {

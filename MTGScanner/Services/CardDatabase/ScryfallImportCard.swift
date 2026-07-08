@@ -26,6 +26,7 @@ struct ScryfallImportCard: Decodable {
     let imageUriArtCrop: String?
     let legalitiesJSON: String?
     let digital: Bool?
+    let cardFacesJSON: String?
 
     enum CodingKeys: String, CodingKey {
         case id, name, cmc, artist, rarity, layout, power, toughness, legalities, digital
@@ -42,6 +43,7 @@ struct ScryfallImportCard: Decodable {
         case imageUris = "image_uris"
         case colors
         case colorIdentity = "color_identity"
+        case cardFaces = "card_faces"
     }
 
     init(from decoder: Decoder) throws {
@@ -94,6 +96,13 @@ struct ScryfallImportCard: Decodable {
         } else {
             self.imageUriNormal = nil
             self.imageUriArtCrop = nil
+        }
+
+        if let faces = try container.decodeIfPresent([MTGCard.CardFace].self, forKey: .cardFaces),
+           let data = try? JSONEncoder().encode(faces) {
+            self.cardFacesJSON = String(data: data, encoding: .utf8)
+        } else {
+            self.cardFacesJSON = nil
         }
     }
 }

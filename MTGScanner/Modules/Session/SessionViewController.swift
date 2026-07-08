@@ -11,6 +11,7 @@ final class SessionViewController: UIViewController {
     private let store = SessionStore.shared
     var onCommit: (() -> Void)?
     private var searchResults: [MTGCard] = []
+    private var searchTask: Task<Void, Never>?
     private var isSearching: Bool {
         !(searchField.text?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
     }
@@ -82,6 +83,10 @@ final class SessionViewController: UIViewController {
 
     // MARK: Lifecycle
 
+    deinit {
+        searchTask?.cancel()
+    }
+
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "Session"
@@ -148,10 +153,21 @@ final class SessionViewController: UIViewController {
 
     private func reload() {
         let entries = store.entries
-        emptyStateLabel.isHidden = !entries.isEmpty || !(searchField.text?.isEmpty ?? true)
-        clearButton.isEnabled    = !entries.isEmpty
-        commitButton.isEnabled   = !entries.isEmpty
-        summaryLabel.text        = entries.isEmpty ? "No cards" : "\(store.totalCards) card\(store.totalCards == 1 ? "" : "s")"
+
+        emptyStateLabel.isHidden = !entries.isEmpty || isSearching
+        clearButton.isEnabled = !entries.isEmpty
+        commitButton.isEnabled = !entries.isEmpty
+
+        if isSearching {
+            summaryLabel.text = searchResults.isEmpty
+                ? "No matches"
+                : "\(searchResults.count) match\(searchResults.count == 1 ? "" : "es")"
+        } else {
+            summaryLabel.text = entries.isEmpty
+                ? "No cards"
+                : "\(store.totalCards) card\(store.totalCards == 1 ? "" : "s")"
+        }
+
         tableView.reloadData()
     }
 
@@ -183,6 +199,8 @@ final class SessionViewController: UIViewController {
     
     private func performSearch(_ text: String) {
 
+        searchTask?.cancel()
+
         let trimmed = text.trimmingCharacters(
             in: .whitespacesAndNewlines
         )
@@ -193,18 +211,28 @@ final class SessionViewController: UIViewController {
             return
         }
 
-        let start = CFAbsoluteTimeGetCurrent()
+        let repository = AppDatabase.shared.cards
+        searchTask = Task { [weak self, repository] in
+            try? await Task.sleep(nanoseconds: 180_000_000)
 
-        let results = (try? AppDatabase.shared.cards.search(
-            query: text,
-            filter: SearchFilter()
-        )) ?? []
+            guard !Task.isCancelled else {
+                return
+            }
 
-        print("Search took \(CFAbsoluteTimeGetCurrent() - start)s")
-        
+            let results = await Task.detached(priority: .userInitiated) {
+                (try? repository.search(
+                    query: trimmed,
+                    filter: SearchFilter()
+                )) ?? []
+            }.value
 
-        tableView.reloadData()
-        reload()
+            guard !Task.isCancelled else {
+                return
+            }
+
+            self?.searchResults = results
+            self?.reload()
+        }
     }
 
     @objc private func clearTapped() {
@@ -297,6 +325,10 @@ extension SessionViewController: UITableViewDataSource {
     }
 
     func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
+        guard !isSearching else {
+            return
+        }
+
         if editingStyle == .delete {
             let entry = store.entries[indexPath.row]
             store.remove(id: entry.id)

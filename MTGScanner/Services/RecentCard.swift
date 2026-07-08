@@ -17,6 +17,6 @@ struct RecentCard: Codable, Identifiable {
         self.id = card.id
         self.name = card.name
         self.setName = card.setName
-        self.imageURL = card.imageUris?.normal
+        self.imageURL = card.displayImage
     }
 }

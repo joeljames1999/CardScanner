@@ -47,7 +47,7 @@ struct CollectionEntry: Codable, Identifiable {
         self.language = language
         self.purchasePrice = card.prices?.usd.flatMap(Double.init)
         self.usdPrice = card.prices?.usd
-        self.imageURL = card.imageUris?.normal
+        self.imageURL = card.displayImage
         self.dateAdded = Date()
     }
     

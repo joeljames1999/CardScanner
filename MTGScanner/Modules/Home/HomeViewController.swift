@@ -47,6 +47,13 @@ final class HomeViewController: UIViewController {
         accentColor: UIColor.accentColor
     )
 
+    private lazy var lifeCounterCard = ActionCardView(
+        title: "Life Counter",
+        subtitle: "Track multiplayer games",
+        symbol: "heart.text.square",
+        accentColor: UIColor.systemRed
+    )
+
     private let recentTitleLabel: UILabel = {
         let label = UILabel()
         label.text = "Recently Viewed"
@@ -156,6 +163,7 @@ final class HomeViewController: UIViewController {
             subtitleLabel,
             scanCard,
             searchCard,
+            lifeCounterCard,
             recentTitleLabel,
             recentCollectionView
         ].forEach {
@@ -257,9 +265,26 @@ final class HomeViewController: UIViewController {
             searchCard.heightAnchor.constraint(
                 equalToConstant: 150
             ),
+
+            lifeCounterCard.topAnchor.constraint(
+                equalTo: searchCard.bottomAnchor,
+                constant: 16
+            ),
+
+            lifeCounterCard.leadingAnchor.constraint(
+                equalTo: searchCard.leadingAnchor
+            ),
+
+            lifeCounterCard.trailingAnchor.constraint(
+                equalTo: searchCard.trailingAnchor
+            ),
+
+            lifeCounterCard.heightAnchor.constraint(
+                equalToConstant: 150
+            ),
             
             recentTitleLabel.topAnchor.constraint(
-                equalTo: searchCard.bottomAnchor,
+                equalTo: lifeCounterCard.bottomAnchor,
                 constant: 44
             ),
 
@@ -333,6 +358,12 @@ final class HomeViewController: UIViewController {
             action: #selector(searchTapped),
             for: .touchUpInside
         )
+
+        lifeCounterCard.addTarget(
+            self,
+            action: #selector(lifeCounterTapped),
+            for: .touchUpInside
+        )
     }
 
     // MARK: - Helpers
@@ -388,6 +419,13 @@ final class HomeViewController: UIViewController {
 
         tabBarController?.selectedIndex = 1
     }
+
+    @objc private func lifeCounterTapped() {
+        navigationController?.pushViewController(
+            LifeCounterViewController(),
+            animated: true
+        )
+    }
 }
 
 extension HomeViewController:
@@ -441,7 +479,8 @@ UICollectionViewDelegateFlowLayout {
         }
 
         let vc = CardDetailViewController(
-            card: card
+            card: card,
+            actionMode: .addToCollection
         )
 
         navigationController?.pushViewController(

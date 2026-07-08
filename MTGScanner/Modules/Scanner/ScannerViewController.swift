@@ -167,7 +167,9 @@ final class ScannerViewController: UIViewController {
 
             Task { @MainActor in
                 self.viewModel.processCardImage(
-                    cardImage                )
+                    cardImage,
+                    ocrResult: result
+                )
             }
         }
 

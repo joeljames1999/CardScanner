@@ -60,7 +60,8 @@ enum CardRowMapper {
             illustrationID: text(statement, Column.illustrationID),
 
             legalities: legalities,
-            digital: bool(statement, Column.digital)
+            digital: bool(statement, Column.digital),
+            cardFaces: makeCardFaces(statement)
         )
     }
 
@@ -102,6 +103,7 @@ private extension CardRowMapper {
         static let illustrationID = 22
         static let legalities = 23
         static let digital = 24
+        static let cardFacesJSON = 25
     }
 }
 
@@ -173,6 +175,23 @@ private extension CardRowMapper {
 
         return try? JSONDecoder().decode(
             Legalities.self,
+            from: data
+        )
+    }
+
+    static func makeCardFaces(
+        _ statement: SQLiteStatement
+    ) -> [MTGCard.CardFace]? {
+
+        guard
+            let json = text(statement, Column.cardFacesJSON),
+            let data = json.data(using: .utf8)
+        else {
+            return nil
+        }
+
+        return try? JSONDecoder().decode(
+            [MTGCard.CardFace].self,
             from: data
         )
     }

@@ -208,14 +208,16 @@ extension CardQueries {
         set_type,
         illustration_id,
         legalities,
-        digital
+        digital,
+        card_faces_json
     )
     VALUES
     (
         ?,?,?,?,?,?,
         ?,?,?,?,?,?,
         ?,?,?,?,?,?,
-        ?,?,?,?,?,?,?
+        ?,?,?,?,?,?,
+        ?,?
     );
     """
 
@@ -291,7 +293,8 @@ extension CardQueries {
 
         illustration_id TEXT,
         legalities TEXT,
-        digital TEXT
+        digital TEXT,
+        card_faces_json TEXT
     );
     """
 

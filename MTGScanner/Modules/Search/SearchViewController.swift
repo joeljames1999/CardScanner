@@ -369,7 +369,8 @@ UICollectionViewDelegate {
         let card = viewModel.results[indexPath.item]
 
         let vc = CardDetailViewController(
-            card: card
+            card: card,
+            actionMode: .addToCollection
         )
 
         navigationController?.pushViewController(

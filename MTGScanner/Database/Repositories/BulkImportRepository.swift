@@ -42,6 +42,7 @@ final class AppDatabase {
 
         do {
             try database.open()
+            try? database.execute("ALTER TABLE cards ADD COLUMN card_faces_json TEXT;")
         } catch {
             print("[AppDatabase] Failed to open:", error)
         }
@@ -206,14 +207,16 @@ enum BulkImportQueries {
         set_type,
         illustration_id,
         legalities,
-        digital
+        digital,
+        card_faces_json
     )
     VALUES
     (
         ?,?,?,?,?,?,
         ?,?,?,?,?,?,
         ?,?,?,?,?,?,
-        ?,?,?,?,?,?,?
+        ?,?,?,?,?,?,
+        ?,?
     );
     """
 
@@ -477,6 +480,7 @@ private extension BulkImportRepository {
         }
 
         try statement.bind(digitalValue, at: 25)
+        try statement.bind(card.cardFacesJSON, at: 26)
 
         try statement.execute()
 

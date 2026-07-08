@@ -2,9 +2,17 @@ import UIKit
 
 final class CardDetailViewController: UIViewController {
 
+    enum ActionMode {
+        case addToCollection
+        case addToSession
+    }
+
     // MARK: - Properties
 
     private let card: MTGCard
+    private let actionMode: ActionMode
+    private var currentFaceIndex = 0
+    private var imageLoadTask: Task<Void, Never>?
     var onDismiss: (() -> Void)?
 
     // MARK: - UI
@@ -19,6 +27,8 @@ final class CardDetailViewController: UIViewController {
         return stack
     }()
 
+    private let cardImageContainer = UIView()
+
     private let cardImageView: UIImageView = {
         let iv = UIImageView()
         iv.translatesAutoresizingMaskIntoConstraints = false
@@ -26,6 +36,31 @@ final class CardDetailViewController: UIViewController {
         iv.backgroundColor = .secondarySystemBackground
         iv.clipsToBounds = true
         return iv
+    }()
+
+    private lazy var flipFaceButton: UIButton = {
+        var config = UIButton.Configuration.filled()
+        config.image = UIImage(systemName: "arrow.triangle.2.circlepath")
+        config.baseBackgroundColor = UIColor.black.withAlphaComponent(0.65)
+        config.baseForegroundColor = .white
+        config.cornerStyle = .capsule
+        config.contentInsets = NSDirectionalEdgeInsets(
+            top: 8,
+            leading: 8,
+            bottom: 8,
+            trailing: 8
+        )
+
+        let button = UIButton(configuration: config)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.addTarget(
+            self,
+            action: #selector(flipCardFace),
+            for: .touchUpInside
+        )
+        button.accessibilityLabel = "Flip card face"
+        button.isHidden = true
+        return button
     }()
 
     private let nameLabel: UILabel = {
@@ -116,14 +151,14 @@ final class CardDetailViewController: UIViewController {
         config.cornerStyle = .capsule
         config.image = UIImage(systemName: "plus.circle.fill")
         config.imagePadding = 8
-
+        config.baseBackgroundColor = .brandBlue
         let button = UIButton(configuration: config)
 
         button.translatesAutoresizingMaskIntoConstraints = false
 
         button.addTarget(
             self,
-            action: #selector(addToSession),
+            action: #selector(handlePrimaryAction),
             for: .touchUpInside
         )
 
@@ -179,8 +214,12 @@ final class CardDetailViewController: UIViewController {
     
     // MARK: - Init
 
-    init(card: MTGCard) {
+    init(
+        card: MTGCard,
+        actionMode: ActionMode = .addToSession
+    ) {
         self.card = card
+        self.actionMode = actionMode
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -206,10 +245,10 @@ final class CardDetailViewController: UIViewController {
         RecentlyViewedStore.shared.add(card: card)
         
         setupLayout()
+        setupKeyboardDismissal()
         populateData()
-        loadImage()
         loadPrintings()
-        updateSessionButton()
+        updateActionButton()
 
         loadRulings()
     }
@@ -229,8 +268,12 @@ final class CardDetailViewController: UIViewController {
         let paddedContent = UIView()
         paddedContent.translatesAutoresizingMaskIntoConstraints = false
 
+        cardImageContainer.translatesAutoresizingMaskIntoConstraints = false
+        cardImageContainer.addSubview(cardImageView)
+        cardImageContainer.addSubview(flipFaceButton)
+
         // Add arranged subviews BEFORE activating constraints
-        contentStack.addArrangedSubview(cardImageView)
+        contentStack.addArrangedSubview(cardImageContainer)
         contentStack.addArrangedSubview(paddedContent)
 
         NSLayoutConstraint.activate([
@@ -272,9 +315,25 @@ final class CardDetailViewController: UIViewController {
                 equalTo: scrollView.frameLayoutGuide.widthAnchor
             ),
 
+            cardImageView.topAnchor.constraint(equalTo: cardImageContainer.topAnchor),
+            cardImageView.leadingAnchor.constraint(equalTo: cardImageContainer.leadingAnchor),
+            cardImageView.trailingAnchor.constraint(equalTo: cardImageContainer.trailingAnchor),
+            cardImageView.bottomAnchor.constraint(equalTo: cardImageContainer.bottomAnchor),
+
+            flipFaceButton.trailingAnchor.constraint(
+                equalTo: cardImageContainer.trailingAnchor,
+                constant: -16
+            ),
+            flipFaceButton.bottomAnchor.constraint(
+                equalTo: cardImageContainer.bottomAnchor,
+                constant: -16
+            ),
+            flipFaceButton.widthAnchor.constraint(equalToConstant: 44),
+            flipFaceButton.heightAnchor.constraint(equalToConstant: 44),
+
             // MTG card aspect ratio (63 × 88 mm) 66% aspect ratio
-            cardImageView.heightAnchor.constraint(
-                equalTo: cardImageView.widthAnchor,
+            cardImageContainer.heightAnchor.constraint(
+                equalTo: cardImageContainer.widthAnchor,
                 multiplier: 58.08 / 41.58
             ),
 
@@ -357,6 +416,19 @@ final class CardDetailViewController: UIViewController {
         ])
     }
 
+    private func setupKeyboardDismissal() {
+        let tapGesture = UITapGestureRecognizer(
+            target: self,
+            action: #selector(dismissKeyboard)
+        )
+        tapGesture.cancelsTouchesInView = false
+        view.addGestureRecognizer(tapGesture)
+    }
+
+    @objc private func dismissKeyboard() {
+        view.endEditing(true)
+    }
+
     // MARK: - Data
 
     private func convertManaCost(_ manaCost: String?) -> String? {
@@ -369,10 +441,7 @@ final class CardDetailViewController: UIViewController {
     }
     
     private func populateData() {
-    
-        nameLabel.text = card.name
-        manaCostLabel.text = convertManaCost(card.manaCost) ??  card.manaCost
-        typeLabel.text = card.typeLine
+        updateDisplayedFace(animated: false)
 
         infoLabel.text =
         """
@@ -385,33 +454,75 @@ final class CardDetailViewController: UIViewController {
         Price: \(card.prices?.usd.map { "$\($0)" } ?? "Unavailable")
         """
 
+        rulingsLabel.text = "Loading rulings..."
+    }
+
+    private func updateDisplayedFace(animated: Bool) {
+        let face = card.face(at: currentFaceIndex)
+
+        nameLabel.text = face?.name ?? card.name
+        manaCostLabel.text = convertManaCost(face?.manaCost ?? card.manaCost) ?? face?.manaCost ?? card.manaCost
+        typeLabel.text = face?.typeLine ?? card.typeLine
+
         oracleLabel.text =
-        card.oracleText?.isEmpty == false
+        face?.oracleText?.isEmpty == false
+        ? face?.oracleText
+        : card.oracleText?.isEmpty == false
         ? card.oracleText
         : "No Oracle text available."
 
-        rulingsLabel.text = "Loading rulings..."
+        flipFaceButton.isHidden = !card.hasMultipleFaces
+        loadImage(
+            from: face?.imageUris?.normal ?? card.displayImage,
+            animated: animated
+        )
     }
 
     // MARK: - Image
 
-    private func loadImage() {
+    private func loadImage(
+        from url: URL?,
+        animated: Bool = false
+    ) {
 
-        guard let url = card.imageUris?.normal else {
+        imageLoadTask?.cancel()
+        cardImageView.image = nil
+
+        guard let url else {
             return
         }
 
-        Task {
+        imageLoadTask = Task { [weak self] in
 
             guard
                 let (data, _) = try? await URLSession.shared.data(from: url),
+                !Task.isCancelled,
                 let image = UIImage(data: data)
             else {
                 return
             }
 
             await MainActor.run {
-                self.cardImageView.image = image
+                guard !Task.isCancelled else {
+                    return
+                }
+
+                let updateImage: () -> Void = {
+                    self?.cardImageView.image = image
+                }
+
+                if animated, let imageView = self?.cardImageView {
+                    UIView.transition(
+                        with: imageView,
+                        duration: 0.25,
+                        options: .transitionFlipFromRight,
+                        animations: updateImage
+                    )
+                } else {
+                    updateImage()
+                }
+
+                self?.imageLoadTask = nil
             }
         }
     }
@@ -474,42 +585,64 @@ final class CardDetailViewController: UIViewController {
         "Rulings support can be added via the Scryfall rulings endpoint."
     }
 
-    // MARK: - Session
+    // MARK: - Primary Action
 
-    private func updateSessionButton() {
-
-        let count =
-        SessionStore.shared.entries
-            .first(where: { $0.card.id == card.id })?
-            .count ?? 0
-
+    private func updateActionButton() {
         var config = addToSessionButton.configuration
 
-        config?.title =
-            count > 0
-            ? "Add Another"
-            : "Add to session"
+        switch actionMode {
+        case .addToCollection:
+            let count = CollectionStore.shared.entries
+                .filter { $0.cardID == card.id }
+                .reduce(0) { $0 + $1.count }
+
+            config?.title = count > 0 ? "Add Another" : "Add to collection"
+            config?.image = UIImage(systemName: "rectangle.stack.badge.plus")
+            sessionStatusLabel.text = count > 0 ? "×\(count) currently in collection" : nil
+
+        case .addToSession:
+            let count = SessionStore.shared.entries
+                .first(where: { $0.card.id == card.id })?
+                .count ?? 0
+
+            config?.title = count > 0 ? "Add Another" : "Add to session"
+            config?.image = UIImage(systemName: "plus.circle.fill")
+            sessionStatusLabel.text = count > 0 ? "×\(count) currently in session" : nil
+        }
 
         addToSessionButton.configuration = config
-
-        sessionStatusLabel.text =
-            count > 0
-            ? "×\(count) currently in session"
-            : nil
     }
 
     @objc
-    private func addToSession() {
+    private func handlePrimaryAction() {
+        switch actionMode {
+        case .addToCollection:
+            CollectionStore.shared.addSessionEntries([
+                SessionEntry(card: card)
+            ])
 
-        SessionStore.shared.addOrIncrement(card: card)
+        case .addToSession:
+            SessionStore.shared.addOrIncrement(card: card)
+        }
 
         UINotificationFeedbackGenerator()
             .notificationOccurred(.success)
 
-        updateSessionButton()
+        updateActionButton()
     }
 
     // MARK: - Actions
+
+    @objc
+    private func flipCardFace() {
+        guard card.hasMultipleFaces else {
+            return
+        }
+
+        let faceCount = card.cardFaces?.count ?? 1
+        currentFaceIndex = (currentFaceIndex + 1) % faceCount
+        updateDisplayedFace(animated: true)
+    }
 
     @objc
     private func openScryfall() {
@@ -587,7 +720,8 @@ UICollectionViewDelegate {
         let selectedCard = printings[indexPath.item]
 
         let vc = CardDetailViewController(
-            card: selectedCard
+            card: selectedCard,
+            actionMode: actionMode
         )
 
         navigationController?.pushViewController(
