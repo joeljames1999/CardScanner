@@ -195,17 +195,13 @@ final class SessionViewController: UIViewController {
 
         let start = CFAbsoluteTimeGetCurrent()
 
-        let results = CardDatabaseService.shared.searchCards(
+        let results = (try? AppDatabase.shared.cards.search(
             query: text,
             filter: SearchFilter()
-        )
+        )) ?? []
 
         print("Search took \(CFAbsoluteTimeGetCurrent() - start)s")
         
-//        searchResults = CardDatabaseService.shared.searchCards(
-//            query: trimmed,
-//            filter: SearchFilter()
-//        )
 
         tableView.reloadData()
         reload()

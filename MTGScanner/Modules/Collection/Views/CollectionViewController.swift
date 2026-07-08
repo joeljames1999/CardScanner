@@ -120,7 +120,7 @@ private extension CollectionViewController {
                 guard let self else { return }
 
                 collectionView.reloadData()
-                emptyStateView.isHidden = viewModel.totalCards == 0
+                emptyStateView.isHidden = !(viewModel.totalCards == 0)
 
                 dashboardView.configure(
                     cards: viewModel.totalCards,

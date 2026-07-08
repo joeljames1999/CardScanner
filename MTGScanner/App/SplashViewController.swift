@@ -21,6 +21,7 @@ final class SplashViewController: UIViewController {
     }()
 
     private var laserTopConstraint: NSLayoutConstraint!
+    private var hasFinishedLaunching = false
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -28,17 +29,22 @@ final class SplashViewController: UIViewController {
         setupLayout()
         animateLaser()
 
-        DispatchQueue.global(qos: .userInitiated).async {
+        Task {
+            await ScryfallBulkService.shared.refreshIfNeeded()
 
-            CardDatabaseService.shared.openDatabase()
-
-            DispatchQueue.main.async {
+            await MainActor.run {
                 self.finishLaunching()
             }
         }
     }
     
     private func finishLaunching() {
+
+        guard !hasFinishedLaunching else {
+            return
+        }
+
+        hasFinishedLaunching = true
 
         UIView.animate(withDuration: 0.25) {
             self.view.alpha = 0
@@ -104,27 +110,7 @@ final class SplashViewController: UIViewController {
         )
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-
-            UIView.animate(withDuration: 0.25) {
-
-                self.view.alpha = 0
-
-            } completion: { _ in
-
-                let mainVC = MainTabBarController()
-
-                guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                      let window = windowScene.windows.first
-                else { return }
-
-                window.rootViewController = mainVC
-
-                UIView.transition(
-                    with: window,
-                    duration: 0.3,
-                    options: .transitionCrossDissolve, animations: .none
-                )
-            }
+            self.finishLaunching()
         }
     }
 }

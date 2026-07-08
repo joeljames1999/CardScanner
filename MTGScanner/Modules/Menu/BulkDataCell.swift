@@ -64,16 +64,13 @@ final class BulkDataCell: UITableViewCell {
     
     func configure() {
         
-        let cardCount =
-        CardDatabaseService.shared.cardCount()
-        
-        let featureCount =
-        CardDatabaseService.shared.featurePrintCount()
+        let cardCount = (try? AppDatabase.shared.bulkImport.countCards()) ?? 0
+        let featurePrintCount = (try? AppDatabase.shared.featurePrints.count()) ?? 0
         
         titleLabel.text = "Settings"
         
         detailLabel.text =
-        "\(featureCount.formatted()) vision features"
+        "\(featurePrintCount.formatted()) vision features"
         
         statusBadge.text = "\(cardCount.formatted())"
         statusBadge.backgroundColor = .systemBlue

@@ -6,6 +6,11 @@ final class VisionFeaturePrintService {
     static let shared = VisionFeaturePrintService()
     private init() {}
 
+    private struct CachedFeaturePrints {
+        let cropped: VNFeaturePrintObservation?
+        let full: VNFeaturePrintObservation?
+    }
+
     func generateFeaturePrint(from image: UIImage) async -> VNFeaturePrintObservation? {
         guard let cgImage = image.cgImage else { return nil }
 
@@ -41,8 +46,27 @@ final class VisionFeaturePrintService {
             return candidates.first
         }
 
-        let candidateIds = candidates.map { $0.id }
-        let cachedPrints = CardDatabaseService.shared.fetchDualFeaturePrints(for: candidateIds)
+        let cachedPrints = Dictionary(
+            uniqueKeysWithValues: candidates.compactMap { card -> (String, CachedFeaturePrints)? in
+                guard let record = try? AppDatabase.shared.featurePrints.featurePrint(for: card.id) else {
+                    return nil
+                }
+
+                let croppedData = record.croppedFeaturePrint ?? record.featurePrint
+                let fullData = record.fullFeaturePrint ?? record.featurePrint
+
+                let cachedPrints = CachedFeaturePrints(
+                    cropped: croppedData.flatMap { try? unarchiveFeaturePrint(from: $0) },
+                    full: fullData.flatMap { try? unarchiveFeaturePrint(from: $0) }
+                )
+
+                guard cachedPrints.cropped != nil || cachedPrints.full != nil else {
+                    return nil
+                }
+
+                return (card.id, cachedPrints)
+            }
+        )
 
         // 2. Concurrently evaluate candidates across multiple CPU cores
         let scoredCandidates: [(card: MTGCard, distance: Float)] = await withTaskGroup(of: (MTGCard, Float)?.self) { group in
@@ -91,15 +115,26 @@ final class VisionFeaturePrintService {
         
         do {
             let (data, _) = try await URLSession.shared.data(from: url)
-            guard let image = UIImage(data: data)?.artworkCrop()?.normalizedLandscape(),
-                  let observation = await generateFeaturePrint(from: image) else {
+
+            guard
+                let image = UIImage(data: data),
+                let observation = await generateFeaturePrint(from: image)
+            else {
                 return nil
             }
-            
-            // Save to SQLite asynchronously so next frame evaluations are instant
-            CardDatabaseService.shared.saveFeaturePrint(cardId: card.id, observation: observation)
+
+            let archived = try archiveFeaturePrint(observation)
+
+            try AppDatabase.shared.featurePrints.save(
+                cardID: card.id,
+                featurePrint: archived,
+                croppedFeaturePrint: nil,
+                fullFeaturePrint: nil
+            )
+
             return observation
         } catch {
+            print("[Vision] Failed saving feature print for \(card.name):", error)
             return nil
         }
     }
@@ -108,21 +143,86 @@ final class VisionFeaturePrintService {
         sourceCard: MTGCard,
         candidates: [MTGCard]
     ) async -> [MTGCard] {
-        let candidateIds = candidates.map { $0.id }
-        let cachedPrints = CardDatabaseService.shared.fetchFeaturePrints(for: candidateIds + [sourceCard.id])
-        
-        guard let sourcePrint = cachedPrints[sourceCard.id] else { return [sourceCard] }
+
+        let ids = candidates.map(\.id) + [sourceCard.id]
+
+        let cachedPrints = Dictionary(
+            uniqueKeysWithValues: ids.compactMap { id -> (String, VNFeaturePrintObservation)? in
+
+                guard
+                    let record = try? AppDatabase.shared.featurePrints.featurePrint(for: id),
+                    let data = record.featurePrint,
+                    let observation = try? unarchiveFeaturePrint(from: data)
+                else {
+                    return nil
+                }
+
+                return (id, observation)
+            }
+        )
+
+        guard let sourcePrint = cachedPrints[sourceCard.id] else {
+            return [sourceCard]
+        }
+
         var matches: [MTGCard] = []
 
         for card in candidates {
-            guard let candidatePrint = cachedPrints[card.id] else { continue }
-            var distance: Float = 0
-            try? sourcePrint.computeDistance(&distance, to: candidatePrint)
 
-            if distance < 0.08 {
-                matches.append(card)
+            guard let candidatePrint = cachedPrints[card.id] else {
+                continue
+            }
+
+            var distance: Float = 0
+
+            do {
+                try sourcePrint.computeDistance(
+                    &distance,
+                    to: candidatePrint
+                )
+
+                if distance < 0.08 {
+                    matches.append(card)
+                }
+
+            } catch {
+                print("[Vision] Failed comparing \(sourceCard.name) to \(card.name):", error)
             }
         }
-        return matches
+
+        return matches.isEmpty ? [sourceCard] : matches
     }
+    
+    private func archiveFeaturePrint(
+        _ observation: VNFeaturePrintObservation
+    ) throws -> Data {
+
+        try NSKeyedArchiver.archivedData(
+            withRootObject: observation,
+            requiringSecureCoding: true
+        )
+    }
+    
+    private func unarchiveFeaturePrint(
+        from data: Data
+    ) throws -> VNFeaturePrintObservation {
+
+        guard
+            let observation = try NSKeyedUnarchiver.unarchivedObject(
+                ofClass: VNFeaturePrintObservation.self,
+                from: data
+            )
+        else {
+            throw NSError(
+                domain: "VisionFeaturePrintService",
+                code: 1,
+                userInfo: [
+                    NSLocalizedDescriptionKey: "Could not unarchive VNFeaturePrintObservation"
+                ]
+            )
+        }
+
+        return observation
+    }
+    
 }

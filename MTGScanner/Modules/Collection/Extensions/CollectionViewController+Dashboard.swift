@@ -14,7 +14,7 @@ extension CollectionViewController {
 
         dashboardView.configure(
             cards: viewModel.totalCards,
-            value: viewModel.totalValue,
+            value: viewModel.estimatedValue,
             activeFilters: viewModel.filteredEntries.count
         )
     }

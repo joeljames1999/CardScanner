@@ -12,6 +12,8 @@ final class RecentCardCell: UICollectionViewCell {
     static let reuseID = "RecentCardCell"
 
     private let imageView = UIImageView()
+    private var imageLoadTask: Task<Void, Never>?
+    private var representedImageURL: URL?
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -44,24 +46,45 @@ final class RecentCardCell: UICollectionViewCell {
         fatalError()
     }
 
-    func configure(
-        with card: MTGCard
-    ) {
+    override func prepareForReuse() {
+        super.prepareForReuse()
 
+        imageLoadTask?.cancel()
+        imageLoadTask = nil
+        representedImageURL = nil
+        imageView.image = nil
+    }
+
+    func configure(
+        with card: RecentCard
+    ) {
+        loadImage(card.imageURL)
+    }
+
+    private func loadImage(_ url: URL?) {
+        imageLoadTask?.cancel()
+        representedImageURL = url
         imageView.image = nil
 
-        guard let url = card.imageUris?.normal else {
+        guard let url else {
             return
         }
 
-        Task {
+        imageLoadTask = Task { [weak self] in
 
-            if let (data, _) = try? await URLSession.shared.data(from: url),
-               let image = UIImage(data: data) {
+            guard
+                let (data, _) = try? await URLSession.shared.data(from: url),
+                !Task.isCancelled,
+                let image = UIImage(data: data)
+            else { return }
 
-                await MainActor.run {
-                    self.imageView.image = image
+            await MainActor.run {
+                guard self?.representedImageURL == url else {
+                    return
                 }
+
+                self?.imageView.image = image
+                self?.imageLoadTask = nil
             }
         }
     }

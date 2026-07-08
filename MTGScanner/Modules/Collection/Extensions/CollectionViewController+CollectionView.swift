@@ -52,14 +52,9 @@ UICollectionViewDelegate {
         _ collectionView: UICollectionView,
         didSelectItemAt indexPath: IndexPath
     ) {
-
         let entry = viewModel.filteredEntries[indexPath.item]
 
-        guard let card = CardDatabaseService.shared.findCard(
-            named: entry.name,
-            set: entry.setCode,
-            collectorNumber: entry.collectorNumber
-        ) else {
+        guard let card = viewModel.card(for: entry) else {
             return
         }
 

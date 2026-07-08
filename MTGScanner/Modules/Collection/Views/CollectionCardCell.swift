@@ -28,6 +28,10 @@ final class CollectionCardCell: UICollectionViewCell {
 
     private let collectorLabel = UILabel()
 
+    private var imageLoadTask: Task<Void, Never>?
+    private var representedImageURL: URL?
+    private var representedSetCode: String?
+
     // MARK: Init
 
     override init(frame: CGRect) {
@@ -50,6 +54,17 @@ final class CollectionCardCell: UICollectionViewCell {
 
     required init?(coder: NSCoder) {
         fatalError()
+    }
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+
+        imageLoadTask?.cancel()
+        imageLoadTask = nil
+        representedImageURL = nil
+        representedSetCode = nil
+        cardImageView.image = UIImage(systemName: "photo")
+        setImageView.image = nil
     }
 
     // MARK: Configure
@@ -155,21 +170,29 @@ final class CollectionCardCell: UICollectionViewCell {
 
     private func loadImage(_ url: URL?) {
 
+        imageLoadTask?.cancel()
+        representedImageURL = url
         cardImageView.image = UIImage(systemName: "photo")
 
         guard let url else {
             return
         }
 
-        Task {
+        imageLoadTask = Task { [weak self] in
 
             guard
                 let (data, _) = try? await URLSession.shared.data(from: url),
+                !Task.isCancelled,
                 let image = UIImage(data: data)
             else { return }
 
             await MainActor.run {
-                self.cardImageView.image = image
+                guard self?.representedImageURL == url else {
+                    return
+                }
+
+                self?.cardImageView.image = image
+                self?.imageLoadTask = nil
             }
         }
     }
@@ -181,9 +204,16 @@ final class CollectionCardCell: UICollectionViewCell {
         rarity: String
     ) {
 
+        let representedSetCode = set.lowercased()
+        self.representedSetCode = representedSetCode
+        setImageView.image = nil
+
         SetSymbolService.shared.image(for: set) { [weak self] image in
 
-            guard let self else { return }
+            guard
+                let self,
+                self.representedSetCode == representedSetCode
+            else { return }
 
             self.setImageView.image = image?.withRenderingMode(.alwaysTemplate)
             self.setImageView.tintColor = self.rarityColor(rarity)

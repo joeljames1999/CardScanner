@@ -5,239 +5,318 @@
 //  Created by Joel James on 04/07/2026.
 //
 
+//
+//  CollectionViewModel.swift
+//  TcgScanner
+//
+
 import Foundation
 import Combine
 
-final class CollectionViewModel {
-    
+struct CollectionCard: Identifiable {
+
+    let entry: CollectionEntry
+    let card: MTGCard
+
+    var id: UUID {
+        entry.id
+    }
+}
+
+enum CollectionSortOption: String, CaseIterable {
+
+    case name
+    case set
+    case price
+    case quantity
+    case dateAdded
+}
+
+@MainActor
+final class CollectionViewModel: ObservableObject {
+
     // MARK: - Published
-    
+
     @Published private(set) var entries: [CollectionEntry] = []
     @Published private(set) var filteredEntries: [CollectionEntry] = []
-    
-    private var collectionCards: [CollectionCard] = []
-    
-    @Published var filter = SearchFilter() {
-        didSet {
-            applyFilters()
-        }
-    }
-    
-    
+    @Published private(set) var collectionCards: [CollectionCard] = []
+
+    @Published private(set) var isLoading: Bool = false
+    @Published private(set) var errorMessage: String?
+
     @Published var searchText: String = "" {
         didSet {
             applyFilters()
         }
     }
-    
-    @Published var sortOption: SortOption = .name {
+
+    @Published var filter = SearchFilter() {
         didSet {
             applyFilters()
         }
     }
-    
-    // Placeholder for future filter chips
-    @Published var showFoilsOnly = false {
+
+    @Published var sortOption: CollectionSortOption = .name {
         didSet {
             applyFilters()
         }
     }
-    
+
+    @Published var showFoilsOnly: Bool = false {
+        didSet {
+            applyFilters()
+        }
+    }
+
     // MARK: - Private
-    
-    private var cancellables = Set<AnyCancellable>()
-    
+
+    private let repository: CardRepository
+    private var loadTask: Task<Void, Never>?
+
     // MARK: - Init
-    
-    init() {
-        
-        loadCollection()
-        
-        NotificationCenter.default.publisher(
-            for: .collectionDidChange
+
+    init(
+        repository: CardRepository = AppDatabase.shared.cards
+    ) {
+        self.repository = repository
+    }
+
+    deinit {
+        loadTask?.cancel()
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    // MARK: - Public
+
+    func startObservingCollectionChanges() {
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(collectionDidChange),
+            name: CollectionStore.didChangeNotification,
+            object: nil
         )
-        .receive(on: DispatchQueue.main)
-        .sink { [weak self] _ in
-            self?.loadCollection()
-        }
-        .store(in: &cancellables)
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(collectionDidChange),
+            name: .cardDatabaseDidChange,
+            object: nil
+        )
+    }
+
+    func card(
+        for entry: CollectionEntry
+    ) -> MTGCard? {
+
+        collectionCards.first {
+            $0.entry.id == entry.id
+        }?.card
     }
     
-    // MARK: - Public
-    
+    func loadCollection() {
+
+        loadTask?.cancel()
+
+        isLoading = true
+        errorMessage = nil
+
+        let savedEntries = CollectionStore.shared.entries
+        entries = savedEntries
+
+        let ids = savedEntries.map(\.cardID)
+
+        loadTask = Task { [repository] in
+
+            do {
+
+                let cards = try await Task.detached(
+                    priority: .userInitiated
+                ) {
+                    try repository.cards(
+                        ids: ids
+                    )
+                }.value
+
+                guard !Task.isCancelled else {
+                    return
+                }
+
+                let cardsByID = Dictionary(
+                    uniqueKeysWithValues: cards.map {
+                        ($0.id.lowercased(), $0)
+                    }
+                )
+
+                let joined = savedEntries.compactMap { entry -> CollectionCard? in
+
+                    guard let card = cardsByID[
+                        entry.cardID.lowercased()
+                    ] else {
+                        return nil
+                    }
+
+                    return CollectionCard(
+                        entry: entry,
+                        card: card
+                    )
+                }
+
+                self.collectionCards = joined
+                self.isLoading = false
+                self.applyFilters()
+
+            } catch {
+
+                guard !Task.isCancelled else {
+                    return
+                }
+
+                self.collectionCards = []
+                self.filteredEntries = savedEntries
+                self.errorMessage = error.localizedDescription
+                self.isLoading = false
+            }
+        }
+    }
+
     func refresh() {
         loadCollection()
-        entries = CollectionStore.shared.entries
-        applyFilters()
     }
-    
-    func updateFilter(_ filter: SearchFilter) {
-        self.filter = filter
+
+    func resetFilters() {
+        filter.reset()
+        showFoilsOnly = false
+        searchText = ""
     }
-    
-    
-    func delete(at indexPaths: [IndexPath]) {
-        
-        let ids = indexPaths.map { filteredEntries[$0.item].id }
-        
-        ids.forEach {
-            CollectionStore.shared.remove(id: $0)
-        }
-        
-        loadCollection()
+
+    func updateFilter(
+        _ newFilter: SearchFilter
+    ) {
+        filter = newFilter
     }
-    
-    var totalCards: Int {
-        entries.reduce(0) { $0 + $1.count }
+
+    func updateSort(
+        _ option: CollectionSortOption
+    ) {
+        sortOption = option
     }
-    
-    var uniqueCards: Int {
-        entries.count
-    }
-    
-    var totalValue: Double {
-        
-        entries.reduce(0) { total, entry in
-            
-            let price = Double(entry.usdPrice ?? "") ?? 0
-            
-            return total + (price * Double(entry.count))
-        }
-    }
-    
+
+    // MARK: - Filtering
+
     private func applyFilters() {
 
-        // No collection
-        guard !entries.isEmpty else {
-            filteredEntries = []
-            return
+        var cards = collectionCards
+
+        let query = searchText
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+
+        if !query.isEmpty {
+
+            cards = cards.filter { item in
+
+                item.entry.name.lowercased().contains(query) ||
+                item.entry.setCode.lowercased().contains(query) ||
+                item.entry.setName.lowercased().contains(query) ||
+                item.entry.collectorNumber.lowercased().contains(query) ||
+                item.card.name.lowercased().contains(query) ||
+                item.card.typeLine.lowercased().contains(query)
+            }
         }
 
-        // Load every MTGCard for the collection in ONE database query
-        let cards = CardDatabaseService.shared.cards(
-            ids: entries.map(\.cardID)
-        )
-
-        // Build lookup dictionary
-        let cardLookup = Dictionary(
-            uniqueKeysWithValues: cards.map {
-                ($0.id.lowercased(), $0)
+        if showFoilsOnly {
+            cards.removeAll {
+                !$0.entry.isFoil
             }
-        )
-
-        // Apply search/filter
-        filteredEntries = entries.filter { entry in
-
-            // If we can't find the card in the database,
-            // keep it visible (important for imported custom cards)
-            guard let card = cardLookup[entry.cardID.lowercased()] else {
-
-                // Search still applies
-                if !searchText.isEmpty &&
-                    !entry.name.localizedCaseInsensitiveContains(searchText) {
-                    return false
-                }
-
-                if showFoilsOnly && !entry.isFoil {
-                    return false
-                }
-
-                return true
-            }
-
-            // Search
-            if !searchText.isEmpty &&
-                !card.name.localizedCaseInsensitiveContains(searchText) {
-                return false
-            }
-
-            // Unified card filters
-            guard CardFilterEngine.matches(card, filter: filter) else {
-                return false
-            }
-
-            // Collection-only filters
-            if showFoilsOnly && !entry.isFoil {
-                return false
-            }
-
-            return true
         }
 
-        sortEntries()
+        if filter.hasActiveFilters {
+            cards = cards.filter {
+                CardFilterEngine.matches(
+                    $0.card,
+                    filter: filter
+                )
+            }
+        }
+
+        cards = sort(cards)
+
+        filteredEntries = cards.map(\.entry)
     }
-    
-    private func sortEntries() {
+
+    private func sort(
+        _ cards: [CollectionCard]
+    ) -> [CollectionCard] {
 
         switch sortOption {
 
         case .name:
-            filteredEntries.sort {
-                $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
-            }
-
-        case .recent:
-            filteredEntries.sort {
-                $0.dateAdded > $1.dateAdded
-            }
-
-        case .price:
-            filteredEntries.sort {
-                (Double($0.usdPrice ?? "0") ?? 0) >
-                (Double($1.usdPrice ?? "0") ?? 0)
-            }
-
-        case .quantity:
-            filteredEntries.sort {
-                $0.count > $1.count
+            return cards.sorted {
+                $0.entry.name.localizedCaseInsensitiveCompare(
+                    $1.entry.name
+                ) == .orderedAscending
             }
 
         case .set:
-            filteredEntries.sort {
-                if $0.setCode == $1.setCode {
-                    return $0.collectorNumber < $1.collectorNumber
+            return cards.sorted {
+
+                if $0.entry.setName == $1.entry.setName {
+                    return $0.entry.collectorNumber < $1.entry.collectorNumber
                 }
-                return $0.setCode < $1.setCode
+
+                return $0.entry.setName.localizedCaseInsensitiveCompare(
+                    $1.entry.setName
+                ) == .orderedAscending
+            }
+
+        case .price:
+            return cards.sorted {
+                $0.entry.priceValue > $1.entry.priceValue
+            }
+
+        case .quantity:
+            return cards.sorted {
+                $0.entry.count > $1.entry.count
+            }
+
+        case .dateAdded:
+            return cards.sorted {
+                $0.entry.dateAdded > $1.entry.dateAdded
             }
         }
     }
-}
-// MARK: - Private
 
-private extension CollectionViewModel {
+    // MARK: - Stats
 
-    private func loadCollection() {
-
-        entries = CollectionStore.shared.entries
-
-        print("Entries:", entries.count)
-
-        // Load only the cards that exist in the collection
-        let cards = CardDatabaseService.shared.cards(
-            ids: entries.map(\.cardID)
-        )
-
-        let cardsByID = Dictionary(
-            uniqueKeysWithValues: cards.map {
-                ($0.id.lowercased(), $0)
-            }
-        )
-
-        collectionCards = entries.compactMap { entry in
-
-            guard let card = cardsByID[entry.cardID.lowercased()] else {
-                return nil
-            }
-
-            return CollectionCard(
-                entry: entry,
-                card: card
-            )
+    var totalCards: Int {
+        filteredEntries.reduce(0) {
+            $0 + $1.count
         }
+    }
 
-        print("CollectionCards:", collectionCards.count)
+    var estimatedValue: Double {
+        filteredEntries.reduce(0) {
+            $0 + ($1.priceValue * Double($1.count))
+        }
+    }
 
-        applyFilters()
+    var totalValue: Double {
+        estimatedValue
+    }
+
+    var isEmpty: Bool {
+        entries.isEmpty
+    }
+
+    var isFilteredEmpty: Bool {
+        !entries.isEmpty && filteredEntries.isEmpty
+    }
+
+    // MARK: - Notifications
+
+    @objc private func collectionDidChange() {
+        loadCollection()
     }
 }
 
@@ -286,3 +365,4 @@ extension Notification.Name {
 
     static let collectionDidChange = Notification.Name("collectionDidChange")
 }
+

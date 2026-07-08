@@ -3,7 +3,7 @@ import Combine
 
 final class CardSearchViewController: UIViewController {
 
-    private let viewModel = CardSearchViewModel()
+    private let viewModel = SearchViewModel()
     private var cancellables = Set<AnyCancellable>()
 
     private lazy var collectionView: UICollectionView = {
@@ -267,7 +267,7 @@ final class CardSearchViewController: UIViewController {
     private func bindViewModel() {
         
         // Update collection view when cards change
-        viewModel.$cards
+        viewModel.$results
             .receive(on: DispatchQueue.main)
             .sink { [weak self] cards in
 
@@ -341,7 +341,7 @@ UICollectionViewDelegate {
         numberOfItemsInSection section: Int
     ) -> Int {
 
-        viewModel.cards.count
+        viewModel.results.count
     }
 
     func collectionView(
@@ -355,7 +355,7 @@ UICollectionViewDelegate {
         ) as! CardSearchCell
 
         cell.configure(
-            with: viewModel.cards[indexPath.item]
+            with: viewModel.results[indexPath.item]
         )
 
         return cell
@@ -366,7 +366,7 @@ UICollectionViewDelegate {
         didSelectItemAt indexPath: IndexPath
     ) {
 
-        let card = viewModel.cards[indexPath.item]
+        let card = viewModel.results[indexPath.item]
 
         let vc = CardDetailViewController(
             card: card

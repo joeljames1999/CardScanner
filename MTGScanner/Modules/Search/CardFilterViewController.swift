@@ -69,7 +69,7 @@ final class CardFilterViewController: UIViewController {
     
     private func loadAvailableSets() {
         // Load sets from database
-        allSets = CardDatabaseService.shared.getAllSets()
+        allSets = (try? AppDatabase.shared.cards.allSets()) ?? []
         tableView.reloadData()
     }
     

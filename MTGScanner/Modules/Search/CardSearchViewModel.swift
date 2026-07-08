@@ -1,60 +1,130 @@
+//
+//  SearchViewModel.swift
+//  TcgScanner
+//
+
 import Foundation
 import Combine
 
 @MainActor
-final class CardSearchViewModel: ObservableObject {
+final class SearchViewModel: ObservableObject {
 
-    @Published var searchText = ""
-    @Published var filter = SearchFilter()
+    // MARK: - Published
 
-    @Published private(set) var cards: [MTGCard] = []
+    @Published private(set) var results: [MTGCard] = []
+    @Published private(set) var isLoading: Bool = false
+    @Published private(set) var errorMessage: String?
 
-    private var cancellables = Set<AnyCancellable>()
-
-    init() {
-
-        Publishers.CombineLatest(
-            $searchText
-                .debounce(
-                    for: .milliseconds(250),
-                    scheduler: RunLoop.main
-                )
-                .removeDuplicates(),
-            $filter.removeDuplicates()
-        )
-        .sink { [weak self] searchText, filter in
-
-            guard let self else { return }
-
-            self.reloadCards(
-                searchText: searchText,
-                filter: filter
-            )
+    @Published var searchText: String = "" {
+        didSet {
+            scheduleSearch()
         }
-        .store(in: &cancellables)
     }
 
-    func updateFilter(_ filter: SearchFilter) {
-        self.filter = filter
+    @Published var filter = SearchFilter() {
+        didSet {
+            scheduleSearch()
+        }
     }
 
-    func resetFilter() {
+    // MARK: - Private
+
+    private let repository: CardRepository
+    private var searchTask: Task<Void, Never>?
+
+    // MARK: - Init
+
+    init(
+        repository: CardRepository = AppDatabase.shared.cards
+    ) {
+        self.repository = repository
+    }
+
+    deinit {
+        searchTask?.cancel()
+    }
+
+    // MARK: - Public
+
+    func refresh() {
+        scheduleSearch()
+    }
+
+    func clearSearch() {
+        searchTask?.cancel()
+        searchText = ""
+        results = []
+        errorMessage = nil
+        isLoading = false
+    }
+
+    func resetFilters() {
         filter.reset()
     }
-}
 
-private extension CardSearchViewModel {
+    func updateFilter(_ newFilter: SearchFilter) {
+        filter = newFilter
+    }
 
-    func reloadCards(
-        searchText: String,
-        filter: SearchFilter
-    ) {
+    // MARK: - Search
 
-        cards = CardDatabaseService.shared.searchCards(
-            query: searchText.trimmingCharacters(
-                in: .whitespacesAndNewlines
-            ),
-            filter: filter
-        )
+    private func scheduleSearch() {
+
+        searchTask?.cancel()
+
+        let query = searchText
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        let currentFilter = filter
+
+        guard !query.isEmpty || currentFilter.hasActiveFilters else {
+            results = []
+            errorMessage = nil
+            isLoading = false
+            return
+        }
+
+        isLoading = true
+        errorMessage = nil
+
+        searchTask = Task { [repository] in
+
+            try? await Task.sleep(
+                nanoseconds: 250_000_000
+            )
+
+            guard !Task.isCancelled else {
+                return
+            }
+
+            do {
+
+                let cards = try await Task.detached(
+                    priority: .userInitiated
+                ) {
+                    try repository.search(
+                        query: query,
+                        filter: currentFilter
+                    )
+                }.value
+
+                guard !Task.isCancelled else {
+                    return
+                }
+
+                self.results = cards
+                self.isLoading = false
+
+            } catch {
+
+                guard !Task.isCancelled else {
+                    return
+                }
+
+                self.results = []
+                self.errorMessage = error.localizedDescription
+                self.isLoading = false
+            }
+        }
     }
 }

@@ -421,11 +421,11 @@ final class CardDetailViewController: UIViewController {
         Task.detached { [weak self] in
 
             guard let self else { return }
-
-            let printings =
-                CardDatabaseService.shared
-                    .allPrintings(named: self.card.name)
-
+            
+            let printings = (try? AppDatabase.shared.cards.allPrintings(
+                named: card.name
+            )) ?? []
+            
             await MainActor.run {
 
                 self.printings = printings

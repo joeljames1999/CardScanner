@@ -413,15 +413,12 @@ UICollectionViewDelegateFlowLayout {
                 for: indexPath
             ) as! RecentCardCell
         
-        if let card = CardDatabaseService.shared.findCard(named: recentCards[indexPath.item].name) {
-            cell.configure(
-                with: card
-            )
-        }
+        let recentCard = recentCards[indexPath.item]
+        cell.configure(with: recentCard)
 
         return cell
     }
-
+    
     func collectionView(
         _ collectionView: UICollectionView,
         layout collectionViewLayout: UICollectionViewLayout,
@@ -439,10 +436,7 @@ UICollectionViewDelegateFlowLayout {
         didSelectItemAt indexPath: IndexPath
     ) {
 
-        let recentCard = recentCards[indexPath.item]
-
-        guard let card = CardDatabaseService.shared.findCard(named: recentCards[indexPath.item].name)
-        else {
+        guard let card = findRecentCard(named: recentCards[indexPath.item].name) else {
             return
         }
 
@@ -454,5 +448,18 @@ UICollectionViewDelegateFlowLayout {
             vc,
             animated: true
         )
+    }
+    
+    private func findRecentCard(named name: String) -> MTGCard? {
+        let filter = SearchFilter()
+
+        let results = try? AppDatabase.shared.cards.search(
+            query: name,
+            filter: filter
+        )
+
+        return results?.first {
+            $0.name.caseInsensitiveCompare(name) == .orderedSame
+        } ?? results?.first
     }
 }

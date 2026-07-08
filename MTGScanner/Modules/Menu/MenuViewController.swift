@@ -187,17 +187,6 @@ final class MenuViewController: UIViewController {
                 ? "Imported \(done.formatted()) cards…"
                 : "Writing cards to local database…"
 
-        case .hashingArt(let done, let total):
-            showOverlay()
-            activityIndicator.stopAnimating()
-            downloadTitleLabel.text    = "Building Visual Index"
-            downloadSubtitleLabel.text = "Downloading and hashing card artwork.\nThis happens once and enables offline scanning."
-            progressView.isHidden      = false
-            progressLabel.isHidden     = false
-            let pct = total > 0 ? Double(done) / Double(total) : 0
-            progressView.setProgress(Float(pct), animated: true)
-            progressLabel.text = "\(done.formatted()) / \(total.formatted())  ·  \(Int(pct * 100))%"
-
         case .done:
             activityIndicator.stopAnimating()
             hideOverlay()

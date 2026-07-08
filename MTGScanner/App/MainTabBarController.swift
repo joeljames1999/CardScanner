@@ -10,6 +10,7 @@ final class MainTabBarController: UITabBarController {
         setupTabs()
         styleTabBar()
         styleNavigationBars()
+        delegate = self
     }
 
     // MARK: Setup
@@ -143,5 +144,22 @@ final class MainTabBarController: UITabBarController {
 
         UINavigationBar.appearance()
             .tintColor = UIColor.brandBlue
+    }
+}
+
+extension MainTabBarController: UITabBarControllerDelegate {
+
+    func tabBarController(
+        _ tabBarController: UITabBarController,
+        didSelect viewController: UIViewController
+    ) {
+        guard
+            viewController.tabBarItem.tag == 3,
+            let navigationController = viewController as? UINavigationController
+        else {
+            return
+        }
+
+        navigationController.popToRootViewController(animated: false)
     }
 }
