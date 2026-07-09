@@ -12,34 +12,16 @@ extension CollectionViewController {
 
     func configureLayout() {
 
-        dashboardView.translatesAutoresizingMaskIntoConstraints = false
         collectionView.translatesAutoresizingMaskIntoConstraints = false
         emptyStateView.translatesAutoresizingMaskIntoConstraints = false
 
-        view.addSubview(dashboardView)
         view.addSubview(collectionView)
         view.addSubview(emptyStateView)
 
         NSLayoutConstraint.activate([
 
-            dashboardView.topAnchor.constraint(
-                equalTo: view.safeAreaLayoutGuide.topAnchor
-            ),
-
-            dashboardView.leadingAnchor.constraint(
-                equalTo: view.leadingAnchor
-            ),
-
-            dashboardView.trailingAnchor.constraint(
-                equalTo: view.trailingAnchor
-            ),
-
-            dashboardView.bottomAnchor.constraint(
-                equalTo: collectionView.topAnchor
-            ),
-
             collectionView.topAnchor.constraint(
-                equalTo: dashboardView.bottomAnchor
+                equalTo: view.safeAreaLayoutGuide.topAnchor
             ),
 
             collectionView.leadingAnchor.constraint(
@@ -63,7 +45,7 @@ extension CollectionViewController {
             ),
 
             emptyStateView.topAnchor.constraint(
-                equalTo: dashboardView.bottomAnchor
+                equalTo: collectionView.topAnchor
             ),
 
             emptyStateView.bottomAnchor.constraint(
@@ -118,6 +100,16 @@ extension CollectionViewController {
             let section = NSCollectionLayoutSection(group: group)
 
             section.interGroupSpacing = spacing
+            section.boundarySupplementaryItems = [
+                NSCollectionLayoutBoundarySupplementaryItem(
+                    layoutSize: NSCollectionLayoutSize(
+                        widthDimension: .fractionalWidth(1),
+                        heightDimension: .absolute(342)
+                    ),
+                    elementKind: UICollectionView.elementKindSectionHeader,
+                    alignment: .top
+                )
+            ]
 
             section.contentInsets = NSDirectionalEdgeInsets(
                 top: spacing,

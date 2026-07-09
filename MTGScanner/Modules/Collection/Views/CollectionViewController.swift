@@ -16,6 +16,7 @@ final class CollectionViewController: UIViewController {
 
     let dashboardView = CollectionDashboardView()
     let emptyStateView = CollectionEmptyStateView()
+    var editOverlayView: CollectionEntryEditOverlayView?
 
     lazy var collectionView: UICollectionView = {
 
@@ -31,6 +32,11 @@ final class CollectionViewController: UIViewController {
         view.register(
             CollectionCardCell.self,
             forCellWithReuseIdentifier: CollectionCardCell.reuseIdentifier
+        )
+        view.register(
+            CollectionDashboardHeaderView.self,
+            forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader,
+            withReuseIdentifier: CollectionDashboardHeaderView.reuseIdentifier
         )
 
         view.delegate = self

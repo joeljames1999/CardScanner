@@ -26,7 +26,6 @@ final class CollectionDashboardView: UIView {
     private let valueTitleLabel = UILabel()
     private let valueLabel = UILabel()
     private let cardsStatView = SummaryStatView(title: "Cards", symbol: "rectangle.stack")
-    private let filtersStatView = SummaryStatView(title: "Filters", symbol: "line.3.horizontal.decrease.circle")
 
     private lazy var sortButton = makePrimaryButton(
         title: "Sort",
@@ -72,7 +71,6 @@ final class CollectionDashboardView: UIView {
         number.numberStyle = .decimal
 
         cardsStatView.setValue(number.string(from: NSNumber(value: cards)) ?? "0")
-        filtersStatView.setValue("\(activeFilters)")
         valueLabel.text = PriceFormatter.string(usd: value)
     }
 }
@@ -106,7 +104,7 @@ extension CollectionDashboardView {
             stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -20),
             stack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -16),
 
-            summaryCard.heightAnchor.constraint(greaterThanOrEqualToConstant: 186)
+            summaryCard.heightAnchor.constraint(greaterThanOrEqualToConstant: 220)
         ])
     }
 
@@ -176,13 +174,10 @@ extension CollectionDashboardView {
         valueStack.axis = .vertical
         valueStack.spacing = 2
 
-        let statStack = UIStackView(arrangedSubviews: [
-            cardsStatView,
-            filtersStatView
-        ])
+        let statStack = UIStackView(arrangedSubviews: [cardsStatView])
         statStack.axis = .horizontal
-        statStack.spacing = 10
-        statStack.distribution = .fillEqually
+        statStack.alignment = .center
+        statStack.distribution = .fill
 
         let contentStack = UIStackView(arrangedSubviews: [
             topRow,
@@ -213,6 +208,11 @@ extension CollectionDashboardView {
             contentStack.trailingAnchor.constraint(equalTo: summaryCard.trailingAnchor, constant: -18),
             contentStack.bottomAnchor.constraint(equalTo: summaryCard.bottomAnchor, constant: -18)
         ])
+
+        cardsStatView.widthAnchor.constraint(
+            greaterThanOrEqualTo: summaryCard.widthAnchor,
+            multiplier: 0.58
+        ).isActive = true
     }
 
     @objc
@@ -232,7 +232,6 @@ extension CollectionDashboardView {
             filter.selectedManaCosts.count +
             filter.selectedManaColors.count
 
-        filtersStatView.setValue("\(count)")
         filterButton.configuration?.subtitle = count == 0 ? nil : "\(count)"
     }
 
@@ -291,14 +290,17 @@ private final class SummaryStatView: UIView {
         iconView.contentMode = .scaleAspectFit
 
         titleLabel.text = title
-        titleLabel.font = .systemFont(ofSize: 13, weight: .medium)
+        titleLabel.font = .systemFont(ofSize: 12, weight: .medium)
         titleLabel.textColor = UIColor.white.withAlphaComponent(0.82)
+        titleLabel.numberOfLines = 1
+        titleLabel.setContentCompressionResistancePriority(.required, for: .vertical)
 
         valueLabel.text = "--"
         valueLabel.font = .systemFont(ofSize: 20, weight: .bold)
         valueLabel.textColor = .white
         valueLabel.adjustsFontSizeToFitWidth = true
         valueLabel.minimumScaleFactor = 0.7
+        valueLabel.setContentCompressionResistancePriority(.required, for: .vertical)
 
         setupLayout()
     }
@@ -317,7 +319,8 @@ private final class SummaryStatView: UIView {
             valueLabel
         ])
         textStack.axis = .vertical
-        textStack.spacing = 2
+        textStack.spacing = 4
+        textStack.alignment = .leading
 
         let stack = UIStackView(arrangedSubviews: [
             iconView,
@@ -332,10 +335,11 @@ private final class SummaryStatView: UIView {
         addSubview(stack)
 
         NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: topAnchor, constant: 12),
+            stack.topAnchor.constraint(equalTo: topAnchor, constant: 10),
             stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
             stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
-            stack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -12),
+            stack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -10),
+            heightAnchor.constraint(greaterThanOrEqualToConstant: 66),
 
             iconView.widthAnchor.constraint(equalToConstant: 26),
             iconView.heightAnchor.constraint(equalToConstant: 26)

@@ -1,3 +1,11 @@
+//
+//  CardDetailPrintingCell.swift
+//  TcgScanner
+//
+//  Created by Joel James on 04/07/2026.
+//
+
+import Foundation
 import UIKit
 
 final class CardDetailPrintingCell: UICollectionViewCell {
@@ -8,6 +16,8 @@ final class CardDetailPrintingCell: UICollectionViewCell {
 
     private let setLabel = UILabel()
 
+    private var showingBack = false
+    
     override init(frame: CGRect) {
         super.init(frame: frame)
 
@@ -72,7 +82,7 @@ final class CardDetailPrintingCell: UICollectionViewCell {
 
         imageView.image = nil
 
-        guard let url = card.imageUris?.normal else {
+        guard let url = card.displayImage else {
             return
         }
 
@@ -90,4 +100,37 @@ final class CardDetailPrintingCell: UICollectionViewCell {
             }
         }
     }
+    
+//    private func updateArtwork() {
+//
+//        let url: URL?
+//
+//        if showingBack {
+//
+//            url = card.backFace?.imageUris?.normal
+//
+//        } else {
+//
+//            url = card.displayImage
+//        }
+//
+//        imageView.load(url)
+//    }
+//    
+//    @objc
+//    func flipCard() {
+//
+//        showingBack.toggle()
+//
+//        UIView.transition(
+//            with: imageView,
+//            duration: 0.35,
+//            options: .transitionFlipFromLeft
+//        ) {
+//
+//            self.updateArtwork()
+//
+//        }
+//    }
+//    
 }

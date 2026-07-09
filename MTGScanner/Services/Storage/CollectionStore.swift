@@ -92,7 +92,7 @@ final class CollectionStore {
         notifyChange()
     }
 
-    func updateCount(id: UUID, count: Int) {
+    func updateCount(id: UUID, count: Int, notify: Bool = true) {
         guard let idx = entries.firstIndex(where: { $0.id == id }) else { return }
         if count <= 0 {
             entries.remove(at: idx)
@@ -100,25 +100,70 @@ final class CollectionStore {
             entries[idx].count = count
         }
         save()
-        notifyChange()
+        if notify { notifyChange() }
     }
 
-    func updateCondition(id: UUID, condition: CardCondition) {
+    func updateCondition(id: UUID, condition: CardCondition, notify: Bool = true) {
         guard let idx = entries.firstIndex(where: { $0.id == id }) else { return }
         entries[idx].condition = condition
         save()
-        notifyChange()
+        if notify { notifyChange() }
     }
 
-    func remove(id: UUID) {
+    func updateFinish(id: UUID, finish: CardFinish, notify: Bool = true) {
+        guard let idx = entries.firstIndex(where: { $0.id == id }) else { return }
+        entries[idx].finish = finish
+        entries[idx].isFoil = finish.isFoilLike
+        save()
+        if notify { notifyChange() }
+    }
+
+    func updatePrinting(id: UUID, card: MTGCard, notify: Bool = true) {
+        guard let idx = entries.firstIndex(where: { $0.id == id }) else { return }
+
+        let current = entries[idx]
+        let availableFinishes = card.availableFinishes
+        let preservedFinish = availableFinishes.contains(current.resolvedFinish)
+            ? current.resolvedFinish
+            : availableFinishes.first ?? current.resolvedFinish
+
+        entries[idx] = CollectionEntry(
+            id: current.id,
+            count: current.count,
+            cardID: card.id,
+            name: card.name,
+            setCode: card.set,
+            setName: card.setName,
+            collectorNumber: card.collectorNumber,
+            rarity: card.rarity,
+            condition: current.condition,
+            isFoil: preservedFinish.isFoilLike,
+            finish: preservedFinish,
+            isAltered: current.isAltered,
+            language: current.language,
+            purchasePrice: card.prices?.usd.flatMap(Double.init),
+            usdPrice: card.prices?.usd,
+            imageURL: card.displayImage,
+            dateAdded: current.dateAdded
+        )
+
+        save()
+        if notify { notifyChange() }
+    }
+
+    func remove(id: UUID, notify: Bool = true) {
         entries.removeAll { $0.id == id }
         save()
-        notifyChange()
+        if notify { notifyChange() }
     }
 
     func removeAll() {
         entries = []
         save()
+        notifyChange()
+    }
+
+    func publishChanges() {
         notifyChange()
     }
 
