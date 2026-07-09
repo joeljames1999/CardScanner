@@ -13,9 +13,9 @@ extension CollectionViewController {
     func refreshDashboard() {
 
         dashboardView.configure(
-            cards: viewModel.totalCards,
-            value: viewModel.estimatedValue,
-            activeFilters: viewModel.filteredEntries.count
+            cards: viewModel.collectionTotalCards,
+            value: viewModel.collectionEstimatedValue,
+            activeFilters: viewModel.activeFilterCount
         )
     }
 }

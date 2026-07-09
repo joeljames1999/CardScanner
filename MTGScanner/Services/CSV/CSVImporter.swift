@@ -159,9 +159,15 @@ final class CSVImporter {
 
             let isFoil =
                 foilValue == "foil" ||
+                foilValue == "etched" ||
                 foilValue == "true" ||
                 foilValue == "yes" ||
                 foilValue == "1"
+
+            let finish: CardFinish =
+                foilValue == "etched"
+                    ? .etched
+                    : (isFoil ? .foil : .nonfoil)
 
             let purchasePrice = Double(
                 value([
@@ -202,6 +208,7 @@ final class CSVImporter {
                         count: quantity,
                         condition: condition,
                         isFoil: isFoil,
+                        finish: finish,
                         isAltered: false,
                         language: language
                     )
@@ -220,6 +227,7 @@ final class CSVImporter {
                         rarity: rarity.isEmpty ? "unknown" : rarity.lowercased(),
                         condition: condition,
                         isFoil: isFoil,
+                        finish: finish,
                         isAltered: false,
                         language: language,
                         purchasePrice: purchasePrice,

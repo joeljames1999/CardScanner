@@ -91,7 +91,7 @@ extension CollectionViewController {
 
             let cardRatio: CGFloat = 63.0 / 88.0
 
-            let footerHeight: CGFloat = 42
+            let footerHeight: CGFloat = 58
 
             let height =
                 (width / cardRatio) + footerHeight

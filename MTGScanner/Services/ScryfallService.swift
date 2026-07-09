@@ -28,7 +28,8 @@ final class ScryfallService {
     private let session: URLSession = {
         let config = URLSessionConfiguration.default
         config.httpAdditionalHeaders = [
-            "User-Agent": "MTGScanner-iOS/1.0"
+            "User-Agent": "MTGScanner-iOS/1.0",
+            "Accept": "application/json"
         ]
         return URLSession(configuration: config)
     }()
@@ -40,6 +41,107 @@ final class ScryfallService {
             let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
             let url = URL(string: "\(baseURL)/cards/named?fuzzy=\(encoded)")
         else {
+            throw ScryfallError.cardNotFound
+        }
+
+        let (data, response): (Data, URLResponse)
+
+        do {
+            (data, response) = try await session.data(from: url)
+        } catch {
+            throw ScryfallError.networkError(error)
+        }
+
+        guard let http = response as? HTTPURLResponse else {
+            throw ScryfallError.cardNotFound
+        }
+
+        switch http.statusCode {
+        case 200:
+            break
+        case 404:
+            throw ScryfallError.cardNotFound
+        case 429:
+            throw ScryfallError.rateLimited
+        default:
+            throw ScryfallError.cardNotFound
+        }
+
+        do {
+            return try JSONDecoder().decode(MTGCard.self, from: data)
+        } catch {
+            throw ScryfallError.decodingError(error)
+        }
+    }
+
+    // MARK: Localized Printing
+
+    func fetchLocalizedPrinting(
+        set: String,
+        collectorNumber: String,
+        language: CardLanguage
+    ) async throws -> MTGCard {
+
+        guard language != .english else {
+            throw ScryfallError.cardNotFound
+        }
+
+        var allowedCharacters = CharacterSet.urlPathAllowed
+        allowedCharacters.remove("/")
+
+        guard
+            let encodedSet = set.addingPercentEncoding(withAllowedCharacters: allowedCharacters),
+            let encodedCollectorNumber = collectorNumber.addingPercentEncoding(withAllowedCharacters: allowedCharacters),
+            let url = URL(string: "\(baseURL)/cards/\(encodedSet)/\(encodedCollectorNumber)/\(language.rawValue)")
+        else {
+            throw ScryfallError.cardNotFound
+        }
+
+        let (data, response): (Data, URLResponse)
+
+        do {
+            (data, response) = try await session.data(from: url)
+        } catch {
+            throw ScryfallError.networkError(error)
+        }
+
+        guard let http = response as? HTTPURLResponse else {
+            throw ScryfallError.cardNotFound
+        }
+
+        switch http.statusCode {
+        case 200:
+            break
+        case 404:
+            throw ScryfallError.cardNotFound
+        case 429:
+            throw ScryfallError.rateLimited
+        default:
+            throw ScryfallError.cardNotFound
+        }
+
+        do {
+            return try JSONDecoder().decode(MTGCard.self, from: data)
+        } catch {
+            throw ScryfallError.decodingError(error)
+        }
+    }
+
+    // MARK: Random
+
+    func fetchRandomCard(query: String? = nil) async throws -> MTGCard {
+        guard var components = URLComponents(string: "\(baseURL)/cards/random") else {
+            throw ScryfallError.cardNotFound
+        }
+
+        if let query,
+           !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            components.queryItems = [
+                URLQueryItem(name: "q", value: query)
+            ]
+        }
+
+        guard let url = components.url else {
             throw ScryfallError.cardNotFound
         }
 

@@ -21,8 +21,7 @@ struct CollectionSummary {
 
         self.totalValue = entries.reduce(0) { partial, entry in
 
-            let price = entry.usdPrice.flatMap(Double.init) ?? 0
-            return partial + (price * Double(entry.count))
+            partial + (entry.priceValue * Double(entry.count))
         }
     }
 
@@ -33,10 +32,6 @@ struct CollectionSummary {
     }
 
     var formattedValue: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-
-        return formatter.string(from: NSNumber(value: totalValue)) ?? "$0.00"
+        PriceFormatter.string(usd: totalValue)
     }
 }

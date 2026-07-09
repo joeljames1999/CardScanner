@@ -11,8 +11,12 @@ final class CardDetailViewController: UIViewController {
 
     private let card: MTGCard
     private let actionMode: ActionMode
+    private let scryfallService = ScryfallService()
+    private var displayedCard: MTGCard
+    private var selectedLanguage = CardLanguageSettings.shared.preferredLanguage
     private var currentFaceIndex = 0
     private var imageLoadTask: Task<Void, Never>?
+    private var localizedCardTask: Task<Void, Never>?
     private weak var addedToast: UIView?
     var onDismiss: (() -> Void)?
 
@@ -145,6 +149,22 @@ final class CardDetailViewController: UIViewController {
         return button
     }()
 
+    private lazy var languageButton: UIButton = {
+        var config = UIButton.Configuration.tinted()
+        config.image = UIImage(systemName: "globe")
+        config.imagePadding = 8
+        config.cornerStyle = .capsule
+        config.baseForegroundColor = .brandBlue
+
+        let button = UIButton(configuration: config)
+        button.addTarget(
+            self,
+            action: #selector(showLanguagePicker),
+            for: .touchUpInside
+        )
+        return button
+    }()
+
     private lazy var addToSessionButton: UIButton = {
 
         var config = UIButton.Configuration.filled()
@@ -220,12 +240,18 @@ final class CardDetailViewController: UIViewController {
         actionMode: ActionMode = .addToSession
     ) {
         self.card = card
+        self.displayedCard = card
         self.actionMode = actionMode
         super.init(nibName: nil, bundle: nil)
     }
 
     required init?(coder: NSCoder) {
         fatalError()
+    }
+
+    deinit {
+        localizedCardTask?.cancel()
+        imageLoadTask?.cancel()
     }
 
     // MARK: - Lifecycle
@@ -252,6 +278,7 @@ final class CardDetailViewController: UIViewController {
         updateActionButton()
 
         loadRulings()
+        loadPreferredLanguageIfNeeded()
     }
 
     // MARK: - Layout
@@ -375,6 +402,7 @@ final class CardDetailViewController: UIViewController {
 
             makeSectionTitle("Card Information"),
             infoLabel,
+            languageButton,
 
             makeDivider(),
 
@@ -443,40 +471,199 @@ final class CardDetailViewController: UIViewController {
     
     private func populateData() {
         updateDisplayedFace(animated: false)
-
-        infoLabel.text =
-        """
-        Set: \(card.setName)
-
-        Collector Number: \(card.collectorNumber)
-
-        Rarity: \(card.rarity.capitalized)
-
-        Price: \(card.prices?.usd.map { "$\($0)" } ?? "Unavailable")
-        """
+        updateInfoLabel()
+        updateLanguageButton()
 
         rulingsLabel.text = "Loading rulings..."
     }
 
+    private func updateInfoLabel() {
+        infoLabel.text =
+        """
+        Set: \(displayedCard.setName)
+
+        Collector Number: \(displayedCard.collectorNumber)
+
+        Rarity: \(displayedCard.rarity.capitalized)
+
+        Language: \(selectedLanguage.displayName)
+
+        Price: \(PriceFormatter.string(usd: displayedCard.prices?.usd))
+        """
+    }
+
+    private func updateLanguageButton(isLoading: Bool = false) {
+        var config = languageButton.configuration
+        config?.title = isLoading
+            ? "Loading language..."
+            : "Language: \(selectedLanguage.displayName)"
+        languageButton.configuration = config
+        languageButton.isEnabled = !isLoading
+    }
+
     private func updateDisplayedFace(animated: Bool) {
-        let face = card.face(at: currentFaceIndex)
+        let face = displayedCard.face(at: currentFaceIndex)
 
-        nameLabel.text = face?.name ?? card.name
-        manaCostLabel.text = convertManaCost(face?.manaCost ?? card.manaCost) ?? face?.manaCost ?? card.manaCost
-        typeLabel.text = face?.typeLine ?? card.typeLine
+        nameLabel.text = displayedName(for: displayedCard, face: face)
+        manaCostLabel.text = convertManaCost(face?.manaCost ?? displayedCard.manaCost) ?? face?.manaCost ?? displayedCard.manaCost
+        typeLabel.text = displayedTypeLine(for: displayedCard, face: face)
 
-        oracleLabel.text =
-        face?.oracleText?.isEmpty == false
-        ? face?.oracleText
-        : card.oracleText?.isEmpty == false
-        ? card.oracleText
-        : "No Oracle text available."
+        oracleLabel.text = displayedOracleText(for: displayedCard, face: face)
 
-        flipFaceButton.isHidden = !card.hasMultipleFaces
+        title = displayedName(for: displayedCard, face: face)
+        flipFaceButton.isHidden = !displayedCard.hasMultipleFaces
         loadImage(
-            from: face?.imageUris?.normal ?? card.displayImage,
+            from: face?.imageUris?.normal ?? displayedCard.displayImage,
             animated: animated
         )
+    }
+
+    private func displayedName(
+        for card: MTGCard,
+        face: MTGCard.CardFace?
+    ) -> String {
+        if let printedName = card.printedName, !printedName.isEmpty {
+            return printedName
+        }
+
+        return face?.name ?? card.name
+    }
+
+    private func displayedTypeLine(
+        for card: MTGCard,
+        face: MTGCard.CardFace?
+    ) -> String {
+        if let printedTypeLine = card.printedTypeLine, !printedTypeLine.isEmpty {
+            return printedTypeLine
+        }
+
+        return face?.typeLine ?? card.typeLine
+    }
+
+    private func displayedOracleText(
+        for card: MTGCard,
+        face: MTGCard.CardFace?
+    ) -> String {
+        if let printedText = card.printedText, !printedText.isEmpty {
+            return printedText
+        }
+
+        if face?.oracleText?.isEmpty == false {
+            return face?.oracleText ?? ""
+        }
+
+        if card.oracleText?.isEmpty == false {
+            return card.oracleText ?? ""
+        }
+
+        return "No Oracle text available."
+    }
+
+    // MARK: - Language
+
+    private func loadPreferredLanguageIfNeeded() {
+        guard selectedLanguage != .english else {
+            return
+        }
+
+        loadLanguage(selectedLanguage)
+    }
+
+    private func loadLanguage(_ language: CardLanguage) {
+        localizedCardTask?.cancel()
+        selectedLanguage = language
+
+        guard language != .english else {
+            displayedCard = card
+            currentFaceIndex = 0
+            updateDisplayedFace(animated: true)
+            updateInfoLabel()
+            updateLanguageButton()
+            return
+        }
+
+        updateLanguageButton(isLoading: true)
+
+        localizedCardTask = Task { [weak self] in
+            guard let self else { return }
+
+            do {
+                let localizedCard = try await scryfallService.fetchLocalizedPrinting(
+                    set: card.set,
+                    collectorNumber: card.collectorNumber,
+                    language: language
+                )
+
+                guard !Task.isCancelled else {
+                    return
+                }
+
+                await MainActor.run {
+                    self.displayedCard = localizedCard
+                    self.currentFaceIndex = 0
+                    self.updateDisplayedFace(animated: true)
+                    self.updateInfoLabel()
+                    self.updateLanguageButton()
+                    self.localizedCardTask = nil
+                }
+            } catch {
+                guard !Task.isCancelled else {
+                    return
+                }
+
+                await MainActor.run {
+                    self.selectedLanguage = .english
+                    self.displayedCard = self.card
+                    self.currentFaceIndex = 0
+                    self.updateDisplayedFace(animated: true)
+                    self.updateInfoLabel()
+                    self.updateLanguageButton()
+                    self.localizedCardTask = nil
+                    self.showLanguageUnavailableAlert(language: language)
+                }
+            }
+        }
+    }
+
+    private func showLanguageUnavailableAlert(language: CardLanguage) {
+        let alert = UIAlertController(
+            title: "Language unavailable",
+            message: "Scryfall does not have this printing in \(language.displayName).",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
+    }
+
+    @objc private func showLanguagePicker() {
+        let alert = UIAlertController(
+            title: "Card Language",
+            message: nil,
+            preferredStyle: .actionSheet
+        )
+
+        for language in CardLanguage.allCases {
+            let isSelected = language == selectedLanguage
+            let suffix = isSelected ? " (Current)" : ""
+            let action = UIAlertAction(
+                title: "\(language.displayName) - \(language.rawValue)\(suffix)",
+                style: .default
+            ) { [weak self] _ in
+                CardLanguageSettings.shared.preferredLanguage = language
+                self?.loadLanguage(language)
+            }
+
+            alert.addAction(action)
+        }
+
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+
+        if let popover = alert.popoverPresentationController {
+            popover.sourceView = languageButton
+            popover.sourceRect = languageButton.bounds
+        }
+
+        present(alert, animated: true)
     }
 
     // MARK: - Image
@@ -719,11 +906,11 @@ final class CardDetailViewController: UIViewController {
 
     @objc
     private func flipCardFace() {
-        guard card.hasMultipleFaces else {
+        guard displayedCard.hasMultipleFaces else {
             return
         }
 
-        let faceCount = card.cardFaces?.count ?? 1
+        let faceCount = displayedCard.cardFaces?.count ?? 1
         currentFaceIndex = (currentFaceIndex + 1) % faceCount
         updateDisplayedFace(animated: true)
     }
@@ -731,7 +918,7 @@ final class CardDetailViewController: UIViewController {
     @objc
     private func openScryfall() {
 
-        guard let url = card.scryfallUri else {
+        guard let url = displayedCard.scryfallUri else {
             return
         }
 

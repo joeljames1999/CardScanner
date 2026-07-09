@@ -86,7 +86,7 @@ final class ScannerViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "MTG Scanner"
+        title = "Scan Cards"
         configureNavigationItems()
         setupLayout()
         setupCamera()
@@ -326,6 +326,7 @@ final class ScannerViewController: UIViewController {
                 card: card,
                 count: details.quantity,
                 isFoil: details.isFoil,
+                finish: details.finish,
                 isAltered: details.isAltered,
                 language: details.language
             )

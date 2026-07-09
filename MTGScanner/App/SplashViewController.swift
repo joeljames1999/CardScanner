@@ -10,13 +10,29 @@ final class SplashViewController: UIViewController {
         return iv
     }()
 
+    private let laserGlowView: UIView = {
+        let view = UIView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        view.backgroundColor = UIColor.brandBlue.withAlphaComponent(0.32)
+        view.layer.cornerRadius = 7
+        view.layer.shadowColor = UIColor.brandBlue.cgColor
+        view.layer.shadowRadius = 24
+        view.layer.shadowOpacity = 1
+        view.layer.shadowOffset = .zero
+        return view
+    }()
+
     private let laserView: UIView = {
         let view = UIView()
         view.translatesAutoresizingMaskIntoConstraints = false
-        view.backgroundColor = UIColor.brandBlue
-        view.layer.shadowColor = UIColor.white.cgColor
-        view.layer.shadowRadius = 12
+        view.backgroundColor = .white
+        view.layer.cornerRadius = 1.5
+        view.layer.borderColor = UIColor.accentColor.withAlphaComponent(0.65).cgColor
+        view.layer.borderWidth = 0.5
+        view.layer.shadowColor = UIColor.accentColor.cgColor
+        view.layer.shadowRadius = 18
         view.layer.shadowOpacity = 1
+        view.layer.shadowOffset = .zero
         return view
     }()
 
@@ -72,6 +88,7 @@ final class SplashViewController: UIViewController {
     private func setupLayout() {
 
         view.addSubview(logoImageView)
+        view.addSubview(laserGlowView)
         view.addSubview(laserView)
 
         NSLayoutConstraint.activate([
@@ -81,13 +98,19 @@ final class SplashViewController: UIViewController {
             logoImageView.widthAnchor.constraint(equalToConstant: 220),
             logoImageView.heightAnchor.constraint(equalToConstant: 220),
 
-            laserView.centerXAnchor.constraint(equalTo: logoImageView.centerXAnchor),
-            laserView.widthAnchor.constraint(equalToConstant: view.frame.width / 2),
+            laserGlowView.centerXAnchor.constraint(equalTo: logoImageView.centerXAnchor),
+            laserGlowView.widthAnchor.constraint(equalTo: logoImageView.widthAnchor, multiplier: 1.35),
+            laserGlowView.heightAnchor.constraint(equalToConstant: 14),
+
+            laserView.centerXAnchor.constraint(equalTo: laserGlowView.centerXAnchor),
+            laserView.centerYAnchor.constraint(equalTo: laserGlowView.centerYAnchor),
+            laserView.widthAnchor.constraint(equalTo: laserGlowView.widthAnchor),
             laserView.heightAnchor.constraint(equalToConstant: 3)
         ])
 
-        laserTopConstraint = laserView.topAnchor.constraint(
-            equalTo: logoImageView.topAnchor
+        laserTopConstraint = laserGlowView.centerYAnchor.constraint(
+            equalTo: logoImageView.topAnchor,
+            constant: 50
         )
 
         laserTopConstraint.isActive = true
@@ -103,15 +126,24 @@ final class SplashViewController: UIViewController {
             options: [.autoreverse, .repeat],
             animations: {
 
-                self.laserTopConstraint.constant = 220
+                self.laserTopConstraint.constant = 170
                 self.view.layoutIfNeeded()
 
             }
         )
+
+        let glowPulse = CABasicAnimation(keyPath: "opacity")
+        glowPulse.fromValue = 0.55
+        glowPulse.toValue = 1.0
+        glowPulse.duration = 0.72
+        glowPulse.autoreverses = true
+        glowPulse.repeatCount = .infinity
+        glowPulse.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+
+        laserGlowView.layer.add(glowPulse, forKey: "scannerLaserGlowPulse")
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
             self.finishLaunching()
         }
     }
 }
-

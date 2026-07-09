@@ -59,8 +59,16 @@ final class CSVExporter {
                 from: entry.dateAdded
             )
 
-        let foil =
-            entry.isFoil ? "foil" : ""
+        let foil: String
+
+        switch entry.resolvedFinish {
+        case .nonfoil:
+            foil = ""
+        case .foil:
+            foil = "foil"
+        case .etched:
+            foil = "etched"
+        }
 
         let purchasePrice: String
 

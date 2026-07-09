@@ -63,7 +63,7 @@ final class CollectionStore {
 
                 $0.cardID == card.id &&
                 $0.condition == session.condition &&
-                $0.isFoil == session.isFoil &&
+                $0.resolvedFinish == session.finish &&
                 $0.isAltered == session.isAltered &&
                 $0.language == session.language
 
@@ -79,6 +79,7 @@ final class CollectionStore {
                         count: session.count,
                         condition: session.condition,
                         isFoil: session.isFoil,
+                        finish: session.finish,
                         isAltered: session.isAltered,
                         language: session.language
                     ),
@@ -130,7 +131,7 @@ final class CollectionStore {
                 $0.setCode.lowercased() == entry.setCode.lowercased() &&
                 $0.collectorNumber == entry.collectorNumber &&
                 $0.condition == entry.condition &&
-                $0.isFoil == entry.isFoil &&
+                $0.resolvedFinish == entry.resolvedFinish &&
                 $0.language == entry.language
             }) {
                 entries[idx].count += entry.count
@@ -177,6 +178,11 @@ final class CollectionStore {
 // MARK: - Helpers
 
 extension CollectionEntry {
-    var priceValue: Double { usdPrice.flatMap { Double($0) } ?? 0 }
-}
+    var priceValue: Double {
+        usdPrice.flatMap(Double.init) ?? purchasePrice ?? 0
+    }
 
+    var resolvedFinish: CardFinish {
+        finish ?? (isFoil ? .foil : .nonfoil)
+    }
+}

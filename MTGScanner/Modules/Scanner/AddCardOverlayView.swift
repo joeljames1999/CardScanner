@@ -10,9 +10,13 @@ import UIKit
 
 struct CardAddDetails {
     let quantity: Int
-    let isFoil: Bool
+    let finish: CardFinish
     let isAltered: Bool
     let language: String
+
+    var isFoil: Bool {
+        finish.isFoilLike
+    }
 }
 
 final class AddCardOverlayView: UIView {
@@ -41,6 +45,12 @@ final class AddCardOverlayView: UIView {
         didSet {
             selectedLanguageLabel.text = selectedLanguage.shortName
             languageButton.accessibilityLabel = "Language: \(selectedLanguage.name)"
+        }
+    }
+
+    private var selectedFinish: CardFinish {
+        didSet {
+            updateFinishButton()
         }
     }
 
@@ -90,7 +100,7 @@ final class AddCardOverlayView: UIView {
         accessibilityLabel: "Increase quantity"
     )
 
-    private lazy var foilButton = makeToggleButton(title: "Foil")
+    private lazy var finishButton = makeFinishButton()
     private lazy var alteredButton = makeToggleButton(title: "Alt")
 
     private let selectedLanguageLabel: UILabel = {
@@ -163,6 +173,7 @@ final class AddCardOverlayView: UIView {
         self.selectedLanguage = availableLanguages.first {
             $0.code == baseLanguage.code
         } ?? availableLanguages.first ?? baseLanguage
+        self.selectedFinish = card.availableFinishes.first ?? .nonfoil
         super.init(frame: .zero)
 
         setupLayout()
@@ -191,7 +202,7 @@ final class AddCardOverlayView: UIView {
         let controlsStack = UIStackView(arrangedSubviews: [
             thumbnailImageView,
             quantityStack,
-            foilButton,
+            finishButton,
             alteredButton,
             languageButton,
             addButton,
@@ -237,6 +248,8 @@ final class AddCardOverlayView: UIView {
         minusButton.alpha = 0.35
         selectedLanguageLabel.text = selectedLanguage.shortName
         languageButton.accessibilityLabel = "Language: \(selectedLanguage.name)"
+        finishButton.isHidden = card.availableFinishes.count <= 1
+        updateFinishButton()
         loadThumbnail(from: card.displayImage)
     }
 
@@ -312,6 +325,26 @@ final class AddCardOverlayView: UIView {
         return button
     }
 
+    private func makeFinishButton() -> UIButton {
+        var config = UIButton.Configuration.tinted()
+        config.title = selectedFinish.shortName
+        config.baseForegroundColor = .black
+        config.baseBackgroundColor = UIColor.systemYellow.withAlphaComponent(0.9)
+        config.cornerStyle = .capsule
+        config.contentInsets = NSDirectionalEdgeInsets(
+            top: 6,
+            leading: 7,
+            bottom: 6,
+            trailing: 7
+        )
+
+        let button = UIButton(configuration: config)
+        button.titleLabel?.font = .systemFont(ofSize: 12, weight: .semibold)
+        button.showsMenuAsPrimaryAction = true
+        button.menu = makeFinishMenu()
+        return button
+    }
+
     private func makeLanguageMenu() -> UIMenu {
         UIMenu(
             title: "Language",
@@ -329,6 +362,30 @@ final class AddCardOverlayView: UIView {
     private func selectLanguage(_ language: ScannerLanguage) {
         selectedLanguage = language
         languageButton.menu = makeLanguageMenu()
+    }
+
+    private func makeFinishMenu() -> UIMenu {
+        UIMenu(
+            title: "Finish",
+            children: card.availableFinishes.map { finish in
+                UIAction(
+                    title: finish.displayName,
+                    state: finish == selectedFinish ? .on : .off
+                ) { [weak self] _ in
+                    self?.selectFinish(finish)
+                }
+            }
+        )
+    }
+
+    private func selectFinish(_ finish: CardFinish) {
+        selectedFinish = finish
+        finishButton.menu = makeFinishMenu()
+    }
+
+    private func updateFinishButton() {
+        finishButton.configuration?.title = selectedFinish.shortName
+        finishButton.accessibilityLabel = "Finish: \(selectedFinish.displayName)"
     }
 
     private func updateToggleAppearance(_ button: UIButton) {
@@ -362,7 +419,7 @@ final class AddCardOverlayView: UIView {
         onAdd?(
             CardAddDetails(
                 quantity: quantity,
-                isFoil: foilButton.isSelected,
+                finish: selectedFinish,
                 isAltered: alteredButton.isSelected,
                 language: selectedLanguage.name
             )

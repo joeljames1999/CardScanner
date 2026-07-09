@@ -14,15 +14,14 @@ final class CollectionCardCell: UICollectionViewCell {
 
     // MARK: UI
 
+    private let imageContainerView = UIView()
     private let cardImageView = UIImageView()
 
     private let quantityBadge = PaddingLabel()
 
     private let priceBadge = PaddingLabel()
 
-    private let bottomBlur = UIVisualEffectView(
-        effect: UIBlurEffect(style: .systemUltraThinMaterialLight)
-    )
+    private let bottomInfoView = UIView()
 
     private let setImageView = UIImageView()
 
@@ -40,15 +39,23 @@ final class CollectionCardCell: UICollectionViewCell {
         super.init(frame: frame)
 
         backgroundColor = .clear
+        contentView.backgroundColor = UIColor(
+            red: 0.055,
+            green: 0.065,
+            blue: 0.08,
+            alpha: 1
+        )
 
-        contentView.layer.cornerRadius = 14
+        contentView.layer.cornerRadius = 16
         contentView.layer.cornerCurve = .continuous
         contentView.layer.masksToBounds = true
+        contentView.layer.borderWidth = 1
+        contentView.layer.borderColor = UIColor.brandBlue.withAlphaComponent(0.5).cgColor
 
-        layer.shadowColor = UIColor.black.cgColor
-        layer.shadowOpacity = 0.18
-        layer.shadowRadius = 8
-        layer.shadowOffset = CGSize(width: 0, height: 3)
+        layer.shadowColor = UIColor.brandBlue.cgColor
+        layer.shadowOpacity = 0.16
+        layer.shadowRadius = 12
+        layer.shadowOffset = CGSize(width: 0, height: 5)
 
         configureViews()
         layoutViews()
@@ -86,11 +93,7 @@ final class CollectionCardCell: UICollectionViewCell {
 
         quantityBadge.text = "×\(entry.count)"
 
-        if let price = entry.purchasePrice {
-            priceBadge.text = String(format: "$%.2f", price)
-        } else {
-            priceBadge.text = "--"
-        }
+        priceBadge.text = PriceFormatter.string(usd: entry.priceValue)
 
         loadImage(entry.imageURL ?? card?.displayImage)
 
@@ -104,35 +107,60 @@ final class CollectionCardCell: UICollectionViewCell {
 
     private func configureViews() {
 
+        imageContainerView.translatesAutoresizingMaskIntoConstraints = false
+        imageContainerView.backgroundColor = .black
+        imageContainerView.layer.cornerRadius = 10
+        imageContainerView.layer.cornerCurve = .continuous
+        imageContainerView.layer.masksToBounds = true
+
         cardImageView.translatesAutoresizingMaskIntoConstraints = false
-        cardImageView.contentMode = .scaleAspectFit
-        cardImageView.clipsToBounds = false
+        cardImageView.contentMode = .scaleAspectFill
+        cardImageView.clipsToBounds = true
         cardImageView.backgroundColor = .black
 
         quantityBadge.translatesAutoresizingMaskIntoConstraints = false
-        quantityBadge.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.9)
+        quantityBadge.backgroundColor = UIColor(
+            red: 0.07,
+            green: 0.08,
+            blue: 0.1,
+            alpha: 0.92
+        )
         quantityBadge.textColor = .white
-        quantityBadge.font = .boldSystemFont(ofSize: 11)
-        quantityBadge.layer.cornerRadius = 7
+        quantityBadge.font = .boldSystemFont(ofSize: 12)
+        quantityBadge.layer.cornerRadius = 8
         quantityBadge.clipsToBounds = true
+        quantityBadge.layer.borderWidth = 1
+        quantityBadge.layer.borderColor = UIColor.brandBlue.withAlphaComponent(0.75).cgColor
 
         priceBadge.translatesAutoresizingMaskIntoConstraints = false
-        priceBadge.backgroundColor = UIColor.black.withAlphaComponent(0.75)
+        priceBadge.backgroundColor = UIColor(
+            red: 0.07,
+            green: 0.08,
+            blue: 0.1,
+            alpha: 0.92
+        )
         priceBadge.textColor = .white
-        priceBadge.font = .boldSystemFont(ofSize: 10)
-        priceBadge.layer.cornerRadius = 7
+        priceBadge.font = .boldSystemFont(ofSize: 11)
+        priceBadge.layer.cornerRadius = 8
         priceBadge.clipsToBounds = true
+        priceBadge.layer.borderWidth = 1
+        priceBadge.layer.borderColor = UIColor.brandBlue.withAlphaComponent(0.75).cgColor
 
-        bottomBlur.translatesAutoresizingMaskIntoConstraints = false
+        bottomInfoView.translatesAutoresizingMaskIntoConstraints = false
+        bottomInfoView.backgroundColor = UIColor.white.withAlphaComponent(0.055)
+        bottomInfoView.layer.cornerRadius = 10
+        bottomInfoView.layer.cornerCurve = .continuous
+        bottomInfoView.layer.borderWidth = 1
+        bottomInfoView.layer.borderColor = UIColor.white.withAlphaComponent(0.08).cgColor
 
         setImageView.translatesAutoresizingMaskIntoConstraints = false
         setImageView.contentMode = .scaleAspectFit
 
         collectorLabel.translatesAutoresizingMaskIntoConstraints = false
-        collectorLabel.textColor = .label
-        collectorLabel.font = .boldSystemFont(ofSize: 12)
+        collectorLabel.textColor = UIColor.white.withAlphaComponent(0.88)
+        collectorLabel.font = .systemFont(ofSize: 13, weight: .bold)
         collectorLabel.numberOfLines = 2
-        collectorLabel.textAlignment = .center
+        collectorLabel.textAlignment = .left
         collectorLabel.adjustsFontSizeToFitWidth = true
         collectorLabel.minimumScaleFactor = 0.8
 
@@ -150,48 +178,54 @@ final class CollectionCardCell: UICollectionViewCell {
 
     private func layoutViews() {
 
-        contentView.addSubview(cardImageView)
+        contentView.addSubview(imageContainerView)
+        imageContainerView.addSubview(cardImageView)
 
         contentView.addSubview(quantityBadge)
         contentView.addSubview(priceBadge)
 
-        contentView.addSubview(bottomBlur)
+        contentView.addSubview(bottomInfoView)
 
-        bottomBlur.contentView.addSubview(setImageView)
-        bottomBlur.contentView.addSubview(collectorLabel)
-        bottomBlur.contentView.addSubview(foilImageView)
+        bottomInfoView.addSubview(setImageView)
+        bottomInfoView.addSubview(collectorLabel)
+        bottomInfoView.addSubview(foilImageView)
 
         NSLayoutConstraint.activate([
 
-            cardImageView.topAnchor.constraint(equalTo: contentView.topAnchor),
-            cardImageView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
-            cardImageView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
-            cardImageView.bottomAnchor.constraint(equalTo: bottomBlur.topAnchor),
+            imageContainerView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 8),
+            imageContainerView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 8),
+            imageContainerView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -8),
+            imageContainerView.bottomAnchor.constraint(equalTo: bottomInfoView.topAnchor, constant: -8),
 
-            quantityBadge.topAnchor.constraint(equalTo: cardImageView.topAnchor, constant: 5),
-            quantityBadge.leadingAnchor.constraint(equalTo: cardImageView.leadingAnchor, constant: 5),
+            cardImageView.topAnchor.constraint(equalTo: imageContainerView.topAnchor),
+            cardImageView.leadingAnchor.constraint(equalTo: imageContainerView.leadingAnchor),
+            cardImageView.trailingAnchor.constraint(equalTo: imageContainerView.trailingAnchor),
+            cardImageView.bottomAnchor.constraint(equalTo: imageContainerView.bottomAnchor),
 
-            priceBadge.topAnchor.constraint(equalTo: cardImageView.topAnchor, constant: 5),
-            priceBadge.trailingAnchor.constraint(equalTo: cardImageView.trailingAnchor, constant: -5),
+            quantityBadge.topAnchor.constraint(equalTo: imageContainerView.topAnchor, constant: 5),
+            quantityBadge.leadingAnchor.constraint(equalTo: imageContainerView.leadingAnchor, constant: 5),
 
-            bottomBlur.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
-            bottomBlur.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
-            bottomBlur.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
-            bottomBlur.heightAnchor.constraint(equalToConstant: 36),
+            priceBadge.topAnchor.constraint(equalTo: imageContainerView.topAnchor, constant: 5),
+            priceBadge.trailingAnchor.constraint(equalTo: imageContainerView.trailingAnchor, constant: -5),
 
-            setImageView.leadingAnchor.constraint(equalTo: bottomBlur.leadingAnchor, constant: 6),
-            setImageView.centerYAnchor.constraint(equalTo: bottomBlur.centerYAnchor),
-            setImageView.widthAnchor.constraint(equalToConstant: 14),
-            setImageView.heightAnchor.constraint(equalToConstant: 14),
+            bottomInfoView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 8),
+            bottomInfoView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -8),
+            bottomInfoView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -8),
+            bottomInfoView.heightAnchor.constraint(equalToConstant: 42),
 
-            collectorLabel.leadingAnchor.constraint(equalTo: setImageView.trailingAnchor, constant: 4),
-            collectorLabel.trailingAnchor.constraint(lessThanOrEqualTo: foilImageView.leadingAnchor, constant: -4),
-            collectorLabel.topAnchor.constraint(greaterThanOrEqualTo: bottomBlur.topAnchor, constant: 4),
-            collectorLabel.bottomAnchor.constraint(lessThanOrEqualTo: bottomBlur.bottomAnchor, constant: -4),
+            setImageView.leadingAnchor.constraint(equalTo: bottomInfoView.leadingAnchor, constant: 9),
+            setImageView.centerYAnchor.constraint(equalTo: bottomInfoView.centerYAnchor),
+            setImageView.widthAnchor.constraint(equalToConstant: 18),
+            setImageView.heightAnchor.constraint(equalToConstant: 18),
+
+            collectorLabel.leadingAnchor.constraint(equalTo: setImageView.trailingAnchor, constant: 7),
+            collectorLabel.trailingAnchor.constraint(lessThanOrEqualTo: foilImageView.leadingAnchor, constant: -5),
+            collectorLabel.topAnchor.constraint(greaterThanOrEqualTo: bottomInfoView.topAnchor, constant: 5),
+            collectorLabel.bottomAnchor.constraint(lessThanOrEqualTo: bottomInfoView.bottomAnchor, constant: -5),
             collectorLabel.centerYAnchor.constraint(equalTo: setImageView.centerYAnchor),
 
-            foilImageView.trailingAnchor.constraint(equalTo: bottomBlur.trailingAnchor, constant: -6),
-            foilImageView.centerYAnchor.constraint(equalTo: bottomBlur.centerYAnchor),
+            foilImageView.trailingAnchor.constraint(equalTo: bottomInfoView.trailingAnchor, constant: -9),
+            foilImageView.centerYAnchor.constraint(equalTo: bottomInfoView.centerYAnchor),
             foilImageView.widthAnchor.constraint(equalToConstant: 14),
             foilImageView.heightAnchor.constraint(equalToConstant: 14)
         ])
@@ -204,6 +238,7 @@ final class CollectionCardCell: UICollectionViewCell {
         imageLoadTask?.cancel()
         representedImageURL = url
         cardImageView.image = UIImage(systemName: "photo")
+        cardImageView.contentMode = .scaleAspectFit
 
         guard let url else {
             return
@@ -222,6 +257,7 @@ final class CollectionCardCell: UICollectionViewCell {
                 }
 
                 self?.cardImageView.image = image
+                self?.cardImageView.contentMode = .scaleAspectFill
                 self?.imageLoadTask = nil
             }
         }
@@ -257,7 +293,7 @@ final class CollectionCardCell: UICollectionViewCell {
         switch rarity.lowercased() {
 
         case "common":
-            return .black
+            return .white.withAlphaComponent(0.75)
 
         case "uncommon":
             return UIColor(

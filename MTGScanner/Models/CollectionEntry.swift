@@ -18,6 +18,7 @@ struct CollectionEntry: Codable, Identifiable {
     var rarity: String
     var condition: CardCondition
     var isFoil: Bool
+    var finish: CardFinish?
     var language: String        // e.g. "English"
     var purchasePrice: Double?
     var usdPrice: String?
@@ -30,9 +31,12 @@ struct CollectionEntry: Codable, Identifiable {
         count: Int = 1,
         condition: CardCondition = .nearMint,
         isFoil: Bool = false,
+        finish: CardFinish? = nil,
         isAltered: Bool = false,
         language: String = "English"
     ) {
+        let resolvedFinish = finish ?? (isFoil ? .foil : .nonfoil)
+
         self.id = UUID()
         self.count = count
         self.cardID = card.id
@@ -42,7 +46,8 @@ struct CollectionEntry: Codable, Identifiable {
         self.collectorNumber = card.collectorNumber
         self.rarity = card.rarity
         self.condition = condition
-        self.isFoil = isFoil
+        self.finish = resolvedFinish
+        self.isFoil = resolvedFinish.isFoilLike
         self.isAltered = isAltered
         self.language = language
         self.purchasePrice = card.prices?.usd.flatMap(Double.init)
@@ -62,6 +67,7 @@ struct CollectionEntry: Codable, Identifiable {
         rarity: String,
         condition: CardCondition,
         isFoil: Bool,
+        finish: CardFinish? = nil,
         isAltered: Bool,
         language: String,
         purchasePrice: Double?,
@@ -78,7 +84,8 @@ struct CollectionEntry: Codable, Identifiable {
         self.collectorNumber = collectorNumber
         self.rarity = rarity
         self.condition = condition
-        self.isFoil = isFoil
+        self.finish = finish ?? (isFoil ? .foil : .nonfoil)
+        self.isFoil = self.finish?.isFoilLike ?? isFoil
         self.isAltered = isAltered
         self.language = language
         self.purchasePrice = purchasePrice

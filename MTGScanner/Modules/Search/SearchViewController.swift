@@ -7,265 +7,320 @@ final class CardSearchViewController: UIViewController {
     private var cancellables = Set<AnyCancellable>()
 
     private lazy var collectionView: UICollectionView = {
-
         let layout = UICollectionViewFlowLayout()
-
-        let spacing: CGFloat = 12
-        let width = (UIScreen.main.bounds.width - 48) / 2
+        let width: CGFloat = 160
 
         layout.itemSize = CGSize(
             width: width,
             height: width * 1.55
         )
-
         layout.minimumLineSpacing = 16
         layout.minimumInteritemSpacing = 16
-        
 
-        let cv = UICollectionView(
-            frame: .zero,
-            collectionViewLayout: layout
-        )
-
+        let cv = UICollectionView(frame: .zero, collectionViewLayout: layout)
         cv.translatesAutoresizingMaskIntoConstraints = false
         cv.backgroundColor = .systemBackground
         cv.keyboardDismissMode = .onDrag
-
         cv.register(
             CardSearchCell.self,
             forCellWithReuseIdentifier: CardSearchCell.reuseIdentifier
         )
-
         cv.delegate = self
         cv.dataSource = self
-
         return cv
     }()
-    
-    // Filter badge
-    private lazy var filterButton: UIBarButtonItem = {
-        UIBarButtonItem(
-            image: UIImage(systemName: "line.3.horizontal.decrease.circle"),
-            style: .plain,
-            target: self,
-            action: #selector(openFilters)
+
+    private let headerView: UIView = {
+        let view = UIView()
+        view.layer.cornerRadius = 28
+        view.layer.cornerCurve = .continuous
+        view.layer.masksToBounds = true
+        return view
+    }()
+
+    private let headerGradientLayer = CAGradientLayer()
+
+    private let headerIconContainer: UIView = {
+        let view = UIView()
+        view.backgroundColor = UIColor.white.withAlphaComponent(0.18)
+        view.layer.cornerRadius = 20
+        view.layer.cornerCurve = .continuous
+        return view
+    }()
+
+    private let headerIconView: UIImageView = {
+        let imageView = UIImageView(image: UIImage(systemName: "magnifyingglass.circle.fill"))
+        imageView.tintColor = .white
+        imageView.contentMode = .scaleAspectFit
+        imageView.preferredSymbolConfiguration = UIImage.SymbolConfiguration(
+            pointSize: 28,
+            weight: .semibold
         )
+        return imageView
     }()
-    
-    private lazy var filterBadge: UILabel = {
-        let lbl = UILabel()
-        lbl.translatesAutoresizingMaskIntoConstraints = false
-        lbl.font = .systemFont(ofSize: 10, weight: .bold)
-        lbl.textColor = .white
-        lbl.textAlignment = .center
-        lbl.backgroundColor = .systemRed
-        lbl.layer.cornerRadius = 8
-        lbl.clipsToBounds = true
-        lbl.widthAnchor.constraint(equalToConstant: 16).isActive = true
-        lbl.heightAnchor.constraint(equalToConstant: 16).isActive = true
-        lbl.isHidden = true
-        return lbl
-    }()
-
-    private let headerGlow = UIView()
-
-    private let headerView = UIView()
 
     private let titleLabel: UILabel = {
         let label = UILabel()
-        label.text = "Search"
-        label.font = .systemFont(
-            ofSize: 34,
-            weight: .bold
-        )
+        label.text = "Find cards"
+        label.font = .systemFont(ofSize: 30, weight: .bold)
+        label.textColor = .white
+        label.numberOfLines = 1
+        label.adjustsFontSizeToFitWidth = true
+        label.minimumScaleFactor = 0.82
         return label
     }()
 
     private let cardCountLabel: UILabel = {
         let label = UILabel()
-        label.font = .systemFont(
-            ofSize: 15,
-            weight: .medium
-        )
-        label.textColor = .secondaryLabel
+        label.text = "Search by name, set, type, or text"
+        label.font = .systemFont(ofSize: 14, weight: .medium)
+        label.textColor = UIColor.white.withAlphaComponent(0.78)
+        label.numberOfLines = 1
+        label.adjustsFontSizeToFitWidth = true
+        label.minimumScaleFactor = 0.8
         return label
     }()
 
-    private let searchField = UISearchBar()
-    
+    private let searchField: UISearchBar = {
+        let searchBar = UISearchBar()
+        searchBar.placeholder = "Search cards"
+        searchBar.searchBarStyle = .minimal
+        searchBar.returnKeyType = .search
+        return searchBar
+    }()
+
+    private lazy var filterButton: UIButton = {
+        var config = UIButton.Configuration.filled()
+        config.image = UIImage(systemName: "line.3.horizontal.decrease.circle.fill")
+        config.cornerStyle = .capsule
+        config.baseBackgroundColor = UIColor.brandBlue
+        config.baseForegroundColor = .white
+        config.contentInsets = NSDirectionalEdgeInsets(
+            top: 9,
+            leading: 11,
+            bottom: 9,
+            trailing: 11
+        )
+
+        let button = UIButton(configuration: config)
+        button.addTarget(
+            self,
+            action: #selector(openFilters),
+            for: .touchUpInside
+        )
+        button.accessibilityLabel = "Filters"
+        return button
+    }()
+
+    private lazy var filterBadge: UILabel = {
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.font = .systemFont(ofSize: 10, weight: .bold)
+        label.textColor = .white
+        label.textAlignment = .center
+        label.backgroundColor = .systemRed
+        label.layer.cornerRadius = 8
+        label.clipsToBounds = true
+        label.isHidden = true
+        return label
+    }()
+
     // MARK: Lifecycle
 
     override func viewDidLoad() {
         super.viewDidLoad()
 
         title = nil
-
         view.backgroundColor = .systemBackground
 
         setupUI()
         bindViewModel()
         configureKeyboardDismissal()
     }
-    
+
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
 
         let tf = UITextField(frame: .zero)
         view.addSubview(tf)
-
         tf.becomeFirstResponder()
         tf.resignFirstResponder()
-
         tf.removeFromSuperview()
     }
 
-    private func setupUI() {
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
 
-        headerGlow.translatesAutoresizingMaskIntoConstraints = false
-        headerGlow.backgroundColor =
-        UIColor.accentColor.withAlphaComponent(0.15)
+        headerGradientLayer.frame = headerView.bounds
+        updateCollectionLayout()
+    }
 
-        view.addSubview(headerGlow)
-
-        headerView.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(headerView)
-
-        [
-            titleLabel,
-            cardCountLabel,
-            searchField,
-            collectionView
-        ].forEach {
-            $0.translatesAutoresizingMaskIntoConstraints = false
-            view.addSubview($0)
+    private func updateCollectionLayout() {
+        guard let layout = collectionView.collectionViewLayout as? UICollectionViewFlowLayout else {
+            return
         }
 
-        searchField.delegate = self
-        searchField.placeholder = "Search cards"
-        searchField.searchBarStyle = .minimal
+        let availableWidth = collectionView.bounds.width
+        guard availableWidth > 0 else {
+            return
+        }
 
-        let filterButton = UIButton(
-            type: .system
+        let itemWidth = floor((availableWidth - layout.minimumInteritemSpacing) / 2)
+        let itemSize = CGSize(
+            width: itemWidth,
+            height: itemWidth * 1.55
         )
 
-        filterButton.setImage(
-            UIImage(
-                systemName:
-                "line.3.horizontal.decrease.circle.fill"
-            ),
-            for: .normal
-        )
+        guard layout.itemSize != itemSize else {
+            return
+        }
 
-        filterButton.tintColor = UIColor.accentColor
+        layout.itemSize = itemSize
+        layout.invalidateLayout()
+    }
 
-        filterButton.addTarget(
-            self,
-            action: #selector(openFilters),
-            for: .touchUpInside
-        )
+    private func setupUI() {
+        headerView.translatesAutoresizingMaskIntoConstraints = false
+        collectionView.translatesAutoresizingMaskIntoConstraints = false
 
-        searchField.searchTextField.rightView =
-            filterButton
+        view.addSubview(headerView)
+        view.addSubview(collectionView)
 
-        searchField.searchTextField.rightViewMode =
-            .always
+        configureHeaderGradient()
+        setupHeaderContent()
 
         NSLayoutConstraint.activate([
-
-            headerGlow.topAnchor.constraint(
-                equalTo: view.topAnchor
-            ),
-
-            headerGlow.leadingAnchor.constraint(
-                equalTo: view.leadingAnchor
-            ),
-
-            headerGlow.trailingAnchor.constraint(
-                equalTo: view.trailingAnchor
-            ),
-
-            headerGlow.heightAnchor.constraint(
-                equalToConstant: 220
-            ),
-
-            titleLabel.topAnchor.constraint(
+            headerView.topAnchor.constraint(
                 equalTo: view.safeAreaLayoutGuide.topAnchor,
-                constant: 12
+                constant: 16
             ),
-
-            titleLabel.leadingAnchor.constraint(
+            headerView.leadingAnchor.constraint(
                 equalTo: view.leadingAnchor,
                 constant: 20
             ),
-
-            cardCountLabel.topAnchor.constraint(
-                equalTo: titleLabel.bottomAnchor,
-                constant: 4
-            ),
-
-            cardCountLabel.leadingAnchor.constraint(
-                equalTo: titleLabel.leadingAnchor
-            ),
-
-            searchField.topAnchor.constraint(
-                equalTo: cardCountLabel.bottomAnchor,
-                constant: 16
-            ),
-
-            searchField.leadingAnchor.constraint(
-                equalTo: view.leadingAnchor,
-                constant: 16
-            ),
-
-            searchField.trailingAnchor.constraint(
+            headerView.trailingAnchor.constraint(
                 equalTo: view.trailingAnchor,
-                constant: -16
+                constant: -20
             ),
 
             collectionView.topAnchor.constraint(
-                equalTo: searchField.bottomAnchor,
+                equalTo: headerView.bottomAnchor,
                 constant: 20
             ),
-
             collectionView.leadingAnchor.constraint(
                 equalTo: view.leadingAnchor,
                 constant: 16
             ),
-
             collectionView.trailingAnchor.constraint(
                 equalTo: view.trailingAnchor,
                 constant: -16
             ),
-
-            collectionView.bottomAnchor.constraint(
-                equalTo: view.bottomAnchor
-            )
+            collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
     }
-    
-    override func viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
 
-        if headerGlow.layer.sublayers?.isEmpty ?? true {
+    private func setupHeaderContent() {
+        let titleStack = UIStackView(arrangedSubviews: [
+            titleLabel,
+            cardCountLabel
+        ])
+        titleStack.axis = .vertical
+        titleStack.spacing = 4
 
-            let gradient = CAGradientLayer()
+        let topRow = UIStackView(arrangedSubviews: [
+            headerIconContainer,
+            titleStack
+        ])
+        topRow.axis = .horizontal
+        topRow.alignment = .center
+        topRow.spacing = 14
 
-            gradient.frame = headerGlow.bounds
+        let searchRow = UIView()
+        searchRow.backgroundColor = .white
+        searchRow.layer.cornerRadius = 18
+        searchRow.layer.cornerCurve = .continuous
+        searchRow.layer.shadowColor = UIColor.black.cgColor
+        searchRow.layer.shadowOpacity = 0.12
+        searchRow.layer.shadowRadius = 14
+        searchRow.layer.shadowOffset = CGSize(width: 0, height: 6)
 
-            gradient.colors = [
-                UIColor.accentColor.withAlphaComponent(0.35).cgColor,
-                UIColor.clear.cgColor
-            ]
+        let contentStack = UIStackView(arrangedSubviews: [
+            topRow,
+            searchRow
+        ])
+        contentStack.axis = .vertical
+        contentStack.spacing = 20
+        contentStack.translatesAutoresizingMaskIntoConstraints = false
 
-            gradient.startPoint = CGPoint(x: 0.5, y: 0)
-            gradient.endPoint = CGPoint(x: 0.5, y: 1)
+        headerIconContainer.translatesAutoresizingMaskIntoConstraints = false
+        headerIconView.translatesAutoresizingMaskIntoConstraints = false
+        searchRow.translatesAutoresizingMaskIntoConstraints = false
+        searchField.translatesAutoresizingMaskIntoConstraints = false
+        filterButton.translatesAutoresizingMaskIntoConstraints = false
 
-            headerGlow.layer.addSublayer(
-                gradient
-            )
-        }
+        headerIconContainer.addSubview(headerIconView)
+        searchRow.addSubview(searchField)
+        searchRow.addSubview(filterButton)
+        filterButton.addSubview(filterBadge)
+        headerView.addSubview(contentStack)
+
+        searchField.delegate = self
+        styleSearchField()
+
+        NSLayoutConstraint.activate([
+            headerIconContainer.widthAnchor.constraint(equalToConstant: 48),
+            headerIconContainer.heightAnchor.constraint(equalToConstant: 48),
+
+            headerIconView.centerXAnchor.constraint(equalTo: headerIconContainer.centerXAnchor),
+            headerIconView.centerYAnchor.constraint(equalTo: headerIconContainer.centerYAnchor),
+            headerIconView.widthAnchor.constraint(equalToConstant: 32),
+            headerIconView.heightAnchor.constraint(equalToConstant: 32),
+
+            searchRow.heightAnchor.constraint(equalToConstant: 60),
+
+            searchField.leadingAnchor.constraint(equalTo: searchRow.leadingAnchor, constant: 4),
+            searchField.topAnchor.constraint(equalTo: searchRow.topAnchor, constant: 4),
+            searchField.bottomAnchor.constraint(equalTo: searchRow.bottomAnchor, constant: -4),
+            searchField.trailingAnchor.constraint(equalTo: filterButton.leadingAnchor, constant: -2),
+
+            filterButton.trailingAnchor.constraint(equalTo: searchRow.trailingAnchor, constant: -10),
+            filterButton.centerYAnchor.constraint(equalTo: searchRow.centerYAnchor),
+            filterButton.widthAnchor.constraint(equalToConstant: 42),
+            filterButton.heightAnchor.constraint(equalToConstant: 42),
+
+            filterBadge.topAnchor.constraint(equalTo: filterButton.topAnchor, constant: -4),
+            filterBadge.trailingAnchor.constraint(equalTo: filterButton.trailingAnchor, constant: 4),
+            filterBadge.widthAnchor.constraint(equalToConstant: 16),
+            filterBadge.heightAnchor.constraint(equalToConstant: 16),
+
+            contentStack.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 18),
+            contentStack.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 18),
+            contentStack.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -18),
+            contentStack.bottomAnchor.constraint(equalTo: headerView.bottomAnchor, constant: -18)
+        ])
     }
-    
+
+    private func styleSearchField() {
+        searchField.backgroundImage = UIImage()
+        searchField.searchTextField.backgroundColor = .clear
+        searchField.searchTextField.font = .systemFont(ofSize: 17, weight: .semibold)
+        searchField.searchTextField.textColor = .label
+        searchField.searchTextField.tintColor = .brandBlue
+        searchField.searchTextField.leftView?.tintColor = .brandBlue
+        searchField.searchTextField.clearButtonMode = .whileEditing
+    }
+
+    private func configureHeaderGradient() {
+        headerGradientLayer.colors = [
+            UIColor.brandBlue.cgColor,
+            UIColor.accentColor.cgColor,
+            UIColor.systemIndigo.cgColor
+        ]
+        headerGradientLayer.startPoint = CGPoint(x: 0, y: 0)
+        headerGradientLayer.endPoint = CGPoint(x: 1, y: 1)
+        headerView.layer.insertSublayer(headerGradientLayer, at: 0)
+    }
+
     private func configureKeyboardDismissal() {
         let tapGesture = UITapGestureRecognizer(
             target: self,
@@ -280,20 +335,21 @@ final class CardSearchViewController: UIViewController {
     }
 
     private func bindViewModel() {
-        
-        // Update collection view when cards change
         viewModel.$results
             .receive(on: DispatchQueue.main)
             .sink { [weak self] cards in
+                guard let self else { return }
 
-                self?.cardCountLabel.text =
-                    "\(cards.count) cards"
+                if cards.isEmpty {
+                    cardCountLabel.text = "Search by name, set, type, or text"
+                } else {
+                    cardCountLabel.text = "\(cards.count) cards found"
+                }
 
-                self?.collectionView.reloadData()
+                collectionView.reloadData()
             }
             .store(in: &cancellables)
-        
-        // Update badge when filter changes
+
         viewModel.$filter
             .receive(on: DispatchQueue.main)
             .sink { [weak self] filter in
@@ -301,13 +357,13 @@ final class CardSearchViewController: UIViewController {
             }
             .store(in: &cancellables)
     }
-    
+
     private func updateFilterBadge(_ filter: SearchFilter) {
         let activeCount = filter.selectedRarities.count +
-                         filter.selectedSets.count +
-                         filter.selectedManaCosts.count +
-                         filter.selectedManaColors.count
-        
+            filter.selectedSets.count +
+            filter.selectedManaCosts.count +
+            filter.selectedManaColors.count
+
         if activeCount > 0 {
             filterBadge.text = "\(activeCount)"
             filterBadge.isHidden = false
@@ -315,16 +371,15 @@ final class CardSearchViewController: UIViewController {
             filterBadge.isHidden = true
         }
     }
-    
+
     @objc private func openFilters() {
         let filterVC = CardFilterViewController()
         filterVC.currentFilter = viewModel.filter
-        
-        // When filter changes, update view model
+
         filterVC.onFilterChange = { [weak self] newFilter in
             self?.viewModel.updateFilter(newFilter)
         }
-        
+
         let nav = UINavigationController(rootViewController: filterVC)
         if let sheet = nav.sheetPresentationController {
             sheet.detents = [.medium(), .large()]
@@ -334,8 +389,7 @@ final class CardSearchViewController: UIViewController {
     }
 }
 
-extension CardSearchViewController:
-UISearchBarDelegate {
+extension CardSearchViewController: UISearchBarDelegate {
 
     func searchBar(
         _ searchBar: UISearchBar,
@@ -355,15 +409,12 @@ UISearchBarDelegate {
 
 // MARK: Collection View
 
-extension CardSearchViewController:
-UICollectionViewDataSource,
-UICollectionViewDelegate {
+extension CardSearchViewController: UICollectionViewDataSource, UICollectionViewDelegate {
 
     func collectionView(
         _ collectionView: UICollectionView,
         numberOfItemsInSection section: Int
     ) -> Int {
-
         viewModel.results.count
     }
 
@@ -377,10 +428,7 @@ UICollectionViewDelegate {
             for: indexPath
         ) as! CardSearchCell
 
-        cell.configure(
-            with: viewModel.results[indexPath.item]
-        )
-
+        cell.configure(with: viewModel.results[indexPath.item])
         return cell
     }
 
@@ -388,7 +436,6 @@ UICollectionViewDelegate {
         _ collectionView: UICollectionView,
         didSelectItemAt indexPath: IndexPath
     ) {
-
         let card = viewModel.results[indexPath.item]
 
         let vc = CardDetailViewController(
@@ -396,9 +443,6 @@ UICollectionViewDelegate {
             actionMode: .addToCollection
         )
 
-        navigationController?.pushViewController(
-            vc,
-            animated: true
-        )
+        navigationController?.pushViewController(vc, animated: true)
     }
 }

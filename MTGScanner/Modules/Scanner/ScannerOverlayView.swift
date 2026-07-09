@@ -4,15 +4,30 @@ import AVFoundation
 
 final class ScannerOverlayView: UIView {
 
+    private let glowLayer = CAShapeLayer()
     private let shapeLayer = CAShapeLayer()
 
     override init(frame: CGRect) {
         super.init(frame: frame)
 
-        shapeLayer.strokeColor = UIColor.blue.cgColor
+        glowLayer.strokeColor = UIColor.brandBlue.cgColor
+        glowLayer.lineWidth = 9
+        glowLayer.fillColor = UIColor.clear.cgColor
+        glowLayer.opacity = 0.38
+        glowLayer.lineJoin = .round
+        glowLayer.lineCap = .round
+        glowLayer.shadowColor = UIColor.accentColor.cgColor
+        glowLayer.shadowRadius = 16
+        glowLayer.shadowOpacity = 1
+        glowLayer.shadowOffset = .zero
+
+        shapeLayer.strokeColor = UIColor.brandBlue.cgColor
         shapeLayer.lineWidth = 3
         shapeLayer.fillColor = UIColor.clear.cgColor
+        shapeLayer.lineJoin = .round
+        shapeLayer.lineCap = .round
 
+        layer.addSublayer(glowLayer)
         layer.addSublayer(shapeLayer)
     }
 
@@ -21,11 +36,17 @@ final class ScannerOverlayView: UIView {
     }
 
     func resetToScanning() {
+        glowLayer.path = nil
         shapeLayer.path = nil
+        glowLayer.strokeColor = UIColor.brandBlue.cgColor
+        glowLayer.shadowColor = UIColor.accentColor.cgColor
+        shapeLayer.strokeColor = UIColor.brandBlue.cgColor
     }
 
     func showFound(cardName: String) {
-        shapeLayer.strokeColor = UIColor.systemGreen.cgColor
+        glowLayer.strokeColor = UIColor.white.cgColor
+        glowLayer.shadowColor = UIColor.accentColor.cgColor
+        shapeLayer.strokeColor = UIColor.white.cgColor
     }
 
     // 🔥 REAL FIX: draw actual detected quadrilateral
@@ -35,6 +56,7 @@ final class ScannerOverlayView: UIView {
     ) {
 
         guard let rect, let previewLayer else {
+            glowLayer.path = nil
             shapeLayer.path = nil
             return
         }
@@ -59,6 +81,7 @@ final class ScannerOverlayView: UIView {
         path.addLine(to: bottomLeft)
         path.close()
 
+        glowLayer.path = path.cgPath
         shapeLayer.path = path.cgPath
     }
 }

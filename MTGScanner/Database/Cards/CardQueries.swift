@@ -232,7 +232,8 @@ extension CardQueries {
         digital,
         card_faces_json,
         released_at,
-        lang
+        lang,
+        finishes
     )
     VALUES
     (
@@ -240,7 +241,7 @@ extension CardQueries {
         ?,?,?,?,?,?,
         ?,?,?,?,?,?,
         ?,?,?,?,?,?,
-        ?,?,?,?
+        ?,?,?,?,?
     );
     """
 
@@ -319,7 +320,8 @@ extension CardQueries {
         digital TEXT,
         card_faces_json TEXT,
         released_at TEXT,
-        lang TEXT
+        lang TEXT,
+        finishes TEXT
     );
     """
 

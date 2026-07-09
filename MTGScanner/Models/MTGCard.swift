@@ -36,6 +36,10 @@ struct MTGCard: Decodable {
     let legalities: Legalities?
     let digital: Bool
     let cardFaces: [CardFace]?
+    let finishes: [CardFinish]?
+    let printedName: String?
+    let printedTypeLine: String?
+    let printedText: String?
 
     
     struct ImageUris: Codable {
@@ -121,6 +125,47 @@ struct MTGCard: Decodable {
         case legalities
         case digital
         case cardFaces = "card_faces"
+        case finishes
+        case printedName = "printed_name"
+        case printedTypeLine = "printed_type_line"
+        case printedText = "printed_text"
+    }
+}
+
+enum CardFinish: String, Codable, CaseIterable {
+    case nonfoil
+    case foil
+    case etched
+
+    var displayName: String {
+        switch self {
+        case .nonfoil:
+            return "Nonfoil"
+        case .foil:
+            return "Foil"
+        case .etched:
+            return "Etched"
+        }
+    }
+
+    var shortName: String {
+        switch self {
+        case .nonfoil:
+            return "NF"
+        case .foil:
+            return "Foil"
+        case .etched:
+            return "Etch"
+        }
+    }
+
+    var isFoilLike: Bool {
+        switch self {
+        case .nonfoil:
+            return false
+        case .foil, .etched:
+            return true
+        }
     }
 }
 
@@ -144,6 +189,17 @@ extension MTGCard {
         }
 
         return faces[1]
+    }
+
+    var availableFinishes: [CardFinish] {
+        let knownFinishes = finishes ?? []
+        let validFinishes = CardFinish.allCases.filter {
+            knownFinishes.contains($0)
+        }
+
+        return validFinishes.isEmpty
+            ? [.nonfoil, .foil]
+            : validFinishes
     }
 
     var displayImage: URL? {

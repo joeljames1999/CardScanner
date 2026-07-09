@@ -443,7 +443,7 @@ final class SessionCardCell: UITableViewCell {
     func configure(with entry: SessionEntry) {
         nameLabel.text  = entry.card.name
         setLabel.text   = "\(entry.card.setName) · \(entry.card.rarity.capitalized)"
-        priceLabel.text = entry.card.prices?.usd.map { "$\($0)" } ?? ""
+        priceLabel.text = PriceFormatter.string(usd: entry.card.prices?.usd)
         currentCount    = entry.count
         countLabel.text = "×\(entry.count)"
         stepper.value   = Double(entry.count)

@@ -255,7 +255,7 @@ extension MenuViewController: UITableViewDataSource {
         } else {
             let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
             var config = cell.defaultContentConfiguration()
-            config.text          = "MTG Scanner"
+            config.text          = "Scan Cards"
             config.secondaryText = "Built with Scryfall data"
             cell.contentConfiguration = config
             cell.selectionStyle  = .none

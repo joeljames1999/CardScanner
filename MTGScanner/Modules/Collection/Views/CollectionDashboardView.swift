@@ -17,27 +17,16 @@ final class CollectionDashboardView: UIView {
 
     // MARK: - UI
 
-    private let titleLabel: UILabel = {
-        let label = UILabel()
-        label.text = "Collection"
-        label.font = .systemFont(ofSize: 36, weight: .bold)
-        return label
-    }()
-
-    private let cardsLabel: UILabel = {
-        let label = UILabel()
-        label.font = .systemFont(ofSize: 17, weight: .medium)
-        label.textColor = .secondaryLabel
-        return label
-    }()
-
-    private let valueLabel: UILabel = {
-        let label = UILabel()
-        label.font = .systemFont(ofSize: 32, weight: .bold)
-        label.textColor = .brandBlue
-        label.textAlignment = .right
-        return label
-    }()
+    private let summaryCard = UIView()
+    private let gradientLayer = CAGradientLayer()
+    private let iconContainer = UIView()
+    private let iconView = UIImageView(image: UIImage(systemName: "rectangle.stack.fill"))
+    private let titleLabel = UILabel()
+    private let subtitleLabel = UILabel()
+    private let valueTitleLabel = UILabel()
+    private let valueLabel = UILabel()
+    private let cardsStatView = SummaryStatView(title: "Cards", symbol: "rectangle.stack")
+    private let filtersStatView = SummaryStatView(title: "Filters", symbol: "line.3.horizontal.decrease.circle")
 
     private lazy var sortButton = makePrimaryButton(
         title: "Sort",
@@ -59,7 +48,6 @@ final class CollectionDashboardView: UIView {
         super.init(frame: frame)
 
         backgroundColor = .systemBackground
-
         setup()
     }
 
@@ -67,149 +55,186 @@ final class CollectionDashboardView: UIView {
         fatalError()
     }
 
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        gradientLayer.frame = summaryCard.bounds
+    }
+
     // MARK: Configure
+
     func configure(
         cards: Int,
         value: Double,
         activeFilters: Int
-    ){
+    ) {
 
         let number = NumberFormatter()
         number.numberStyle = .decimal
 
-        cardsLabel.text =
-        "\(number.string(from: NSNumber(value: cards)) ?? "0") cards"
-
-        let currency = NumberFormatter()
-        currency.numberStyle = .currency
-        currency.currencyCode = "USD"
-
-        valueLabel.text =
-        currency.string(from: NSNumber(value: value))
+        cardsStatView.setValue(number.string(from: NSNumber(value: cards)) ?? "0")
+        filtersStatView.setValue("\(activeFilters)")
+        valueLabel.text = PriceFormatter.string(usd: value)
     }
-    
 }
 
 extension CollectionDashboardView {
-    
+
     func setup() {
-        
-        let topRow = UIStackView(arrangedSubviews: [
-            titleLabel,
-            UIView(),
-            valueLabel
-        ])
-        
-        topRow.alignment = .bottom
-        
+        setupSummaryCard()
+
         let buttonRow = UIStackView(arrangedSubviews: [
             sortButton,
             filterButton
         ])
-        
         buttonRow.axis = .horizontal
         buttonRow.spacing = 12
         buttonRow.distribution = .fillEqually
-        
+
         let stack = UIStackView(arrangedSubviews: [
-            topRow,
-            cardsLabel,
+            summaryCard,
             buttonRow
         ])
-        
         stack.axis = .vertical
-        stack.spacing = 18
+        stack.spacing = 14
         stack.translatesAutoresizingMaskIntoConstraints = false
-        
+
         addSubview(stack)
-        
+
         NSLayoutConstraint.activate([
-            
-            stack.topAnchor.constraint(equalTo: topAnchor, constant: 18),
+            stack.topAnchor.constraint(equalTo: topAnchor, constant: 16),
             stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 20),
             stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -20),
-            stack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -18)
-            
+            stack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -16),
+
+            summaryCard.heightAnchor.constraint(greaterThanOrEqualToConstant: 186)
         ])
     }
-    
+
+    func setupSummaryCard() {
+        summaryCard.translatesAutoresizingMaskIntoConstraints = false
+        summaryCard.layer.cornerRadius = 28
+        summaryCard.layer.cornerCurve = .continuous
+        summaryCard.layer.masksToBounds = true
+
+        gradientLayer.colors = [
+            UIColor.brandBlueDark.cgColor,
+            UIColor.brandBlue.cgColor,
+            UIColor.accentColor.cgColor
+        ]
+        gradientLayer.startPoint = CGPoint(x: 0, y: 0)
+        gradientLayer.endPoint = CGPoint(x: 1, y: 1)
+        summaryCard.layer.insertSublayer(gradientLayer, at: 0)
+
+        iconContainer.backgroundColor = UIColor.white.withAlphaComponent(0.18)
+        iconContainer.layer.cornerRadius = 18
+        iconContainer.layer.cornerCurve = .continuous
+
+        iconView.tintColor = .white
+        iconView.contentMode = .scaleAspectFit
+        iconView.preferredSymbolConfiguration = UIImage.SymbolConfiguration(
+            pointSize: 26,
+            weight: .semibold
+        )
+
+        titleLabel.text = "Collection"
+        titleLabel.font = .systemFont(ofSize: 30, weight: .bold)
+        titleLabel.textColor = .white
+
+        subtitleLabel.text = "Total collection value"
+        subtitleLabel.font = .systemFont(ofSize: 15, weight: .medium)
+        subtitleLabel.textColor = UIColor.white.withAlphaComponent(0.82)
+
+        valueTitleLabel.text = "Value"
+        valueTitleLabel.font = .systemFont(ofSize: 13, weight: .semibold)
+        valueTitleLabel.textColor = UIColor.white.withAlphaComponent(0.72)
+
+        valueLabel.font = .systemFont(ofSize: 34, weight: .bold)
+        valueLabel.textColor = .white
+        valueLabel.adjustsFontSizeToFitWidth = true
+        valueLabel.minimumScaleFactor = 0.68
+        valueLabel.numberOfLines = 1
+
+        let titleStack = UIStackView(arrangedSubviews: [
+            titleLabel,
+            subtitleLabel
+        ])
+        titleStack.axis = .vertical
+        titleStack.spacing = 4
+
+        let topRow = UIStackView(arrangedSubviews: [
+            iconContainer,
+            titleStack
+        ])
+        topRow.axis = .horizontal
+        topRow.alignment = .center
+        topRow.spacing = 12
+
+        let valueStack = UIStackView(arrangedSubviews: [
+            valueTitleLabel,
+            valueLabel
+        ])
+        valueStack.axis = .vertical
+        valueStack.spacing = 2
+
+        let statStack = UIStackView(arrangedSubviews: [
+            cardsStatView,
+            filtersStatView
+        ])
+        statStack.axis = .horizontal
+        statStack.spacing = 10
+        statStack.distribution = .fillEqually
+
+        let contentStack = UIStackView(arrangedSubviews: [
+            topRow,
+            valueStack,
+            statStack
+        ])
+        contentStack.axis = .vertical
+        contentStack.spacing = 18
+        contentStack.translatesAutoresizingMaskIntoConstraints = false
+
+        iconContainer.translatesAutoresizingMaskIntoConstraints = false
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+
+        iconContainer.addSubview(iconView)
+        summaryCard.addSubview(contentStack)
+
+        NSLayoutConstraint.activate([
+            iconContainer.widthAnchor.constraint(equalToConstant: 48),
+            iconContainer.heightAnchor.constraint(equalToConstant: 48),
+
+            iconView.centerXAnchor.constraint(equalTo: iconContainer.centerXAnchor),
+            iconView.centerYAnchor.constraint(equalTo: iconContainer.centerYAnchor),
+            iconView.widthAnchor.constraint(equalToConstant: 30),
+            iconView.heightAnchor.constraint(equalToConstant: 30),
+
+            contentStack.topAnchor.constraint(equalTo: summaryCard.topAnchor, constant: 18),
+            contentStack.leadingAnchor.constraint(equalTo: summaryCard.leadingAnchor, constant: 18),
+            contentStack.trailingAnchor.constraint(equalTo: summaryCard.trailingAnchor, constant: -18),
+            contentStack.bottomAnchor.constraint(equalTo: summaryCard.bottomAnchor, constant: -18)
+        ])
+    }
+
     @objc
     func sortTapped() {
         onSort?()
     }
-    
+
     @objc
     func filterTapped() {
         onFilter?()
     }
-    
-    func updateFilterBadge(_ filter: SearchFilter) {
-        
-        let count =
-        filter.selectedSets.count +
-        filter.selectedRarities.count +
-        filter.selectedManaCosts.count +
-        filter.selectedManaColors.count
-        
-        if count == 0 {
-            
-            filterButton.configuration?.subtitle = nil
-            
-        } else {
-            
-            filterButton.configuration?.subtitle = "\(count)"
-        }
-    }
-    
-    
-    func makeCapsule(
-        title: String,
-        image: String,
-        action: Selector
-    ) -> UIButton {
-        
-        var config = UIButton.Configuration.tinted()
-        
-        config.title = title
-        config.image = UIImage(systemName: image)
-        config.cornerStyle = .capsule
-        
-        let button = UIButton(configuration: config)
-        
-        button.addTarget(
-            self,
-            action: action,
-            for: .touchUpInside
-        )
-        
-        return button
-    }
-    
-    func makeTextButton(
-        title: String,
-        image: String,
-        action: Selector
-    ) -> UIButton {
-        
-        var config = UIButton.Configuration.plain()
-        
-        config.title = title
-        config.image = UIImage(systemName: image)
-        config.imagePlacement = .leading
-        
-        let button = UIButton(configuration: config)
-        
-        button.addTarget(
-            self,
-            action: action,
-            for: .touchUpInside
-        )
-        
-        return button
-    }
-}
 
-private extension CollectionDashboardView {
+    func updateFilterBadge(_ filter: SearchFilter) {
+        let count =
+            filter.selectedSets.count +
+            filter.selectedRarities.count +
+            filter.selectedManaCosts.count +
+            filter.selectedManaColors.count
+
+        filtersStatView.setValue("\(count)")
+        filterButton.configuration?.subtitle = count == 0 ? nil : "\(count)"
+    }
 
     func makePrimaryButton(
         title: String,
@@ -219,40 +244,101 @@ private extension CollectionDashboardView {
     ) -> UIButton {
 
         var config = UIButton.Configuration.filled()
-
         config.cornerStyle = .large
         config.baseBackgroundColor = .brandBlue
         config.baseForegroundColor = .white
-
         config.image = UIImage(systemName: image)
         config.imagePlacement = .leading
-        config.imagePadding = 12
+        config.imagePadding = 10
 
         var titleAttr = AttributedString(title)
-        titleAttr.font = .systemFont(ofSize: 18, weight: .bold)
+        titleAttr.font = .systemFont(ofSize: 17, weight: .bold)
 
         var subtitleAttr = AttributedString(subtitle)
-        subtitleAttr.font = .systemFont(ofSize: 13)
+        subtitleAttr.font = .systemFont(ofSize: 12, weight: .medium)
         subtitleAttr.foregroundColor = .white.withAlphaComponent(0.85)
 
         config.attributedTitle = titleAttr
         config.attributedSubtitle = subtitleAttr
-
         config.contentInsets = NSDirectionalEdgeInsets(
-            top: 18,
-            leading: 18,
-            bottom: 18,
-            trailing: 18
+            top: 15,
+            leading: 16,
+            bottom: 15,
+            trailing: 16
         )
 
         let button = UIButton(configuration: config)
-
-        button.addTarget(
-            self,
-            action: action,
-            for: .touchUpInside
-        )
-
+        button.addTarget(self, action: action, for: .touchUpInside)
         return button
+    }
+}
+
+private final class SummaryStatView: UIView {
+
+    private let iconView = UIImageView()
+    private let titleLabel = UILabel()
+    private let valueLabel = UILabel()
+
+    init(title: String, symbol: String) {
+        super.init(frame: .zero)
+
+        backgroundColor = UIColor.white.withAlphaComponent(0.16)
+        layer.cornerRadius = 16
+        layer.cornerCurve = .continuous
+
+        iconView.image = UIImage(systemName: symbol)
+        iconView.tintColor = .white
+        iconView.contentMode = .scaleAspectFit
+
+        titleLabel.text = title
+        titleLabel.font = .systemFont(ofSize: 13, weight: .medium)
+        titleLabel.textColor = UIColor.white.withAlphaComponent(0.82)
+
+        valueLabel.text = "--"
+        valueLabel.font = .systemFont(ofSize: 20, weight: .bold)
+        valueLabel.textColor = .white
+        valueLabel.adjustsFontSizeToFitWidth = true
+        valueLabel.minimumScaleFactor = 0.7
+
+        setupLayout()
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError()
+    }
+
+    func setValue(_ value: String) {
+        valueLabel.text = value
+    }
+
+    private func setupLayout() {
+        let textStack = UIStackView(arrangedSubviews: [
+            titleLabel,
+            valueLabel
+        ])
+        textStack.axis = .vertical
+        textStack.spacing = 2
+
+        let stack = UIStackView(arrangedSubviews: [
+            iconView,
+            textStack
+        ])
+        stack.axis = .horizontal
+        stack.alignment = .center
+        stack.spacing = 10
+        stack.translatesAutoresizingMaskIntoConstraints = false
+
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(stack)
+
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: topAnchor, constant: 12),
+            stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
+            stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
+            stack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -12),
+
+            iconView.widthAnchor.constraint(equalToConstant: 26),
+            iconView.heightAnchor.constraint(equalToConstant: 26)
+        ])
     }
 }

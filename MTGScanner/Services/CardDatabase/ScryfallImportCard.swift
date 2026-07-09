@@ -29,9 +29,10 @@ struct ScryfallImportCard: Decodable {
     let legalitiesJSON: String?
     let digital: Bool?
     let cardFacesJSON: String?
+    let finishes: String?
 
     enum CodingKeys: String, CodingKey {
-        case id, name, cmc, artist, rarity, layout, power, toughness, legalities, digital
+        case id, name, cmc, artist, rarity, layout, power, toughness, legalities, digital, finishes
         case language = "lang"
         case manaCost = "mana_cost"
         case typeLine = "type_line"
@@ -77,6 +78,7 @@ struct ScryfallImportCard: Decodable {
         // Flatten array structures into comma-separated text variants
         self.colors = (try container.decodeIfPresent([String].self, forKey: .colors))?.sorted().joined(separator: ",")
         self.colorIdentity = (try container.decodeIfPresent([String].self, forKey: .colorIdentity))?.sorted().joined(separator: ",")
+        self.finishes = (try container.decodeIfPresent([String].self, forKey: .finishes))?.sorted().joined(separator: ",")
 
         // Parse Prices Safely
         if let prices = try container.decodeIfPresent([String: String?].self, forKey: .priceList) {

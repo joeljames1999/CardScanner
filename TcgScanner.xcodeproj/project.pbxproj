@@ -49,6 +49,10 @@
 		9879F3B52FFE9DC80039F2DF /* SearchFilter+UIKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9879F3B42FFE9DC80039F2DF /* SearchFilter+UIKit.swift */; };
 		9879F3B72FFEB32B0039F2DF /* ImageLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9879F3B62FFEB32B0039F2DF /* ImageLoader.swift */; };
 		9879F3B92FFF04CC0039F2DF /* ScannerLanguage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9879F3B82FFF04CC0039F2DF /* ScannerLanguage.swift */; };
+		9879F3BC2FFF092D0039F2DF /* CurrencySettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9879F3BB2FFF092D0039F2DF /* CurrencySettings.swift */; };
+		9879F3BE2FFF093D0039F2DF /* ExchangeRateService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9879F3BD2FFF093D0039F2DF /* ExchangeRateService.swift */; };
+		9879F3C02FFF09490039F2DF /* PriceFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9879F3BF2FFF09490039F2DF /* PriceFormatter.swift */; };
+		9879F3C32FFFB8BB0039F2DF /* CardLanguageSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9879F3C22FFFB8BB0039F2DF /* CardLanguageSettings.swift */; };
 		98CB316D2FD1875B0029CA7F /* SettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB316C2FD1875B0029CA7F /* SettingsViewController.swift */; };
 		98CB31702FD1E7D40029CA7F /* CardSearchViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB316F2FD1E7D40029CA7F /* CardSearchViewModel.swift */; };
 		98CB31722FD1E8740029CA7F /* CardSearchCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB31712FD1E8740029CA7F /* CardSearchCell.swift */; };
@@ -169,6 +173,10 @@
 		9879F3B42FFE9DC80039F2DF /* SearchFilter+UIKit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SearchFilter+UIKit.swift"; sourceTree = "<group>"; };
 		9879F3B62FFEB32B0039F2DF /* ImageLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageLoader.swift; sourceTree = "<group>"; };
 		9879F3B82FFF04CC0039F2DF /* ScannerLanguage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScannerLanguage.swift; sourceTree = "<group>"; };
+		9879F3BB2FFF092D0039F2DF /* CurrencySettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurrencySettings.swift; sourceTree = "<group>"; };
+		9879F3BD2FFF093D0039F2DF /* ExchangeRateService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExchangeRateService.swift; sourceTree = "<group>"; };
+		9879F3BF2FFF09490039F2DF /* PriceFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PriceFormatter.swift; sourceTree = "<group>"; };
+		9879F3C22FFFB8BB0039F2DF /* CardLanguageSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardLanguageSettings.swift; sourceTree = "<group>"; };
 		98CB316C2FD1875B0029CA7F /* SettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewController.swift; sourceTree = "<group>"; };
 		98CB316F2FD1E7D40029CA7F /* CardSearchViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSearchViewModel.swift; sourceTree = "<group>"; };
 		98CB31712FD1E8740029CA7F /* CardSearchCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSearchCell.swift; sourceTree = "<group>"; };
@@ -508,6 +516,8 @@
 				98CB32132FF870730029CA7F /* CardLookupCache.swift */,
 				98CB32002FEC9A5C0029CA7F /* UIColorHelpers.swift */,
 				9879F3B62FFEB32B0039F2DF /* ImageLoader.swift */,
+				9879F3BA2FFF09240039F2DF /* Pricing */,
+				9879F3C12FFFB8AE0039F2DF /* Localization */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -524,6 +534,24 @@
 				986A78682F96E98800EAEBEC /* Services */,
 			);
 			path = MTGScanner;
+			sourceTree = "<group>";
+		};
+		9879F3BA2FFF09240039F2DF /* Pricing */ = {
+			isa = PBXGroup;
+			children = (
+				9879F3BB2FFF092D0039F2DF /* CurrencySettings.swift */,
+				9879F3BD2FFF093D0039F2DF /* ExchangeRateService.swift */,
+				9879F3BF2FFF09490039F2DF /* PriceFormatter.swift */,
+			);
+			path = Pricing;
+			sourceTree = "<group>";
+		};
+		9879F3C12FFFB8AE0039F2DF /* Localization */ = {
+			isa = PBXGroup;
+			children = (
+				9879F3C22FFFB8BB0039F2DF /* CardLanguageSettings.swift */,
+			);
+			path = Localization;
 			sourceTree = "<group>";
 		};
 		98CB316E2FD187660029CA7F /* Menu Options */ = {
@@ -766,6 +794,7 @@
 				98CB32572FFBCDE80029CA7F /* CollectionSummary.swift in Sources */,
 				98CB324B2FFB9E7E0029CA7F /* MTGCard+Display.swift in Sources */,
 				98CB325F2FFBCE140029CA7F /* CollectionViewController+Menu.swift in Sources */,
+				9879F3C02FFF09490039F2DF /* PriceFormatter.swift in Sources */,
 				98CB319E2FE311820029CA7F /* CardNameRecognizer.swift in Sources */,
 				986A78B52F96EC2300EAEBEC /* ScryfallService.swift in Sources */,
 				986A78822F96EA1D00EAEBEC /* CollectionStore.swift in Sources */,
@@ -800,6 +829,7 @@
 				986A78B12F96EBFD00EAEBEC /* CameraService.swift in Sources */,
 				98CB32222FF939440029CA7F /* PaddingLabel.swift in Sources */,
 				986A787D2F96EA1600EAEBEC /* HomeViewController.swift in Sources */,
+				9879F3C32FFFB8BB0039F2DF /* CardLanguageSettings.swift in Sources */,
 				98CB31C12FE5F8AF0029CA7F /* CardCondition.swift in Sources */,
 				98CB31832FDA04B60029CA7F /* SplashViewController.swift in Sources */,
 				986A787C2F96EA0300EAEBEC /* CollectionViewController.swift in Sources */,
@@ -842,10 +872,12 @@
 				98CB31CD2FE6AEA00029CA7F /* RecentCard.swift in Sources */,
 				98CB32612FFBCE220029CA7F /* CollectionViewController+ImportExport.swift in Sources */,
 				98CB32752FFC746D0029CA7F /* SearchFilter.swift in Sources */,
+				9879F3BC2FFF092D0039F2DF /* CurrencySettings.swift in Sources */,
 				98CB32242FF9395A0029CA7F /* SetSymbolService.swift in Sources */,
 				98CB32532FFBCDC70029CA7F /* CollectionEmptyStateView.swift in Sources */,
 				98CB32142FF870730029CA7F /* CardLookupCache.swift in Sources */,
 				98CB32432FFAA8940029CA7F /* CollectionDashboardView.swift in Sources */,
+				9879F3BE2FFF093D0039F2DF /* ExchangeRateService.swift in Sources */,
 				98CB32032FEC9DDD0029CA7F /* ActionCardView.swift in Sources */,
 				986A78782F96E9F300EAEBEC /* AppDelegate.swift in Sources */,
 			);

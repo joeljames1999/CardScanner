@@ -340,8 +340,20 @@ final class CollectionViewModel: ObservableObject {
         }
     }
 
+    var collectionTotalCards: Int {
+        entries.reduce(0) {
+            $0 + $1.count
+        }
+    }
+
     var estimatedValue: Double {
         filteredEntries.reduce(0) {
+            $0 + ($1.priceValue * Double($1.count))
+        }
+    }
+
+    var collectionEstimatedValue: Double {
+        entries.reduce(0) {
             $0 + ($1.priceValue * Double($1.count))
         }
     }
@@ -410,4 +422,3 @@ extension Notification.Name {
 
     static let collectionDidChange = Notification.Name("collectionDidChange")
 }
-

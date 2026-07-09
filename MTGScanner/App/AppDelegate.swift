@@ -8,6 +8,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
 
+        Task { @MainActor in
+            await ExchangeRateService.shared.refreshRatesIfNeeded()
+        }
+
         return true
     }
 }

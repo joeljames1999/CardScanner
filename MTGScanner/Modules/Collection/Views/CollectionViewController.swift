@@ -143,8 +143,8 @@ private extension CollectionViewController {
                 emptyStateView.isHidden = !(viewModel.totalCards == 0)
 
                 dashboardView.configure(
-                    cards: viewModel.totalCards,
-                    value: viewModel.totalValue,
+                    cards: viewModel.collectionTotalCards,
+                    value: viewModel.collectionEstimatedValue,
                     activeFilters: viewModel.activeFilterCount
                 )
             }
@@ -159,8 +159,23 @@ private extension CollectionViewController {
                 dashboardView.updateFilterBadge(filter)
 
                 dashboardView.configure(
-                    cards: viewModel.totalCards,
-                    value: viewModel.totalValue,
+                    cards: viewModel.collectionTotalCards,
+                    value: viewModel.collectionEstimatedValue,
+                    activeFilters: viewModel.activeFilterCount
+                )
+            }
+            .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: CurrencySettings.didChangeNotification)
+            .merge(with: NotificationCenter.default.publisher(for: ExchangeRateService.didRefreshNotification))
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+
+                collectionView.reloadData()
+                dashboardView.configure(
+                    cards: viewModel.collectionTotalCards,
+                    value: viewModel.collectionEstimatedValue,
                     activeFilters: viewModel.activeFilterCount
                 )
             }

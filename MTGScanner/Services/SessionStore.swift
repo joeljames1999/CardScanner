@@ -38,7 +38,7 @@ final class SessionStore: ObservableObject {
 
             $0.card.id == entry.card.id &&
             $0.language == entry.language &&
-            $0.isFoil == entry.isFoil &&
+            $0.finish == entry.finish &&
             $0.condition == entry.condition
 
         }) {

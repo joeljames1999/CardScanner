@@ -63,7 +63,11 @@ enum CardRowMapper {
 
             legalities: legalities,
             digital: bool(statement, Column.digital),
-            cardFaces: makeCardFaces(statement)
+            cardFaces: makeCardFaces(statement),
+            finishes: makeFinishes(statement),
+            printedName: nil,
+            printedTypeLine: nil,
+            printedText: nil
         )
     }
 
@@ -108,6 +112,7 @@ private extension CardRowMapper {
         static let cardFacesJSON = 25
         static let releasedAt = 26
         static let language = 27
+        static let finishes = 28
     }
 }
 
@@ -198,6 +203,14 @@ private extension CardRowMapper {
             [MTGCard.CardFace].self,
             from: data
         )
+    }
+
+    static func makeFinishes(
+        _ statement: SQLiteStatement
+    ) -> [CardFinish]? {
+
+        stringArray(statement, Column.finishes)?
+            .compactMap(CardFinish.init(rawValue:))
     }
 }
 

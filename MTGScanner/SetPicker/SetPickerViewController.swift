@@ -268,7 +268,7 @@ final class SetPickerPrintingCell: UITableViewCell {
     func configure(with card: MTGCard) {
         setNameLabel.text             = card.setName
         setCodeLabel.text             = "\(card.set.uppercased()) · #\(card.collectorNumber)"
-        priceLabel.text               = card.prices?.usd.map { "$\($0)" } ?? "—"
+        priceLabel.text               = PriceFormatter.string(usd: card.prices?.usd)
         rarityDot.backgroundColor     = rarityColour(card.rarity)
         cardImageView.image           = nil
 

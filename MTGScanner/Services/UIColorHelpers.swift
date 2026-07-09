@@ -23,6 +23,20 @@ extension UIColor {
         blue: 251 / 255,
         alpha: 1
     )
+
+    static let brandBlueDark = UIColor(
+        red: 0.08,
+        green: 0.34,
+        blue: 0.72,
+        alpha: 1.0
+    )
+
+    static let brandBlueSoft = UIColor(
+        red: 0.16,
+        green: 0.58,
+        blue: 1.0,
+        alpha: 0.14
+    )
     
     static let commonColor = UIColor(red: 0.8, green: 0.8, blue: 0.8, alpha: 1)
     static let uncommonColor = UIColor(red: 0.741, green: 0.827, blue: 0.89, alpha: 1) // #bdd3e3
