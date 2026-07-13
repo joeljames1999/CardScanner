@@ -143,6 +143,9 @@ private extension CollectionEntryEditOverlayView {
         dimmingView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(dimmingTapped)))
 
         contentContainer.translatesAutoresizingMaskIntoConstraints = false
+        let outsideTap = UITapGestureRecognizer(target: self, action: #selector(contentContainerTapped(_:)))
+        outsideTap.cancelsTouchesInView = false
+        contentContainer.addGestureRecognizer(outsideTap)
 
         cardImageView.translatesAutoresizingMaskIntoConstraints = false
         cardImageView.backgroundColor = UIColor.black.withAlphaComponent(0.55)
@@ -492,6 +495,18 @@ private extension CollectionEntryEditOverlayView {
     }
 
     @objc func dimmingTapped() {
+        dismiss()
+    }
+
+    @objc func contentContainerTapped(_ gesture: UITapGestureRecognizer) {
+        let location = gesture.location(in: contentContainer)
+        guard
+            !cardImageView.frame.contains(location),
+            !sheetView.frame.contains(location)
+        else {
+            return
+        }
+
         dismiss()
     }
 

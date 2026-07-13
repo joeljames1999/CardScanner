@@ -56,6 +56,9 @@
 		9879F3C02FFF09490039F2DF /* PriceFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9879F3BF2FFF09490039F2DF /* PriceFormatter.swift */; };
 		9879F3C32FFFB8BB0039F2DF /* CardLanguageSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9879F3C22FFFB8BB0039F2DF /* CardLanguageSettings.swift */; };
 		9879F3C530003C5A0039F2DF /* CollectionEntryEditOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9879F3C430003C5A0039F2DF /* CollectionEntryEditOverlayView.swift */; };
+		9879F3CF30025BA30039F2DF /* AdMobConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9879F3CE30025BA30039F2DF /* AdMobConfiguration.swift */; };
+		9879F3D130025BA50039F2DF /* AdMobBannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9879F3D030025BA40039F2DF /* AdMobBannerView.swift */; };
+		9879F3D43002628A0039F2DF /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = 9879F3D33002628A0039F2DF /* GoogleMobileAds */; };
 		98CB316D2FD1875B0029CA7F /* SettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB316C2FD1875B0029CA7F /* SettingsViewController.swift */; };
 		98CB31702FD1E7D40029CA7F /* CardSearchViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB316F2FD1E7D40029CA7F /* CardSearchViewModel.swift */; };
 		98CB31722FD1E8740029CA7F /* CardSearchCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB31712FD1E8740029CA7F /* CardSearchCell.swift */; };
@@ -182,6 +185,8 @@
 		9879F3BF2FFF09490039F2DF /* PriceFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PriceFormatter.swift; sourceTree = "<group>"; };
 		9879F3C22FFFB8BB0039F2DF /* CardLanguageSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardLanguageSettings.swift; sourceTree = "<group>"; };
 		9879F3C430003C5A0039F2DF /* CollectionEntryEditOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionEntryEditOverlayView.swift; sourceTree = "<group>"; };
+		9879F3CE30025BA30039F2DF /* AdMobConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdMobConfiguration.swift; sourceTree = "<group>"; };
+		9879F3D030025BA40039F2DF /* AdMobBannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdMobBannerView.swift; sourceTree = "<group>"; };
 		98CB316C2FD1875B0029CA7F /* SettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewController.swift; sourceTree = "<group>"; };
 		98CB316F2FD1E7D40029CA7F /* CardSearchViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSearchViewModel.swift; sourceTree = "<group>"; };
 		98CB31712FD1E8740029CA7F /* CardSearchCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSearchCell.swift; sourceTree = "<group>"; };
@@ -291,6 +296,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9879F3D43002628A0039F2DF /* GoogleMobileAds in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -511,6 +517,7 @@
 				9879F3C83000464E0039F2DF /* Scryfall */,
 				9879F3C93000464F0039F2DF /* Storage */,
 				9879F3CA300046520039F2DF /* Camera */,
+				9879F3CD30025B940039F2DF /* Ads */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -615,6 +622,15 @@
 				98CB31C62FE5F95E0029CA7F /* SettingsOptionsCell.swift */,
 			);
 			path = Options;
+			sourceTree = "<group>";
+		};
+		9879F3CD30025B940039F2DF /* Ads */ = {
+			isa = PBXGroup;
+			children = (
+				9879F3CE30025BA30039F2DF /* AdMobConfiguration.swift */,
+				9879F3D030025BA40039F2DF /* AdMobBannerView.swift */,
+			);
+			path = Ads;
 			sourceTree = "<group>";
 		};
 		98CB316E2FD187660029CA7F /* Menu Options */ = {
@@ -745,6 +761,7 @@
 			);
 			name = TcgScanner;
 			packageProductDependencies = (
+				9879F3D33002628A0039F2DF /* GoogleMobileAds */,
 			);
 			productName = TcgScanner;
 			productReference = 9875E0DB2F96FC62002929D0 /* TcgScanner.app */;
@@ -801,6 +818,9 @@
 			);
 			mainGroup = 984A43462F7F26D600640EE8;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				9879F3D23002628A0039F2DF /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 984A43462F7F26D600640EE8;
 			projectDirPath = "";
@@ -893,6 +913,7 @@
 				986A78B12F96EBFD00EAEBEC /* CameraService.swift in Sources */,
 				98CB32222FF939440029CA7F /* PaddingLabel.swift in Sources */,
 				986A787D2F96EA1600EAEBEC /* HomeViewController.swift in Sources */,
+				9879F3CF30025BA30039F2DF /* AdMobConfiguration.swift in Sources */,
 				9879F3C32FFFB8BB0039F2DF /* CardLanguageSettings.swift in Sources */,
 				98CB31C12FE5F8AF0029CA7F /* CardCondition.swift in Sources */,
 				98CB31832FDA04B60029CA7F /* SplashViewController.swift in Sources */,
@@ -900,6 +921,7 @@
 				98CB31782FD45F4C0029CA7F /* CardFilterViewController.swift in Sources */,
 				986A78AF2F96EBEA00EAEBEC /* ScannerOverlayView.swift in Sources */,
 				98CB31702FD1E7D40029CA7F /* CardSearchViewModel.swift in Sources */,
+				9879F3D130025BA50039F2DF /* AdMobBannerView.swift in Sources */,
 				98CB32472FFB9E580029CA7F /* DisplayFace.swift in Sources */,
 				986A787B2F96E9FD00EAEBEC /* CardDetailViewController.swift in Sources */,
 				982414E22FFD6B7100AB1C14 /* FeatureQueries.swift in Sources */,
@@ -1236,6 +1258,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		9879F3D23002628A0039F2DF /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/googleads/swift-package-manager-google-mobile-ads.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 13.6.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		9879F3D33002628A0039F2DF /* GoogleMobileAds */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9879F3D23002628A0039F2DF /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */;
+			productName = GoogleMobileAds;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 984A43472F7F26D600640EE8 /* Project object */;
 }

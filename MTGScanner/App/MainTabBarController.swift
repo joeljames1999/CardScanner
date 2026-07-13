@@ -4,13 +4,25 @@ import UIKit
 
 final class MainTabBarController: UITabBarController {
 
+    private let adBannerContainerView = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
+    private let adBannerView = AdMobBannerView()
+    private var adBannerHeightConstraint: NSLayoutConstraint?
+
     override func viewDidLoad() {
         super.viewDidLoad()
         print("tab")
         setupTabs()
         styleTabBar()
         styleNavigationBars()
+        setupAdBanner()
         delegate = self
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        updateAdBannerLayout()
+        view.bringSubviewToFront(adBannerContainerView)
+        tabBar.superview?.bringSubviewToFront(tabBar)
     }
 
     // MARK: Setup
@@ -35,6 +47,7 @@ final class MainTabBarController: UITabBarController {
         )
         let nav = UINavigationController(rootViewController: root)
         nav.navigationBar.prefersLargeTitles = true
+        nav.delegate = self
         return nav
     }
 
@@ -51,6 +64,7 @@ final class MainTabBarController: UITabBarController {
                 systemName: "viewfinder.circle.fill"
             )
         )
+        vc.tabBarItem.tag = 2
         
         tabBar.tintColor = UIColor.accentColor
 
@@ -68,8 +82,64 @@ final class MainTabBarController: UITabBarController {
             )
 
         nav.navigationBar.prefersLargeTitles = true
+        nav.delegate = self
 
         return nav
+    }
+
+    private func setupAdBanner() {
+        adBannerContainerView.translatesAutoresizingMaskIntoConstraints = false
+        adBannerContainerView.clipsToBounds = true
+        view.addSubview(adBannerContainerView)
+
+        adBannerView.translatesAutoresizingMaskIntoConstraints = false
+        adBannerContainerView.contentView.addSubview(adBannerView)
+
+        let heightConstraint = adBannerContainerView.heightAnchor.constraint(equalToConstant: AdMobBannerView.preferredHeight)
+        adBannerHeightConstraint = heightConstraint
+
+        NSLayoutConstraint.activate([
+            adBannerContainerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            adBannerContainerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            adBannerContainerView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            heightConstraint,
+
+            adBannerView.centerXAnchor.constraint(equalTo: adBannerContainerView.contentView.centerXAnchor),
+            adBannerView.centerYAnchor.constraint(equalTo: adBannerContainerView.contentView.centerYAnchor),
+            adBannerView.widthAnchor.constraint(equalToConstant: 320),
+            adBannerView.heightAnchor.constraint(equalToConstant: AdMobBannerView.preferredHeight)
+        ])
+
+        adBannerView.load(
+            adUnitID: AdMobConfiguration.bannerAdUnitID,
+            rootViewController: self
+        )
+        updateAdBannerLayout()
+    }
+
+    private var shouldHideAdBanner: Bool {
+        if selectedIndex == 2 {
+            return true
+        }
+
+        guard let navigationController = selectedViewController as? UINavigationController else {
+            return false
+        }
+
+        return navigationController.topViewController is LifeCounterViewController
+    }
+
+    private func updateAdBannerLayout() {
+        setAdBannerHidden(shouldHideAdBanner)
+    }
+
+    private func setAdBannerHidden(_ isHidden: Bool) {
+        let bannerHeight = AdMobBannerView.preferredHeight
+        adBannerContainerView.isHidden = isHidden
+        adBannerHeightConstraint?.constant = isHidden ? 0 : bannerHeight
+        tabBar.transform = isHidden ? .identity : CGAffineTransform(translationX: 0, y: -bannerHeight)
+        additionalSafeAreaInsets.bottom = isHidden ? 0 : bannerHeight
+        view.layoutIfNeeded()
     }
 
     // MARK: Style
@@ -147,12 +217,33 @@ final class MainTabBarController: UITabBarController {
     }
 }
 
-extension MainTabBarController: UITabBarControllerDelegate {
+extension MainTabBarController: UITabBarControllerDelegate, UINavigationControllerDelegate {
+
+    func navigationController(
+        _ navigationController: UINavigationController,
+        didShow viewController: UIViewController,
+        animated: Bool
+    ) {
+        updateAdBannerLayout()
+    }
+
+    func tabBarController(
+        _ tabBarController: UITabBarController,
+        shouldSelect viewController: UIViewController
+    ) -> Bool {
+        if viewController.tabBarItem.tag == 2 {
+            setAdBannerHidden(true)
+        }
+
+        return true
+    }
 
     func tabBarController(
         _ tabBarController: UITabBarController,
         didSelect viewController: UIViewController
     ) {
+        updateAdBannerLayout()
+
         guard
             viewController.tabBarItem.tag == 3,
             let navigationController = viewController as? UINavigationController

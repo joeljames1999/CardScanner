@@ -48,10 +48,12 @@ final class ActionCardView: UIControl {
         iconContainer.backgroundColor = UIColor.white.withAlphaComponent(0.18)
         iconContainer.layer.cornerRadius = 18
         iconContainer.layer.cornerCurve = .continuous
+        iconContainer.isUserInteractionEnabled = false
 
         iconView.image = UIImage(systemName: symbol)
         iconView.tintColor = .white
         iconView.contentMode = .scaleAspectFit
+        iconView.isUserInteractionEnabled = false
         iconView.preferredSymbolConfiguration = UIImage.SymbolConfiguration(
             pointSize: 24,
             weight: .semibold
@@ -64,11 +66,13 @@ final class ActionCardView: UIControl {
         titleLabel.lineBreakMode = .byWordWrapping
         titleLabel.adjustsFontSizeToFitWidth = true
         titleLabel.minimumScaleFactor = 0.82
+        titleLabel.isUserInteractionEnabled = false
 
         subtitleLabel.text = subtitle
         subtitleLabel.font = .systemFont(ofSize: 14, weight: .medium)
         subtitleLabel.textColor = UIColor.white.withAlphaComponent(0.78)
         subtitleLabel.numberOfLines = 2
+        subtitleLabel.isUserInteractionEnabled = false
 
         configureActionPill(title: actionTitle)
         setupLayout()
@@ -135,6 +139,7 @@ final class ActionCardView: UIControl {
         textStack.axis = .vertical
         textStack.spacing = 4
         textStack.translatesAutoresizingMaskIntoConstraints = false
+        textStack.isUserInteractionEnabled = false
 
         addSubview(iconContainer)
         addSubview(textStack)

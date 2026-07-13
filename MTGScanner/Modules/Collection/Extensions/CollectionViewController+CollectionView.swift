@@ -224,11 +224,7 @@ UICollectionViewDelegate {
             overlay.trailingAnchor.constraint(equalTo: parentView.trailingAnchor)
         ]
 
-        if let tabBar = tabBarController?.tabBar {
-            constraints.append(overlay.bottomAnchor.constraint(equalTo: tabBar.topAnchor))
-        } else {
-            constraints.append(overlay.bottomAnchor.constraint(equalTo: parentView.safeAreaLayoutGuide.bottomAnchor))
-        }
+        constraints.append(overlay.bottomAnchor.constraint(equalTo: parentView.bottomAnchor))
 
         NSLayoutConstraint.activate(constraints)
 
