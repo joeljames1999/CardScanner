@@ -56,7 +56,7 @@ final class CSVService {
 
         } catch {
 
-            print("[CSV] Failed to save:", error)
+            AppLog.debug("[CSV] Failed to save:", error)
             return nil
         }
     }
@@ -72,23 +72,23 @@ final class CSVService {
 
     func importFile(at url: URL) -> CSVImportResult {
 
-        print("Reading:", url)
+        AppLog.debug("Reading:", url)
 
         do {
 
             let data = try Data(contentsOf: url)
-            print("Read \(data.count) bytes")
+            AppLog.debug("Read \(data.count) bytes")
 
             let csv = String(decoding: data, as: UTF8.self)
 
-            print("CSV preview:")
-            print(csv.prefix(200))
+            AppLog.debug("CSV preview:")
+            AppLog.debug(csv.prefix(200))
 
             return importer.importCSV(csv)
 
         } catch {
 
-            print("READ FAILED:", error)
+            AppLog.debug("READ FAILED:", error)
 
             return CSVImportResult(
                 entries: [],

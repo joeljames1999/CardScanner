@@ -32,10 +32,10 @@ final class AdMobBannerView: UIView {
         bannerView.rootViewController = rootViewController
         bannerView.adSize = adSizeFor(cgSize: CGSize(width: 320, height: Self.preferredHeight))
         bannerView.delegate = self
-        print("[AdMobBannerView] Loading banner ad: \(adUnitID) testAds=\(AdMobConfiguration.isUsingTestAds)")
+        AppLog.debug("[AdMobBannerView] Loading banner ad: \(adUnitID) testAds=\(AdMobConfiguration.isUsingTestAds)")
         bannerView.load(Request())
         #else
-        print("[AdMobBannerView] GoogleMobileAds is not linked to this target.")
+        AppLog.debug("[AdMobBannerView] GoogleMobileAds is not linked to this target.")
         isHidden = true
         #endif
     }
@@ -63,23 +63,23 @@ final class AdMobBannerView: UIView {
 extension AdMobBannerView: BannerViewDelegate {
 
     func bannerViewDidReceiveAd(_ bannerView: BannerView) {
-        print("[AdMobBannerView] Banner ad loaded.")
+        AppLog.debug("[AdMobBannerView] Banner ad loaded.")
     }
 
     func bannerView(_ bannerView: BannerView, didFailToReceiveAdWithError error: Error) {
         let nsError = error as NSError
-        print("[AdMobBannerView] Banner ad failed to load: domain=\(nsError.domain) code=\(nsError.code) message=\(nsError.localizedDescription) userInfo=\(nsError.userInfo)")
+        AppLog.debug("[AdMobBannerView] Banner ad failed to load: domain=\(nsError.domain) code=\(nsError.code) message=\(nsError.localizedDescription) userInfo=\(nsError.userInfo)")
         if let responseInfo = bannerView.responseInfo {
-            print("[AdMobBannerView] Response info: \(responseInfo)")
+            AppLog.debug("[AdMobBannerView] Response info: \(responseInfo)")
         }
     }
 
     func bannerViewDidRecordImpression(_ bannerView: BannerView) {
-        print("[AdMobBannerView] Banner ad impression recorded.")
+        AppLog.debug("[AdMobBannerView] Banner ad impression recorded.")
     }
 
     func bannerViewDidRecordClick(_ bannerView: BannerView) {
-        print("[AdMobBannerView] Banner ad click recorded.")
+        AppLog.debug("[AdMobBannerView] Banner ad click recorded.")
     }
 }
 #endif

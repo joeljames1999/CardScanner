@@ -7,15 +7,43 @@ final class MainTabBarController: UITabBarController {
     private let adBannerContainerView = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
     private let adBannerView = AdMobBannerView()
     private var adBannerHeightConstraint: NSLayoutConstraint?
+    private var consentFlowTask: Task<Void, Never>?
+    private var bannerLoadTask: Task<Void, Never>?
+    private var hasStartedConsentFlow = false
+    private var hasRequestedBannerAd = false
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        print("tab")
         setupTabs()
         styleTabBar()
         styleNavigationBars()
         setupAdBanner()
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleAdConsentDidUpdate),
+            name: .adConsentDidUpdate,
+            object: nil
+        )
         delegate = self
+    }
+
+    deinit {
+        consentFlowTask?.cancel()
+        bannerLoadTask?.cancel()
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+
+        guard !hasStartedConsentFlow else {
+            scheduleBannerAdRequest()
+            return
+        }
+
+        hasStartedConsentFlow = true
+        scheduleConsentFlow()
+        scheduleBannerAdRequest()
     }
 
     override func viewDidLayoutSubviews() {
@@ -110,11 +138,51 @@ final class MainTabBarController: UITabBarController {
             adBannerView.heightAnchor.constraint(equalToConstant: AdMobBannerView.preferredHeight)
         ])
 
+        updateAdBannerLayout()
+    }
+
+    @objc private func handleAdConsentDidUpdate() {
+        scheduleBannerAdRequest()
+    }
+
+    private func scheduleConsentFlow() {
+        guard consentFlowTask == nil else { return }
+
+        consentFlowTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            guard !Task.isCancelled else { return }
+            consentFlowTask = nil
+            AdConsentManager.shared.gatherConsent(from: self)
+            scheduleBannerAdRequest()
+        }
+    }
+
+    private func scheduleBannerAdRequest() {
+        guard bannerLoadTask == nil, !hasRequestedBannerAd else { return }
+
+        bannerLoadTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 4_000_000_000)
+            bannerLoadTask = nil
+            requestBannerAdIfAllowed()
+        }
+    }
+
+    private func requestBannerAdIfAllowed() {
+        guard !hasRequestedBannerAd else { return }
+        guard !shouldHideAdBanner else {
+            AppLog.debug("[AdMobBannerView] Deferring banner load while ads are hidden on this screen.")
+            return
+        }
+        guard AdConsentManager.shared.canRequestAds else {
+            AppLog.debug("[AdMobBannerView] Waiting for consent before loading banner.")
+            return
+        }
+
+        hasRequestedBannerAd = true
         adBannerView.load(
             adUnitID: AdMobConfiguration.bannerAdUnitID,
             rootViewController: self
         )
-        updateAdBannerLayout()
     }
 
     private var shouldHideAdBanner: Bool {
@@ -130,7 +198,12 @@ final class MainTabBarController: UITabBarController {
     }
 
     private func updateAdBannerLayout() {
-        setAdBannerHidden(shouldHideAdBanner)
+        let isHidden = shouldHideAdBanner
+        setAdBannerHidden(isHidden)
+
+        if !isHidden {
+            scheduleBannerAdRequest()
+        }
     }
 
     private func setAdBannerHidden(_ isHidden: Bool) {

@@ -24,11 +24,11 @@ final class StreamingJSONParser {
     func open() throws {
         fileHandle = try FileHandle(forReadingFrom: fileURL)
         let found = skipToArrayStart()
-        print("[Parser] Opened file: \(fileURL.lastPathComponent) | Found '[': \(found) | File size: \(fileSize())")
+        AppLog.debug("[Parser] Opened file: \(fileURL.lastPathComponent) | Found '[': \(found) | File size: \(fileSize())")
     }
 
     func close() {
-        print("[Parser] Closed — parsed \(cardsParsed) cards total")
+        AppLog.debug("[Parser] Closed — parsed \(cardsParsed) cards total")
         try? fileHandle?.close()
         fileHandle = nil
         buffer.removeAll()
@@ -45,7 +45,7 @@ final class StreamingJSONParser {
             if buffer.isEmpty {
                 guard let chunk = readChunk(), !chunk.isEmpty else {
                     finished = true
-                    if cardsParsed == 0 { print("[Parser] ⚠️ Stream ended with 0 cards parsed") }
+                    if cardsParsed == 0 { AppLog.debug("[Parser] ⚠️ Stream ended with 0 cards parsed") }
                     return nil
                 }
                 buffer = chunk
@@ -74,7 +74,7 @@ final class StreamingJSONParser {
                 case 0x7B: // {
 
                     if cardsParsed == 0 {
-                        print("[Parser] Found opening object")
+                        AppLog.debug("[Parser] Found opening object")
                     }
 
                     depth += 1
@@ -88,7 +88,7 @@ final class StreamingJSONParser {
                         buffer = Data(buffer[buffer.index(after: i)...])
                         let result = parseObject(objectBytes)
                         if result != nil { cardsParsed += 1 }
-                        if cardsParsed == 1 { print("[Parser] ✅ First card parsed successfully") }
+                        if cardsParsed == 1 { AppLog.debug("[Parser] ✅ First card parsed successfully") }
                         return result
                     }
 
@@ -103,7 +103,7 @@ final class StreamingJSONParser {
                         finished = true
                         buffer.removeAll()
 
-                        print(
+                        AppLog.debug(
                             "[Parser] Reached end of array after \(cardsParsed) cards"
                         )
 
@@ -133,7 +133,7 @@ final class StreamingJSONParser {
     private func skipToArrayStart() -> Bool {
         while true {
             guard let chunk = readChunk(), !chunk.isEmpty else {
-                print("[Parser] ⚠️ EOF reached before finding '['")
+                AppLog.debug("[Parser] ⚠️ EOF reached before finding '['")
                 return false
             }
             for (i, byte) in chunk.enumerated() {
@@ -146,9 +146,9 @@ final class StreamingJSONParser {
                         encoding: .utf8
                     ) ?? "unable to decode"
 
-                    print("========== FILE PREVIEW ==========")
-                    print(preview)
-                    print("==================================")
+                    AppLog.debug("========== FILE PREVIEW ==========")
+                    AppLog.debug(preview)
+                    AppLog.debug("==================================")
 
                     return true
                 }
@@ -166,7 +166,7 @@ final class StreamingJSONParser {
         do {
             return try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any]
         } catch {
-            print("[Parser] Failed to parse object (\(data.count) bytes): \(error)")
+            AppLog.debug("[Parser] Failed to parse object (\(data.count) bytes): \(error)")
             return nil
         }
     }

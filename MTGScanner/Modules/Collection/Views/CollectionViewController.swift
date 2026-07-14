@@ -80,7 +80,6 @@ final class CollectionViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        print("APP STARTED")
         title = "Collection"
         view.backgroundColor = .systemBackground
 

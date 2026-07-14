@@ -59,6 +59,9 @@
 		9879F3CF30025BA30039F2DF /* AdMobConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9879F3CE30025BA30039F2DF /* AdMobConfiguration.swift */; };
 		9879F3D130025BA50039F2DF /* AdMobBannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9879F3D030025BA40039F2DF /* AdMobBannerView.swift */; };
 		9879F3D43002628A0039F2DF /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = 9879F3D33002628A0039F2DF /* GoogleMobileAds */; };
+		9879F3D630059E7C0039F2DF /* AdConsentManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9879F3D530059E7C0039F2DF /* AdConsentManager.swift */; };
+		9879F3D83005A1E30039F2DF /* AppInfoViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9879F3D73005A1E30039F2DF /* AppInfoViewController.swift */; };
+		9879F3DB3005AE560039F2DF /* AppLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9879F3DA3005AE560039F2DF /* AppLog.swift */; };
 		98CB316D2FD1875B0029CA7F /* SettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB316C2FD1875B0029CA7F /* SettingsViewController.swift */; };
 		98CB31702FD1E7D40029CA7F /* CardSearchViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB316F2FD1E7D40029CA7F /* CardSearchViewModel.swift */; };
 		98CB31722FD1E8740029CA7F /* CardSearchCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CB31712FD1E8740029CA7F /* CardSearchCell.swift */; };
@@ -187,6 +190,9 @@
 		9879F3C430003C5A0039F2DF /* CollectionEntryEditOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionEntryEditOverlayView.swift; sourceTree = "<group>"; };
 		9879F3CE30025BA30039F2DF /* AdMobConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdMobConfiguration.swift; sourceTree = "<group>"; };
 		9879F3D030025BA40039F2DF /* AdMobBannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdMobBannerView.swift; sourceTree = "<group>"; };
+		9879F3D530059E7C0039F2DF /* AdConsentManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdConsentManager.swift; sourceTree = "<group>"; };
+		9879F3D73005A1E30039F2DF /* AppInfoViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppInfoViewController.swift; sourceTree = "<group>"; };
+		9879F3DA3005AE560039F2DF /* AppLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLog.swift; sourceTree = "<group>"; };
 		98CB316C2FD1875B0029CA7F /* SettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewController.swift; sourceTree = "<group>"; };
 		98CB316F2FD1E7D40029CA7F /* CardSearchViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSearchViewModel.swift; sourceTree = "<group>"; };
 		98CB31712FD1E8740029CA7F /* CardSearchCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSearchCell.swift; sourceTree = "<group>"; };
@@ -453,6 +459,7 @@
 				98CB31C42FE5F93C0029CA7F /* BulkDataCell.swift */,
 				98CB316E2FD187660029CA7F /* Menu Options */,
 				9879F3CC300046560039F2DF /* Options */,
+				9879F3D73005A1E30039F2DF /* AppInfoViewController.swift */,
 			);
 			path = Menu;
 			sourceTree = "<group>";
@@ -559,6 +566,7 @@
 			isa = PBXGroup;
 			children = (
 				9879F3C73000464E0039F2DF /* UI */,
+				9879F3D93005AE560039F2DF /* Logging */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -629,8 +637,17 @@
 			children = (
 				9879F3CE30025BA30039F2DF /* AdMobConfiguration.swift */,
 				9879F3D030025BA40039F2DF /* AdMobBannerView.swift */,
+				9879F3D530059E7C0039F2DF /* AdConsentManager.swift */,
 			);
 			path = Ads;
+			sourceTree = "<group>";
+		};
+		9879F3D93005AE560039F2DF /* Logging */ = {
+			isa = PBXGroup;
+			children = (
+				9879F3DA3005AE560039F2DF /* AppLog.swift */,
+			);
+			path = Logging;
 			sourceTree = "<group>";
 		};
 		98CB316E2FD187660029CA7F /* Menu Options */ = {
@@ -867,6 +884,7 @@
 				98CB31BF2FE5F8A80029CA7F /* SessionEntry.swift in Sources */,
 				98CB31CB2FE6ADC20029CA7F /* RecentCardCell.swift in Sources */,
 				98CB319A2FE311680029CA7F /* CardRectangularDetector.swift in Sources */,
+				9879F3D630059E7C0039F2DF /* AdConsentManager.swift in Sources */,
 				98CB32182FF937480029CA7F /* CollectionCardCell.swift in Sources */,
 				98EEA85F2FA54A4800EFA5F8 /* ScryfallBulkService.swift in Sources */,
 				98CB31B72FE460BB0029CA7F /* PrintingSelectionOverlayView.swift in Sources */,
@@ -881,6 +899,7 @@
 				98CB319E2FE311820029CA7F /* CardNameRecognizer.swift in Sources */,
 				986A78B52F96EC2300EAEBEC /* ScryfallService.swift in Sources */,
 				986A78822F96EA1D00EAEBEC /* CollectionStore.swift in Sources */,
+				9879F3DB3005AE560039F2DF /* AppLog.swift in Sources */,
 				98CB32632FFBCE310029CA7F /* CollectionViewController+Loading.swift in Sources */,
 				98CB32012FEC9A5C0029CA7F /* UIColorHelpers.swift in Sources */,
 				9879F3762FFDBBB50039F2DF /* ScryfallImportCard.swift in Sources */,
@@ -918,6 +937,7 @@
 				98CB31C12FE5F8AF0029CA7F /* CardCondition.swift in Sources */,
 				98CB31832FDA04B60029CA7F /* SplashViewController.swift in Sources */,
 				986A787C2F96EA0300EAEBEC /* CollectionViewController.swift in Sources */,
+				9879F3D83005A1E30039F2DF /* AppInfoViewController.swift in Sources */,
 				98CB31782FD45F4C0029CA7F /* CardFilterViewController.swift in Sources */,
 				986A78AF2F96EBEA00EAEBEC /* ScannerOverlayView.swift in Sources */,
 				98CB31702FD1E7D40029CA7F /* CardSearchViewModel.swift in Sources */,

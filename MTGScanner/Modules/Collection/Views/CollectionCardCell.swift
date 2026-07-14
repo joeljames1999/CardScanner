@@ -72,7 +72,8 @@ final class CollectionCardCell: UICollectionViewCell {
         imageLoadTask = nil
         representedImageURL = nil
         representedSetCode = nil
-        cardImageView.image = UIImage(systemName: "photo")
+        cardImageView.image = nil
+        cardImageView.contentMode = .scaleAspectFill
         setImageView.image = nil
         foilImageView.isHidden = true
     }
@@ -237,10 +238,10 @@ final class CollectionCardCell: UICollectionViewCell {
 
         imageLoadTask?.cancel()
         representedImageURL = url
-        cardImageView.image = UIImage(systemName: "photo")
-        cardImageView.contentMode = .scaleAspectFit
 
         guard let url else {
+            cardImageView.image = nil
+            cardImageView.contentMode = .scaleAspectFill
             return
         }
 

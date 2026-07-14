@@ -201,7 +201,7 @@ final class CollectionStore {
             let data = try JSONEncoder().encode(entries)
             try data.write(to: fileURL, options: .atomicWrite)
         } catch {
-            print("[CollectionStore] Save error: \(error)")
+            AppLog.debug("[CollectionStore] Save error: \(error)")
         }
     }
 
@@ -211,7 +211,7 @@ final class CollectionStore {
             let data    = try Data(contentsOf: fileURL)
             entries     = try JSONDecoder().decode([CollectionEntry].self, from: data)
         } catch {
-            print("[CollectionStore] Load error: \(error)")
+            AppLog.debug("[CollectionStore] Load error: \(error)")
         }
     }
 

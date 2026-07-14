@@ -4,6 +4,14 @@
 <dict>
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-7086770658495525~1154239496</string>
+	<key>CFBundleDisplayName</key>
+	<string>TCGCompanion</string>
+	<key>CFBundleName</key>
+	<string>TCGCompanion</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Camera access is used to scan trading cards and identify printings.</string>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>This identifier helps show relevant ads and measure ad performance.</string>
 	<key>SKAdNetworkItems</key>
 	<array>
 		<dict>

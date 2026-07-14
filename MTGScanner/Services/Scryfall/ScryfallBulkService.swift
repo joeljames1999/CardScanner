@@ -125,7 +125,7 @@ final class ScryfallBulkService: NSObject, ObservableObject {
         if !isDataPresent || isStale {
             await downloadAndImport()
         } else {
-            print("[Bulk] Data is fresh, skipping download.")
+            AppLog.debug("[Bulk] Data is fresh, skipping download.")
             await setState(.done)
         }
     }
@@ -247,7 +247,7 @@ private extension ScryfallBulkService {
                 )
             }
 
-            print(
+            AppLog.debug(
                 "[Bulk] Import complete. Inserted \(result.insertedCount), skipped \(result.skippedCount), database count \(result.databaseCount)."
             )
 
@@ -257,7 +257,7 @@ private extension ScryfallBulkService {
                 .failed(error.localizedDescription)
             )
 
-            print("[Bulk] Failed:", error)
+            AppLog.debug("[Bulk] Failed:", error)
         }
     }
 
@@ -309,7 +309,7 @@ private extension ScryfallBulkService {
         )
 
         request.setValue(
-            "MTGScanner-iOS/1.0",
+            "TCGCompanion-iOS/1.0",
             forHTTPHeaderField: "User-Agent"
         )
 
@@ -358,7 +358,7 @@ private extension ScryfallBulkService {
             var request = URLRequest(url: url)
 
             request.setValue(
-                "MTGScanner-iOS/1.0",
+                "TCGCompanion-iOS/1.0",
                 forHTTPHeaderField: "User-Agent"
             )
 
@@ -412,14 +412,14 @@ private extension ScryfallBulkService {
 
         guard isGzip else {
 
-            print(
+            AppLog.debug(
                 "[Bulk] File is plain JSON — no decompression needed."
             )
 
             return fileURL
         }
 
-        print("[Bulk] Gzip detected — decompressing…")
+        AppLog.debug("[Bulk] Gzip detected — decompressing…")
 
         let compressedData = try Data(
             contentsOf: fileURL
@@ -440,7 +440,7 @@ private extension ScryfallBulkService {
             options: .atomic
         )
 
-        print(
+        AppLog.debug(
             "[Bulk] Decompressed: \(ByteCountFormatter.string(fromByteCount: Int64(decompressed.count), countStyle: .file))"
         )
 
@@ -477,7 +477,7 @@ private extension ScryfallBulkService {
             }
 
             if byte == 0x5B {
-                print("[Bulk] ✅ File verified as JSON array.")
+                AppLog.debug("[Bulk] ✅ File verified as JSON array.")
                 return
             }
 

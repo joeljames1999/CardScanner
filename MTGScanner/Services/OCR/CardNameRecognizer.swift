@@ -63,7 +63,7 @@ private extension CardNameRecognizer {
 
         let strings = await performOCR(cgImage: cgImage)
 
-        print("[OCR FULL]", strings)
+        AppLog.debug("[OCR FULL]", strings)
 
         return strings.first
         
@@ -102,7 +102,7 @@ private extension CardNameRecognizer {
             cgImage: cgImage
         )
         
-        print("[OCR META CROP]", strings)
+        AppLog.debug("[OCR META CROP]", strings)
         
         var setCode: String?
         var collectorNumber: String?
@@ -218,7 +218,7 @@ private extension CardNameRecognizer {
                                 .first?
                                 .string
                         } ?? []
-                    print("[OCR FULL]", strings)
+                    AppLog.debug("[OCR FULL]", strings)
                     continuation.resume(
                         returning: strings
                     )

@@ -225,17 +225,15 @@ final class MenuViewController: UIViewController {
 
 extension MenuViewController: UITableViewDataSource {
 
-    func numberOfSections(in tableView: UITableView) -> Int { 3 }
+    func numberOfSections(in tableView: UITableView) -> Int { 2 }
 
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { 1 }
 
     func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
         if section == 0 {
             "Card Database"
-        } else if section == 1 {
-            "Settings"
         } else {
-            "About"
+            "Settings"
         }
     }
 
@@ -247,18 +245,10 @@ extension MenuViewController: UITableViewDataSource {
             ) as! BulkDataCell
             cell.configure()
             return cell
-        } else if indexPath.section == 1 {
+        } else {
             let cell = tableView.dequeueReusableCell(
                 withIdentifier: SettingsCell.reuseID,
                 for: indexPath) as! SettingsCell
-            return cell
-        } else {
-            let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
-            var config = cell.defaultContentConfiguration()
-            config.text          = "Scan Cards"
-            config.secondaryText = "Built with Scryfall data"
-            cell.contentConfiguration = config
-            cell.selectionStyle  = .none
             return cell
         }
     }
@@ -283,7 +273,7 @@ extension MenuViewController: UITableViewDelegate {
             })
             alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
             present(alert, animated: true)
-        } else if indexPath.section == 1 {
+        } else {
             let vc = SettingsViewController()
             navigationController?.pushViewController(vc, animated: true)
         }

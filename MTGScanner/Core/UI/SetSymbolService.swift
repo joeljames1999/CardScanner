@@ -34,7 +34,7 @@ final class SetSymbolService {
     private let session: URLSession = {
         let config = URLSessionConfiguration.default
         config.httpAdditionalHeaders = [
-            "User-Agent": "MTGScanner-iOS/1.0"
+            "User-Agent": "TCGCompanion-iOS/1.0"
         ]
         return URLSession(configuration: config)
     }()

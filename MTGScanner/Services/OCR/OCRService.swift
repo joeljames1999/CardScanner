@@ -79,7 +79,7 @@ extension OCRService {
                 return
             }
             
-            print("[OCR] 📸 Stable card acquired")
+            AppLog.debug("[OCR] 📸 Stable card acquired")
             
             self.captureCard(
                 from: pixelBuffer,
@@ -148,7 +148,7 @@ extension OCRService {
                 
                 if !results.isEmpty {
                     
-                    print(
+                    AppLog.debug(
                         "[OCR] 🎯 Working orientation:",
                         orientation
                     )
@@ -169,7 +169,7 @@ extension OCRService {
                 }
             }
             
-            print("[OCR] No rectangles found")
+            AppLog.debug("[OCR] No rectangles found")
         }
     }
 }
@@ -186,7 +186,7 @@ extension OCRService {
         
         isLocked = true
         
-        print("[OCR] 📸 Capturing card image...")
+        AppLog.debug("[OCR] 📸 Capturing card image...")
         
         let orientation =
         workingOrientation ?? .right
@@ -199,7 +199,7 @@ extension OCRService {
                 )
         else {
             
-            print(
+            AppLog.debug(
                 "[OCR] ❌ Failed to capture card"
             )
             
@@ -207,7 +207,7 @@ extension OCRService {
             return
         }
         
-        print(
+        AppLog.debug(
             "[OCR] ✅ Card captured — size:",
             cardImage.size
         )
@@ -216,7 +216,7 @@ extension OCRService {
             let width = cg.width
             let height = cg.height
 
-            print(
+            AppLog.debug(
                 "[OCR] Image orientation check:",
                 width,
                 "x",
@@ -243,17 +243,17 @@ extension OCRService {
             
             recognisedResult = result
             
-            print(
+            AppLog.debug(
                 "[OCR] Card name:",
                 result.cardName ?? "none"
             )
 
-            print(
+            AppLog.debug(
                 "[OCR] Set:",
                 result.setCode ?? "none"
             )
 
-            print(
+            AppLog.debug(
                 "[OCR] Number:",
                 result.collectorNumber ?? "none"
             )

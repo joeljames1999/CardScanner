@@ -79,27 +79,6 @@ UICollectionViewDelegate {
         showEditOverlay(for: entry, card: viewModel.card(for: entry))
     }
 
-    func scrollViewDidScroll(_ scrollView: UIScrollView) {
-        updateNavigationTitleForScrollPosition(scrollView.contentOffset.y)
-    }
-
-    private func updateNavigationTitleForScrollPosition(_ offsetY: CGFloat) {
-        let shouldShowCount = offsetY > 260
-
-        guard shouldShowCount else {
-            title = "Collection"
-            return
-        }
-
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        let count = formatter.string(
-            from: NSNumber(value: viewModel.collectionTotalCards)
-        ) ?? "\(viewModel.collectionTotalCards)"
-
-        title = "Collection (\(count))"
-    }
-
     private func forcedFinish(for entry: CollectionEntry, card: MTGCard?) -> CardFinish? {
         guard let finishes = card?.availableFinishes, !finishes.isEmpty else {
             return nil

@@ -19,7 +19,7 @@ final class FeaturePrintIndexer {
 
         let cards = (try? AppDatabase.shared.cards.allCards()) ?? []
 
-        print("[Vision] Starting feature print index for \(cards.count) cards")
+        AppLog.debug("[Vision] Starting feature print index for \(cards.count) cards")
 
         for (index, card) in cards.enumerated() {
 
@@ -60,7 +60,7 @@ final class FeaturePrintIndexer {
                 )
 
                 if index % 100 == 0 {
-                    print(
+                    AppLog.debug(
                         "[Vision] Indexed",
                         index,
                         "/",
@@ -70,14 +70,14 @@ final class FeaturePrintIndexer {
 
             } catch {
 
-                print(
+                AppLog.debug(
                     "[Vision] Failed indexing \(card.name):",
                     error
                 )
             }
         }
 
-        print("[Vision] Finished feature print index")
+        AppLog.debug("[Vision] Finished feature print index")
     }
 }
 

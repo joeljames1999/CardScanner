@@ -28,7 +28,7 @@ final class ScryfallService {
     private let session: URLSession = {
         let config = URLSessionConfiguration.default
         config.httpAdditionalHeaders = [
-            "User-Agent": "MTGScanner-iOS/1.0",
+            "User-Agent": "TCGCompanion-iOS/1.0",
             "Accept": "application/json"
         ]
         return URLSession(configuration: config)

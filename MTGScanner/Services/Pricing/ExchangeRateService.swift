@@ -75,7 +75,7 @@ final class ExchangeRateService {
                 object: snapshot
             )
         } catch {
-            print("[ExchangeRateService] Refresh failed:", error)
+            AppLog.debug("[ExchangeRateService] Refresh failed:", error)
         }
     }
 

@@ -47,7 +47,7 @@ final class AppDatabase {
             try? database.execute("ALTER TABLE cards ADD COLUMN lang TEXT;")
             try? database.execute("ALTER TABLE cards ADD COLUMN finishes TEXT;")
         } catch {
-            print("[AppDatabase] Failed to open:", error)
+            AppLog.debug("[AppDatabase] Failed to open:", error)
         }
 
         self.cards = CardRepository(database: database)

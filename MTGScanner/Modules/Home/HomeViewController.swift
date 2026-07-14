@@ -125,6 +125,9 @@ final class HomeViewController: UIViewController {
 
     private let scryfallService = ScryfallService()
     private var randomCardTask: Task<Void, Never>?
+    private var deferredHomeLoadTask: Task<Void, Never>?
+    private var deferredExchangeRateTask: Task<Void, Never>?
+    private var hasLoadedInitialHomeContent = false
     private var recentCards: [RecentCard] = []
 
     private enum RandomAction {
@@ -175,9 +178,11 @@ final class HomeViewController: UIViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
 
-        recentCards = RecentlyViewedStore.shared.cards
-        recentCollectionView.reloadData()
-        updateBannerStats()
+        if hasLoadedInitialHomeContent {
+            refreshHomeContent()
+        } else {
+            scheduleDeferredHomeLoad()
+        }
     }
 
     override func viewDidLayoutSubviews() {
@@ -188,6 +193,8 @@ final class HomeViewController: UIViewController {
 
     deinit {
         randomCardTask?.cancel()
+        deferredHomeLoadTask?.cancel()
+        deferredExchangeRateTask?.cancel()
         NotificationCenter.default.removeObserver(self)
     }
 
@@ -371,6 +378,36 @@ final class HomeViewController: UIViewController {
         collectionValueStat.setValue(
             PriceFormatter.string(usd: CollectionStore.shared.estimatedValue)
         )
+    }
+
+    private func scheduleDeferredHomeLoad() {
+        guard deferredHomeLoadTask == nil else { return }
+
+        deferredHomeLoadTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 350_000_000)
+            guard !Task.isCancelled else { return }
+            refreshHomeContent()
+            hasLoadedInitialHomeContent = true
+            deferredHomeLoadTask = nil
+            scheduleDeferredExchangeRateRefresh()
+        }
+    }
+
+    private func scheduleDeferredExchangeRateRefresh() {
+        guard deferredExchangeRateTask == nil else { return }
+
+        deferredExchangeRateTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            guard !Task.isCancelled else { return }
+            await ExchangeRateService.shared.refreshRatesIfNeeded()
+            deferredExchangeRateTask = nil
+        }
+    }
+
+    private func refreshHomeContent() {
+        recentCards = RecentlyViewedStore.shared.cards
+        recentCollectionView.reloadData()
+        updateBannerStats()
     }
 
     // MARK: - Actions

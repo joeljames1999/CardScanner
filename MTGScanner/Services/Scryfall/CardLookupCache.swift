@@ -39,7 +39,7 @@ final class CardLookupCache {
             cardsByKey[key] = card
         }
 
-        print("[CardLookupCache] Cached \(cards.count) cards")
+        AppLog.debug("[CardLookupCache] Cached \(cards.count) cards")
     }
 
     func clear() {

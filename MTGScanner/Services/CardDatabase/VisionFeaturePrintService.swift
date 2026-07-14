@@ -101,7 +101,7 @@ final class VisionFeaturePrintService {
 
         // 3. Return the absolute best match across both frame style variants
         if let winner = scoredCandidates.min(by: { $0.distance < $1.distance }) {
-            print("[Vision] Universal Winner Determined:", winner.card.set, winner.card.collectorNumber, "Confidence Distance Score:", winner.distance)
+            AppLog.debug("[Vision] Universal Winner Determined:", winner.card.set, winner.card.collectorNumber, "Confidence Distance Score:", winner.distance)
             return winner.card
         }
 
@@ -134,7 +134,7 @@ final class VisionFeaturePrintService {
 
             return observation
         } catch {
-            print("[Vision] Failed saving feature print for \(card.name):", error)
+            AppLog.debug("[Vision] Failed saving feature print for \(card.name):", error)
             return nil
         }
     }
@@ -186,7 +186,7 @@ final class VisionFeaturePrintService {
                 }
 
             } catch {
-                print("[Vision] Failed comparing \(sourceCard.name) to \(card.name):", error)
+                AppLog.debug("[Vision] Failed comparing \(sourceCard.name) to \(card.name):", error)
             }
         }
 

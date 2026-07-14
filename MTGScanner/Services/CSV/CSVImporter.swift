@@ -14,13 +14,13 @@ final class CSVImporter {
         progress: ((Double) -> Void)? = nil
     ) -> CSVImportResult {
 
-        print("===== IMPORT STARTED =====")
+        AppLog.debug("===== IMPORT STARTED =====")
         
-        print(csv.prefix(500))
+        AppLog.debug(csv.prefix(500))
         let rows = csv
             .split(whereSeparator: \.isNewline)
             .map(String.init)
-        print("Rows:", rows.count)
+        AppLog.debug("Rows:", rows.count)
         guard rows.count > 1 else {
             // Detect separator automatically
             let delimiter: Character
@@ -31,7 +31,7 @@ final class CSVImporter {
                 delimiter = ","
             }
 
-            print("[CSV] Using delimiter:", delimiter == "\t" ? "TAB" : "COMMA")
+            AppLog.debug("[CSV] Using delimiter:", delimiter == "\t" ? "TAB" : "COMMA")
             return CSVImportResult(
                 entries: [],
                 skippedRows: 0,

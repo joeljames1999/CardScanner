@@ -82,7 +82,7 @@ final class PrintingSelectionOverlayView: UIView {
         table.delegate = self
         table.dataSource = self
 
-        table.rowHeight = 72
+        table.rowHeight = 82
 
         table.register(
             PrintingCell.self,
@@ -349,7 +349,7 @@ final class PrintingCell: UITableViewCell {
     func configure(with card: MTGCard) {
 
         titleLabel.text = "\(card.set.uppercased()) #\(card.collectorNumber)"
-        subtitleLabel.text = card.setName
+        subtitleLabel.attributedText = subtitle(for: card)
         cardImageView.image = nil
 
         guard let url = card.displayImage ?? card.imageUris?.artCrop else {
@@ -370,10 +370,61 @@ final class PrintingCell: UITableViewCell {
             }
         }.resume()
     }
+    private func subtitle(for card: MTGCard) -> NSAttributedString {
+        let subtitle = NSMutableAttributedString(
+            string: "\(card.setName) - ",
+            attributes: [
+                .foregroundColor: UIColor.secondaryLabel,
+                .font: subtitleLabel.font as Any
+            ]
+        )
+        subtitle.append(priceSummary(for: card))
+        return subtitle
+    }
+
+    private func priceSummary(for card: MTGCard) -> NSAttributedString {
+        let finishes = Set(card.availableFinishes)
+        let hasNonfoil = finishes.contains(.nonfoil)
+        let hasFoil = finishes.contains(.foil) || finishes.contains(.etched)
+        let regularPrice = PriceFormatter.string(usd: card.prices?.usd)
+        let foilPrice = PriceFormatter.string(usd: card.prices?.usdFoil)
+
+        if hasNonfoil && hasFoil {
+            let summary = NSMutableAttributedString(string: regularPrice)
+            summary.append(NSAttributedString(string: " / "))
+            summary.append(foilPriceAttributed(foilPrice))
+            return summary
+        }
+
+        if hasFoil {
+            return foilPriceAttributed(foilPrice)
+        }
+
+        return NSAttributedString(string: regularPrice)
+    }
+
+    private func foilPriceAttributed(_ price: String) -> NSAttributedString {
+        let summary = NSMutableAttributedString()
+        summary.append(goldStarAttachment())
+        summary.append(NSAttributedString(string: " \(price)"))
+        return summary
+    }
+
+    private func goldStarAttachment() -> NSAttributedString {
+        let attachment = NSTextAttachment()
+        let image = UIImage(systemName: "star.fill")?.withTintColor(
+            UIColor(red: 0.95, green: 0.72, blue: 0.18, alpha: 1),
+            renderingMode: .alwaysOriginal
+        )
+        attachment.image = image
+        attachment.bounds = CGRect(x: 0, y: -1, width: 12, height: 12)
+        return NSAttributedString(attachment: attachment)
+    }
+
     override func prepareForReuse() {
         super.prepareForReuse()
         cardImageView.image = nil
         titleLabel.text = nil
-        subtitleLabel.text = nil
+        subtitleLabel.attributedText = nil
     }
 }

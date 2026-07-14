@@ -214,6 +214,7 @@ final class SetPickerPrintingCell: UITableViewCell {
         lbl.font          = .systemFont(ofSize: 13, weight: .medium)
         lbl.textColor     = .systemGreen
         lbl.textAlignment = .right
+        lbl.numberOfLines = 2
         return lbl
     }()
 
@@ -268,7 +269,7 @@ final class SetPickerPrintingCell: UITableViewCell {
     func configure(with card: MTGCard) {
         setNameLabel.text             = card.setName
         setCodeLabel.text             = "\(card.set.uppercased()) · #\(card.collectorNumber)"
-        priceLabel.text               = PriceFormatter.string(usd: card.prices?.usd)
+        priceLabel.attributedText     = priceSummary(for: card)
         rarityDot.backgroundColor     = rarityColour(card.rarity)
         cardImageView.image           = nil
 
@@ -282,6 +283,45 @@ final class SetPickerPrintingCell: UITableViewCell {
                 }
             }
         }
+    }
+
+    private func priceSummary(for card: MTGCard) -> NSAttributedString {
+        let finishes = Set(card.availableFinishes)
+        let hasNonfoil = finishes.contains(.nonfoil)
+        let hasFoil = finishes.contains(.foil) || finishes.contains(.etched)
+        let regularPrice = PriceFormatter.string(usd: card.prices?.usd)
+        let foilPrice = PriceFormatter.string(usd: card.prices?.usdFoil)
+
+        if hasNonfoil && hasFoil {
+            let summary = NSMutableAttributedString(string: regularPrice)
+            summary.append(NSAttributedString(string: " / "))
+            summary.append(foilPriceAttributed(foilPrice))
+            return summary
+        }
+
+        if hasFoil {
+            return foilPriceAttributed(foilPrice)
+        }
+
+        return NSAttributedString(string: regularPrice)
+    }
+
+    private func foilPriceAttributed(_ price: String) -> NSAttributedString {
+        let summary = NSMutableAttributedString()
+        summary.append(goldStarAttachment())
+        summary.append(NSAttributedString(string: " \(price)"))
+        return summary
+    }
+
+    private func goldStarAttachment() -> NSAttributedString {
+        let attachment = NSTextAttachment()
+        let image = UIImage(systemName: "star.fill")?.withTintColor(
+            UIColor(red: 0.95, green: 0.72, blue: 0.18, alpha: 1),
+            renderingMode: .alwaysOriginal
+        )
+        attachment.image = image
+        attachment.bounds = CGRect(x: 0, y: -1, width: 12, height: 12)
+        return NSAttributedString(attachment: attachment)
     }
 
     private func rarityColour(_ rarity: String) -> UIColor {
@@ -299,6 +339,6 @@ final class SetPickerPrintingCell: UITableViewCell {
         cardImageView.image = nil
         setNameLabel.text   = nil
         setCodeLabel.text   = nil
-        priceLabel.text     = nil
+        priceLabel.attributedText = nil
     }
 }

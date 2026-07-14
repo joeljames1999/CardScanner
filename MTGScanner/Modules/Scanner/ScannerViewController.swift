@@ -75,6 +75,28 @@ final class ScannerViewController: UIViewController {
             action: #selector(openSession)
         )
     }()
+
+    private lazy var cameraSettingsButton: UIButton = {
+        var configuration = UIButton.Configuration.filled()
+        configuration.title = "Open Settings"
+        configuration.image = UIImage(systemName: "gearshape")
+        configuration.imagePadding = 8
+        configuration.cornerStyle = .capsule
+        configuration.baseBackgroundColor = .brandBlue
+        configuration.baseForegroundColor = .white
+        configuration.contentInsets = NSDirectionalEdgeInsets(
+            top: 12,
+            leading: 18,
+            bottom: 12,
+            trailing: 18
+        )
+
+        let button = UIButton(configuration: configuration)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.isHidden = true
+        button.addTarget(self, action: #selector(openAppSettings), for: .touchUpInside)
+        return button
+    }()
     
     private let bottomPanel = UIVisualEffectView(
         effect: UIBlurEffect(style: .systemUltraThinMaterialDark)
@@ -170,6 +192,7 @@ final class ScannerViewController: UIViewController {
         view.addSubview(cameraContainerView)
         view.addSubview(overlayView)
         view.addSubview(statusLabel)
+        view.addSubview(cameraSettingsButton)
 
         NSLayoutConstraint.activate([
             cameraContainerView.topAnchor.constraint(
@@ -196,6 +219,9 @@ final class ScannerViewController: UIViewController {
             statusLabel.topAnchor.constraint(equalTo: cameraContainerView.bottomAnchor, constant: 12),
             statusLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
             statusLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
+
+            cameraSettingsButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            cameraSettingsButton.centerYAnchor.constraint(equalTo: view.centerYAnchor),
             
             bottomPanel.heightAnchor.constraint(
                 equalToConstant: 140
@@ -213,6 +239,7 @@ final class ScannerViewController: UIViewController {
                     self.showPermissionDenied()
                     return
                 }
+                self.cameraSettingsButton.isHidden = true
                 self.setupFrameCallback()
                 self.cameraService.configure(in: self.cameraContainerView)
             }
@@ -408,7 +435,7 @@ final class ScannerViewController: UIViewController {
 
         case .selectPrinting(let printings):
 
-            print(
+            AppLog.debug(
                 "[ScannerVC] Showing printing picker:",
                 printings.count
             )
@@ -578,6 +605,23 @@ final class ScannerViewController: UIViewController {
     }
 
     private func showPermissionDenied() {
-        statusLabel.text = "Camera access denied. Enable it in Settings."
+        statusLabel.text = "Camera access is needed to scan cards."
+        cameraSettingsButton.isHidden = false
+
+        let alert = UIAlertController(
+            title: "Camera Access Needed",
+            message: "Enable camera access in Settings to scan trading cards.",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "Not Now", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Open Settings", style: .default) { [weak self] _ in
+            self?.openAppSettings()
+        })
+        present(alert, animated: true)
+    }
+
+    @objc private func openAppSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
     }
 }
