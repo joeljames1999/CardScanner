@@ -182,6 +182,73 @@ private extension CollectionEmptyStateView {
     }
 }
 
+final class CollectionFilteredEmptyStateView: UIView {
+
+    private let imageView: UIImageView = {
+        let imageView = UIImageView(image: UIImage(systemName: "line.3.horizontal.decrease.circle"))
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        imageView.tintColor = .secondaryLabel
+        imageView.preferredSymbolConfiguration = .init(pointSize: 42, weight: .regular)
+        return imageView
+    }()
+
+    private let titleLabel: UILabel = {
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.font = .systemFont(ofSize: 22, weight: .semibold)
+        label.textAlignment = .center
+        label.text = "No cards match these filters"
+        return label
+    }()
+
+    private let subtitleLabel: UILabel = {
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.numberOfLines = 0
+        label.textAlignment = .center
+        label.font = .systemFont(ofSize: 15)
+        label.textColor = .secondaryLabel
+        label.text = "Adjust your search or filters to show cards from your collection."
+        return label
+    }()
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        isHidden = true
+        setup()
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError()
+    }
+
+    private func setup() {
+        backgroundColor = .systemBackground
+
+        let stack = UIStackView(arrangedSubviews: [
+            imageView,
+            titleLabel,
+            subtitleLabel
+        ])
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        stack.axis = .vertical
+        stack.spacing = 14
+        stack.alignment = .center
+
+        addSubview(stack)
+
+        NSLayoutConstraint.activate([
+            imageView.heightAnchor.constraint(equalToConstant: 46),
+            imageView.widthAnchor.constraint(equalToConstant: 46),
+
+            stack.topAnchor.constraint(equalTo: topAnchor, constant: 42),
+            stack.centerXAnchor.constraint(equalTo: centerXAnchor),
+            stack.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: 28),
+            stack.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -28)
+        ])
+    }
+}
+
 // MARK: - Actions
 
 private extension CollectionEmptyStateView {

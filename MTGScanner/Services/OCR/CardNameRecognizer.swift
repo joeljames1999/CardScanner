@@ -15,10 +15,8 @@ struct OCRResult {
 final class CardNameRecognizer {
 
     func recognise(from image: UIImage) async -> OCRResult {
-        let portrait = ensurePortrait(image)
-
-        async let name = recogniseName(from: portrait)
-        async let metadata = recogniseMetadata(from: portrait)
+        async let name = recogniseName(from: image)
+        async let metadata = recogniseMetadata(from: image)
 
         let cardName = await name
         let (setCode, collectorNumber) = await metadata
@@ -39,40 +37,31 @@ private extension CardNameRecognizer {
         from image: UIImage
     ) async -> String? {
 
-        UIImageWriteToSavedPhotosAlbum(
-            image,
-            nil,
-            nil,
-            nil
-        )
-        
-        guard let cropped =
-            crop(
-                image,
-                normalizedRect: CGRect(
-                    x: 0,
-                    y: 0,
-                    width: 1,
-                    height: 0.16
-                )
-            ),
-            let cgImage = cropped.cgImage
-        else {
-            return nil
+        let titleRects = [
+            CGRect(x: 0.04, y: 0.02, width: 0.92, height: 0.10),
+            CGRect(x: 0.04, y: 0.03, width: 0.92, height: 0.13),
+            CGRect(x: 0.00, y: 0.00, width: 1.00, height: 0.16)
+        ]
+
+        for variant in portraitVariants(for: image) {
+            for rect in titleRects {
+                guard
+                    let cropped = crop(variant, normalizedRect: rect),
+                    let cgImage = cropped.cgImage
+                else {
+                    continue
+                }
+
+                let strings = await performOCR(cgImage: cgImage)
+                AppLog.debug("[OCR NAME CROP]", strings)
+
+                if let name = strings.compactMap(cleanNameCandidate).first {
+                    return name
+                }
+            }
         }
 
-        let strings = await performOCR(cgImage: cgImage)
-
-        AppLog.debug("[OCR FULL]", strings)
-
-        return strings.first
-        
-//        return await performOCR(
-//            cgImage: cgImage
-//        ).first?
-//            .trimmingCharacters(
-//                in: .whitespacesAndNewlines
-//            )
+        return nil
     }
 }
 
@@ -84,26 +73,32 @@ private extension CardNameRecognizer {
         from image: UIImage
     ) async -> (String?, String?) {
         
-        guard let cropped = crop(
-            image,
-            normalizedRect: CGRect(
-                x: 0.00,
-                y: 0.86,
-                width: 0.35,
-                height: 0.14
+        var strings: [String] = []
+
+        for variant in portraitVariants(for: image) {
+            guard
+                let cropped = crop(
+                    variant,
+                    normalizedRect: CGRect(
+                        x: 0.00,
+                        y: 0.84,
+                        width: 0.55,
+                        height: 0.16
+                    )
+                ),
+                let cgImage = cropped.cgImage
+            else {
+                continue
+            }
+
+            let cropStrings = await performOCR(
+                cgImage: cgImage
             )
-        ),
-              let cgImage = cropped.cgImage
-        else {
-            return (nil, nil)
+
+            AppLog.debug("[OCR META CROP]", cropStrings)
+            strings.append(contentsOf: cropStrings)
         }
-        
-        let strings = await performOCR(
-            cgImage: cgImage
-        )
-        
-        AppLog.debug("[OCR META CROP]", strings)
-        
+
         var setCode: String?
         var collectorNumber: String?
         
@@ -144,6 +139,8 @@ private extension CardNameRecognizer {
                     numberRange.map {
                         String(value[$0])
                     }
+                } else if let number = collectorNumberCandidate(from: value) {
+                    collectorNumber = number
                 }
             }
             
@@ -181,6 +178,60 @@ private extension CardNameRecognizer {
             setCode,
             collectorNumber
         )
+    }
+}
+
+// MARK: - OCR Cleanup
+
+private extension CardNameRecognizer {
+
+    func cleanNameCandidate(_ value: String) -> String? {
+        let cleaned = value
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "  ", with: " ")
+
+        guard cleaned.count >= 3, cleaned.count <= 60 else {
+            return nil
+        }
+
+        let lowercased = cleaned.lowercased()
+
+        guard
+            !lowercased.contains("•"),
+            !lowercased.contains(" en "),
+            !lowercased.contains("/"),
+            !lowercased.contains(":"),
+            !lowercased.contains(".")
+        else {
+            return nil
+        }
+
+        let letterCount = cleaned.filter { $0.isLetter }.count
+        guard letterCount >= 3 else {
+            return nil
+        }
+
+        return cleaned
+    }
+
+    func collectorNumberCandidate(from value: String) -> String? {
+        let regex = try? NSRegularExpression(
+            pattern: #"(?:^|\D)(\d{3,4})(?:\D|$)"#
+        )
+
+        let range = NSRange(
+            location: 0,
+            length: value.utf16.count
+        )
+
+        guard
+            let match = regex?.firstMatch(in: value, range: range),
+            let numberRange = Range(match.range(at: 1), in: value)
+        else {
+            return nil
+        }
+
+        return String(value[numberRange])
     }
 }
 
@@ -277,18 +328,25 @@ private extension CardNameRecognizer {
         )
     }
     
-    private func ensurePortrait(_ image: UIImage) -> UIImage {
+    private func portraitVariants(for image: UIImage) -> [UIImage] {
         guard image.size.width > image.size.height else {
-            return image  // already portrait
+            return [image]
         }
-        
+
+        return [
+            rotate(image, radians: .pi / 2),
+            rotate(image, radians: -.pi / 2)
+        ]
+    }
+
+    private func rotate(_ image: UIImage, radians: CGFloat) -> UIImage {
         let renderer = UIGraphicsImageRenderer(
             size: CGSize(width: image.size.height, height: image.size.width)
         )
-        
+
         return renderer.image { context in
             context.cgContext.translateBy(x: image.size.height / 2, y: image.size.width / 2)
-            context.cgContext.rotate(by: .pi / 2)
+            context.cgContext.rotate(by: radians)
             image.draw(in: CGRect(
                 x: -image.size.width / 2,
                 y: -image.size.height / 2,

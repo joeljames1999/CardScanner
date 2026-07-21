@@ -1,4 +1,3 @@
-import Photos
 import Foundation
 import Combine
 import UIKit
@@ -156,7 +155,8 @@ final class ScannerViewModel: ObservableObject {
         lookupCard(
             name: name,
             setCode: result.setCode,
-            collectorNumber: result.collectorNumber
+            collectorNumber: result.collectorNumber,
+            scannedImage: image
         )
     }
 
@@ -177,7 +177,8 @@ final class ScannerViewModel: ObservableObject {
         lookupCard(
             name: cleaned,
             setCode: nil,
-            collectorNumber: nil
+            collectorNumber: nil,
+            scannedImage: nil
         )
     }
 
@@ -186,7 +187,8 @@ final class ScannerViewModel: ObservableObject {
     private func lookupCard(
         name: String,
         setCode: String?,
-        collectorNumber: String?
+        collectorNumber: String?,
+        scannedImage: UIImage?
     ) {
 
         let lookupKey = [
@@ -227,9 +229,20 @@ final class ScannerViewModel: ObservableObject {
                     return
                 }
 
+                let narrowedCandidates = try await Self.narrowCandidatesByArtwork(
+                    scannedImage: scannedImage,
+                    candidates: candidates,
+                    repository: repository
+                )
+
+                guard !Task.isCancelled else {
+                    return
+                }
+
                 self.handleLookupResult(
-                    candidates,
-                    fallbackName: name
+                    narrowedCandidates,
+                    fallbackName: name,
+                    preferPrintingSelection: candidates.count > 1
                 )
 
             } catch {
@@ -289,9 +302,51 @@ final class ScannerViewModel: ObservableObject {
         return exactNameMatches.isEmpty ? results : exactNameMatches
     }
 
+    nonisolated private static func narrowCandidatesByArtwork(
+        scannedImage: UIImage?,
+        candidates: [MTGCard],
+        repository: CardRepository
+    ) async throws -> [MTGCard] {
+
+        guard candidates.count > 1, let scannedImage else {
+            return candidates
+        }
+
+        guard
+            let visualMatch = await VisionFeaturePrintService.shared.bestVisualMatch(
+                scannedImage: scannedImage,
+                candidates: candidates
+            ),
+            let illustrationID = visualMatch.illustrationID?
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+            !illustrationID.isEmpty
+        else {
+            return candidates
+        }
+
+        let artworkPrintings = try repository.cards(
+            illustrationID: illustrationID
+        )
+        .filter {
+            $0.name.caseInsensitiveCompare(visualMatch.name) == .orderedSame
+        }
+
+        AppLog.debug(
+            "[ScannerVM] Artwork narrowed printings:",
+            candidates.count,
+            "->",
+            artworkPrintings.count,
+            visualMatch.set,
+            visualMatch.collectorNumber
+        )
+
+        return artworkPrintings.isEmpty ? [visualMatch] : artworkPrintings
+    }
+
     private func handleLookupResult(
         _ candidates: [MTGCard],
-        fallbackName: String
+        fallbackName: String,
+        preferPrintingSelection: Bool
     ) {
 
         isLookingUp = false
@@ -302,11 +357,11 @@ final class ScannerViewModel: ObservableObject {
             return
         }
 
-        if candidates.count == 1 {
-            isScanning = false
+        isScanning = false
+
+        if candidates.count == 1, !preferPrintingSelection {
             state = .found(candidates[0])
         } else {
-            isScanning = false
             state = .selectPrinting(candidates)
         }
     }

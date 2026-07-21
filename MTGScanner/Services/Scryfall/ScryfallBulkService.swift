@@ -122,7 +122,13 @@ final class ScryfallBulkService: NSObject, ObservableObject {
             return
         }
 
-        if !isDataPresent || isStale {
+        guard isDataPresent else {
+            AppLog.debug("[Bulk] No local card database found; waiting for user download confirmation.")
+            await setState(.idle)
+            return
+        }
+
+        if isStale {
             await downloadAndImport()
         } else {
             AppLog.debug("[Bulk] Data is fresh, skipping download.")

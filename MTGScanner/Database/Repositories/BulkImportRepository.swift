@@ -42,6 +42,8 @@ final class AppDatabase {
 
         do {
             try database.open()
+            try database.execute(CardQueries.createCardsTable)
+            try database.execute(FeaturePrintQueries.createTable)
             try? database.execute("ALTER TABLE cards ADD COLUMN card_faces_json TEXT;")
             try? database.execute("ALTER TABLE cards ADD COLUMN released_at TEXT;")
             try? database.execute("ALTER TABLE cards ADD COLUMN lang TEXT;")
@@ -264,6 +266,7 @@ extension BulkImportRepository {
             from: fileURL
         )
 
+        try createSchemaIfNeeded()
         try applyFastImportSettings()
 
         var transactionStarted = false
@@ -397,6 +400,11 @@ private extension BulkImportRepository {
         )
     }
 
+    func createSchemaIfNeeded() throws {
+        try database.execute(CardQueries.createCardsTable)
+        try database.execute(FeaturePrintQueries.createTable)
+    }
+
     func applyFastImportSettings() throws {
 
         for sql in BulkImportQueries.fastImportPragmas {
@@ -528,23 +536,7 @@ private extension BulkImportRepository {
         if card.digital == true {
             return true
         }
-
-        if setType == "alchemy" {
-            return true
-        }
-
-        if setType == "arena" {
-            return true
-        }
-
-        if setName.contains("through the omenpaths") {
-            return true
-        }
-
-        if collectorNumber.hasPrefix("a-") {
-            return true
-        }
-
+        
         return false
     }
 }

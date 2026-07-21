@@ -16,6 +16,7 @@ final class CollectionViewController: UIViewController {
 
     let dashboardView = CollectionDashboardView()
     let emptyStateView = CollectionEmptyStateView()
+    let filteredEmptyStateView = CollectionFilteredEmptyStateView()
     var editOverlayView: CollectionEntryEditOverlayView?
 
     lazy var collectionView: UICollectionView = {
@@ -145,13 +146,26 @@ private extension CollectionViewController {
 
                 collectionView.reloadData()
                 prefetchVisibleThumbnailImages(from: entries)
-                emptyStateView.isHidden = !(viewModel.totalCards == 0)
 
                 dashboardView.configure(
                     cards: viewModel.collectionTotalCards,
                     value: viewModel.collectionEstimatedValue,
                     activeFilters: viewModel.activeFilterCount
                 )
+
+                if viewModel.isEmpty {
+                    emptyStateView.isHidden = false
+                    filteredEmptyStateView.isHidden = true
+                    dashboardView.isHidden = true
+                } else if viewModel.isFilteredEmpty {
+                    emptyStateView.isHidden = true
+                    filteredEmptyStateView.isHidden = false
+                    dashboardView.isHidden = false
+                } else {
+                    emptyStateView.isHidden = true
+                    filteredEmptyStateView.isHidden = true
+                    dashboardView.isHidden = false
+                }
             }
             .store(in: &cancellables)
 

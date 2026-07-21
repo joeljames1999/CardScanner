@@ -29,14 +29,12 @@ final class CollectionDashboardView: UIView {
 
     private lazy var sortButton = makePrimaryButton(
         title: "Sort",
-        subtitle: "Organise collection",
         image: "arrow.up.arrow.down",
         action: #selector(sortTapped)
     )
 
     private lazy var filterButton = makePrimaryButton(
         title: "Filter",
-        subtitle: "Refine results",
         image: "line.3.horizontal.decrease.circle",
         action: #selector(filterTapped)
     )
@@ -237,7 +235,6 @@ extension CollectionDashboardView {
 
     func makePrimaryButton(
         title: String,
-        subtitle: String,
         image: String,
         action: Selector
     ) -> UIButton {
@@ -253,12 +250,7 @@ extension CollectionDashboardView {
         var titleAttr = AttributedString(title)
         titleAttr.font = .systemFont(ofSize: 17, weight: .bold)
 
-        var subtitleAttr = AttributedString(subtitle)
-        subtitleAttr.font = .systemFont(ofSize: 12, weight: .medium)
-        subtitleAttr.foregroundColor = .white.withAlphaComponent(0.85)
-
         config.attributedTitle = titleAttr
-        config.attributedSubtitle = subtitleAttr
         config.contentInsets = NSDirectionalEdgeInsets(
             top: 15,
             leading: 16,

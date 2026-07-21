@@ -14,9 +14,11 @@ extension CollectionViewController {
 
         collectionView.translatesAutoresizingMaskIntoConstraints = false
         emptyStateView.translatesAutoresizingMaskIntoConstraints = false
+        filteredEmptyStateView.translatesAutoresizingMaskIntoConstraints = false
 
         view.addSubview(collectionView)
         view.addSubview(emptyStateView)
+        view.addSubview(filteredEmptyStateView)
 
         NSLayoutConstraint.activate([
 
@@ -49,6 +51,23 @@ extension CollectionViewController {
             ),
 
             emptyStateView.bottomAnchor.constraint(
+                equalTo: view.bottomAnchor
+            ),
+
+            filteredEmptyStateView.leadingAnchor.constraint(
+                equalTo: view.leadingAnchor
+            ),
+
+            filteredEmptyStateView.trailingAnchor.constraint(
+                equalTo: view.trailingAnchor
+            ),
+
+            filteredEmptyStateView.topAnchor.constraint(
+                equalTo: collectionView.topAnchor,
+                constant: 342
+            ),
+
+            filteredEmptyStateView.bottomAnchor.constraint(
                 equalTo: view.bottomAnchor
             )
         ])

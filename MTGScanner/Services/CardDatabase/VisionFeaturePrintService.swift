@@ -30,20 +30,32 @@ final class VisionFeaturePrintService {
         }
     }
     
-    /// Matches scanned cards against candidates instantly offline using parallel CPU threads
+    /// Matches scanned cards against candidates instantly offline using parallel CPU threads.
     func bestMatch(
-        scannedImage: UIImage, // Pass the original camera snapshot frame here
+        scannedImage: UIImage,
+        candidates: [MTGCard]
+    ) async -> MTGCard? {
+        await bestVisualMatch(
+            scannedImage: scannedImage,
+            candidates: candidates
+        ) ?? candidates.first
+    }
+
+    /// Returns nil when no cached visual evidence is available.
+    func bestVisualMatch(
+        scannedImage: UIImage,
         candidates: [MTGCard]
     ) async -> MTGCard? {
         guard !candidates.isEmpty else { return nil }
 
-        // 1. Generate BOTH live camera vector targets
         let croppedLiveImage = scannedImage.artworkCrop()?.normalizedLandscape() ?? scannedImage
         let fullLiveImage = scannedImage.normalizedLandscape()
         
-        guard let livePrintCropped = await generateFeaturePrint(from: croppedLiveImage),
-              let livePrintFull = await generateFeaturePrint(from: fullLiveImage) else {
-            return candidates.first
+        guard
+            let livePrintCropped = await generateFeaturePrint(from: croppedLiveImage),
+            let livePrintFull = await generateFeaturePrint(from: fullLiveImage)
+        else {
+            return nil
         }
 
         let cachedPrints = Dictionary(
@@ -68,7 +80,10 @@ final class VisionFeaturePrintService {
             }
         )
 
-        // 2. Concurrently evaluate candidates across multiple CPU cores
+        guard !cachedPrints.isEmpty else {
+            return nil
+        }
+
         let scoredCandidates: [(card: MTGCard, distance: Float)] = await withTaskGroup(of: (MTGCard, Float)?.self) { group in
             for card in candidates {
                 group.addTask {
@@ -76,18 +91,16 @@ final class VisionFeaturePrintService {
                     
                     var bestCardDistance: Float = .greatestFiniteMagnitude
                     
-                    // Test 1: Compare tight crop layout vectors (Standard Cards)
                     if let cachedCrop = vectors.cropped {
                         var distCrop: Float = .greatestFiniteMagnitude
                         try? livePrintCropped.computeDistance(&distCrop, to: cachedCrop)
-                        if distCrop < bestCardDistance { bestCardDistance = distCrop }
+                        bestCardDistance = min(bestCardDistance, distCrop)
                     }
                     
-                    // Test 2: Compare full canvas vectors (Borderless/Full Art/Showcase Cards)
                     if let cachedFull = vectors.full {
                         var distFull: Float = .greatestFiniteMagnitude
                         try? livePrintFull.computeDistance(&distFull, to: cachedFull)
-                        if distFull < bestCardDistance { bestCardDistance = distFull }
+                        bestCardDistance = min(bestCardDistance, distFull)
                     }
                     
                     return (card, bestCardDistance)
@@ -95,17 +108,27 @@ final class VisionFeaturePrintService {
             }
 
             var results = [(card: MTGCard, distance: Float)]()
-            for await result in group { if let result = result { results.append(result) } }
+            for await result in group {
+                if let result {
+                    results.append(result)
+                }
+            }
             return results
         }
 
-        // 3. Return the absolute best match across both frame style variants
-        if let winner = scoredCandidates.min(by: { $0.distance < $1.distance }) {
-            AppLog.debug("[Vision] Universal Winner Determined:", winner.card.set, winner.card.collectorNumber, "Confidence Distance Score:", winner.distance)
-            return winner.card
+        guard let winner = scoredCandidates.min(by: { $0.distance < $1.distance }) else {
+            return nil
         }
 
-        return candidates.first
+        AppLog.debug(
+            "[Vision] Universal Winner Determined:",
+            winner.card.set,
+            winner.card.collectorNumber,
+            "Confidence Distance Score:",
+            winner.distance
+        )
+
+        return winner.card
     }
 
 
