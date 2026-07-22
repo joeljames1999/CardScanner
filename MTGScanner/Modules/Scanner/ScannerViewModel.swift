@@ -38,6 +38,35 @@ enum ScannerState: Equatable {
     }
 }
 
+// MARK: - Scan Match
+
+private struct ScanMatch {
+    let candidates: [MTGCard]
+    let selectedCard: MTGCard?
+    let evidence: ScanEvidence
+
+    var shouldShowPrintingSelection: Bool {
+        switch evidence {
+        case .exactMetadata,
+             .exactNameAndMetadata:
+            return false
+
+        case .visualArtwork:
+            return !candidates.isEmpty
+
+        case .nameOnly:
+            return candidates.count > 1
+        }
+    }
+}
+
+private enum ScanEvidence {
+    case exactMetadata
+    case exactNameAndMetadata
+    case visualArtwork
+    case nameOnly
+}
+
 // MARK: - ScannerViewModel
 
 @MainActor
@@ -148,12 +177,15 @@ final class ScannerViewModel: ObservableObject {
             await cardNameRecognizer.recognise(from: image)
         }
 
-        guard let name = result.cardName else {
+        guard
+            result.cardName != nil ||
+            (result.setCode != nil && result.collectorNumber != nil)
+        else {
             return
         }
 
         lookupCard(
-            name: name,
+            name: result.cardName,
             setCode: result.setCode,
             collectorNumber: result.collectorNumber,
             scannedImage: image
@@ -185,14 +217,14 @@ final class ScannerViewModel: ObservableObject {
     // MARK: - Lookup
 
     private func lookupCard(
-        name: String,
+        name: String?,
         setCode: String?,
         collectorNumber: String?,
         scannedImage: UIImage?
     ) {
 
         let lookupKey = [
-            name,
+            name ?? "",
             setCode ?? "",
             collectorNumber ?? ""
         ]
@@ -214,36 +246,19 @@ final class ScannerViewModel: ObservableObject {
 
             do {
 
-                let candidates = try await Task.detached(
-                    priority: .userInitiated
-                ) {
-                    try Self.lookupCandidates(
-                        repository: repository,
-                        name: name,
-                        setCode: setCode,
-                        collectorNumber: collectorNumber
-                    )
-                }.value
-
-                guard !Task.isCancelled else {
-                    return
-                }
-
-                let narrowedCandidates = try await Self.narrowCandidatesByArtwork(
-                    scannedImage: scannedImage,
-                    candidates: candidates,
-                    repository: repository
+                let match = try await Self.resolveScanMatch(
+                    repository: repository,
+                    name: name,
+                    setCode: setCode,
+                    collectorNumber: collectorNumber,
+                    scannedImage: scannedImage
                 )
 
                 guard !Task.isCancelled else {
                     return
                 }
 
-                self.handleLookupResult(
-                    narrowedCandidates,
-                    fallbackName: name,
-                    preferPrintingSelection: candidates.count > 1
-                )
+                self.handleLookupResult(match)
 
             } catch {
 
@@ -258,16 +273,16 @@ final class ScannerViewModel: ObservableObject {
         }
     }
 
-    nonisolated private static func lookupCandidates(
+    nonisolated private static func resolveScanMatch(
         repository: CardRepository,
-        name: String,
+        name: String?,
         setCode: String?,
-        collectorNumber: String?
-    ) throws -> [MTGCard] {
+        collectorNumber: String?,
+        scannedImage: UIImage?
+    ) async throws -> ScanMatch {
 
-        let cleanedName = name.trimmingCharacters(
-            in: .whitespacesAndNewlines
-        )
+        let cleanedName = name?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
 
         let cleanedSet = setCode?
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -282,76 +297,142 @@ final class ScannerViewModel: ObservableObject {
             let cleanedCollector,
             !cleanedCollector.isEmpty,
             let exact = try repository.card(
-                name: cleanedName,
                 set: cleanedSet,
                 collectorNumber: cleanedCollector
             )
         {
-            return [exact]
+            let evidence: ScanEvidence = if let cleanedName, !cleanedName.isEmpty,
+                exact.name.caseInsensitiveCompare(cleanedName) == .orderedSame {
+                .exactNameAndMetadata
+            } else {
+                .exactMetadata
+            }
+
+            return ScanMatch(
+                candidates: [exact],
+                selectedCard: exact,
+                evidence: evidence
+            )
         }
 
-        let results = try repository.search(
-            query: cleanedName,
-            filter: SearchFilter()
+        guard let cleanedName, !cleanedName.isEmpty else {
+            return ScanMatch(
+                candidates: [],
+                selectedCard: nil,
+                evidence: .nameOnly
+            )
+        }
+
+        let candidates = try lookupNameCandidates(
+            repository: repository,
+            name: cleanedName
         )
 
-        let exactNameMatches = results.filter {
-            $0.name.caseInsensitiveCompare(cleanedName) == .orderedSame
+        guard candidates.count > 1, let scannedImage else {
+            return ScanMatch(
+                candidates: candidates,
+                selectedCard: candidates.first,
+                evidence: .nameOnly
+            )
         }
 
-        return exactNameMatches.isEmpty ? results : exactNameMatches
-    }
+        var visualMatch = await VisionFeaturePrintService.shared.confidentVisualMatch(
+            scannedImage: scannedImage,
+            candidates: candidates
+        )
 
-    nonisolated private static func narrowCandidatesByArtwork(
-        scannedImage: UIImage?,
-        candidates: [MTGCard],
-        repository: CardRepository
-    ) async throws -> [MTGCard] {
-
-        guard candidates.count > 1, let scannedImage else {
-            return candidates
+        if visualMatch == nil {
+            visualMatch = await VisionFeaturePrintService.shared.closestVisualMatch(
+                scannedImage: scannedImage,
+                candidates: candidates
+            )
         }
 
         guard
-            let visualMatch = await VisionFeaturePrintService.shared.bestVisualMatch(
-                scannedImage: scannedImage,
-                candidates: candidates
-            ),
-            let illustrationID = visualMatch.illustrationID?
+            let visualMatch,
+            let artworkMatch = try artworkMatch(
+                visualMatch: visualMatch,
+                candidates: candidates,
+                repository: repository
+            )
+        else {
+            return ScanMatch(
+                candidates: candidates,
+                selectedCard: candidates.first,
+                evidence: .nameOnly
+            )
+        }
+
+        return artworkMatch
+    }
+
+    nonisolated private static func artworkMatch(
+        visualMatch: VisionFeaturePrintService.VisualMatch,
+        candidates: [MTGCard],
+        repository: CardRepository
+    ) throws -> ScanMatch? {
+
+        guard
+            let illustrationID = visualMatch.card.illustrationID?
                 .trimmingCharacters(in: .whitespacesAndNewlines),
             !illustrationID.isEmpty
         else {
-            return candidates
+            return nil
         }
 
         let artworkPrintings = try repository.cards(
             illustrationID: illustrationID
         )
         .filter {
-            $0.name.caseInsensitiveCompare(visualMatch.name) == .orderedSame
+            $0.name.caseInsensitiveCompare(visualMatch.card.name) == .orderedSame
+        }
+
+        let narrowedCandidates = artworkPrintings.isEmpty ? [visualMatch.card] : artworkPrintings
+
+        guard narrowedCandidates.count < candidates.count else {
+            return nil
         }
 
         AppLog.debug(
             "[ScannerVM] Artwork narrowed printings:",
             candidates.count,
             "->",
-            artworkPrintings.count,
-            visualMatch.set,
-            visualMatch.collectorNumber
+            narrowedCandidates.count,
+            visualMatch.card.set,
+            visualMatch.card.collectorNumber,
+            "distance:",
+            visualMatch.distance
         )
 
-        return artworkPrintings.isEmpty ? [visualMatch] : artworkPrintings
+        return ScanMatch(
+            candidates: narrowedCandidates,
+            selectedCard: visualMatch.card,
+            evidence: .visualArtwork
+        )
     }
 
-    private func handleLookupResult(
-        _ candidates: [MTGCard],
-        fallbackName: String,
-        preferPrintingSelection: Bool
-    ) {
+    nonisolated private static func lookupNameCandidates(
+        repository: CardRepository,
+        name: String
+    ) throws -> [MTGCard] {
+
+        let results = try repository.search(
+            query: name,
+            filter: SearchFilter()
+        )
+
+        let exactNameMatches = results.filter {
+            $0.name.caseInsensitiveCompare(name) == .orderedSame
+        }
+
+        return exactNameMatches.isEmpty ? results : exactNameMatches
+    }
+
+    private func handleLookupResult(_ match: ScanMatch) {
 
         isLookingUp = false
 
-        guard !candidates.isEmpty else {
+        guard !match.candidates.isEmpty else {
             lastLookupKey = ""
             state = .scanning
             return
@@ -359,10 +440,12 @@ final class ScannerViewModel: ObservableObject {
 
         isScanning = false
 
-        if candidates.count == 1, !preferPrintingSelection {
-            state = .found(candidates[0])
+        if match.shouldShowPrintingSelection {
+            state = .selectPrinting(match.candidates)
+        } else if let selectedCard = match.selectedCard ?? match.candidates.first {
+            state = .found(selectedCard)
         } else {
-            state = .selectPrinting(candidates)
+            state = .scanning
         }
     }
 }

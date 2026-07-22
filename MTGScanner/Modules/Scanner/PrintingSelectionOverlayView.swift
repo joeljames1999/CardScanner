@@ -17,6 +17,7 @@ final class PrintingSelectionOverlayView: UIView {
     // MARK: - Properties
 
     private let printings: [MTGCard]
+    private var filteredPrintings: [MTGCard]
 
     // MARK: - UI
 
@@ -71,6 +72,15 @@ final class PrintingSelectionOverlayView: UIView {
         return button
     }()
 
+    private lazy var searchBar: UISearchBar = {
+        let searchBar = UISearchBar()
+        searchBar.translatesAutoresizingMaskIntoConstraints = false
+        searchBar.placeholder = "Search set or number"
+        searchBar.searchBarStyle = .minimal
+        searchBar.delegate = self
+        return searchBar
+    }()
+
     private lazy var tableView: UITableView = {
         let table = UITableView(
             frame: .zero,
@@ -96,6 +106,7 @@ final class PrintingSelectionOverlayView: UIView {
 
     init(printings: [MTGCard]) {
         self.printings = printings
+        self.filteredPrintings = printings
         super.init(frame: .zero)
 
         setupLayout()
@@ -116,6 +127,7 @@ final class PrintingSelectionOverlayView: UIView {
 
         containerView.addSubview(titleLabel)
         containerView.addSubview(closeButton)
+        containerView.addSubview(searchBar)
         containerView.addSubview(tableView)
 
         NSLayoutConstraint.activate([
@@ -160,9 +172,24 @@ final class PrintingSelectionOverlayView: UIView {
                 constant: -20
             ),
 
-            tableView.topAnchor.constraint(
+            searchBar.topAnchor.constraint(
                 equalTo: titleLabel.bottomAnchor,
-                constant: 16
+                constant: 10
+            ),
+
+            searchBar.leadingAnchor.constraint(
+                equalTo: containerView.leadingAnchor,
+                constant: 8
+            ),
+
+            searchBar.trailingAnchor.constraint(
+                equalTo: containerView.trailingAnchor,
+                constant: -8
+            ),
+
+            tableView.topAnchor.constraint(
+                equalTo: searchBar.bottomAnchor,
+                constant: 6
             ),
 
             tableView.leadingAnchor.constraint(
@@ -203,7 +230,7 @@ UITableViewDataSource {
         _ tableView: UITableView,
         numberOfRowsInSection section: Int
     ) -> Int {
-        printings.count
+        filteredPrintings.count
     }
 
     func tableView(
@@ -217,7 +244,7 @@ UITableViewDataSource {
         ) as! PrintingCell
 
         cell.configure(
-            with: printings[indexPath.row]
+            with: filteredPrintings[indexPath.row]
         )
 
         return cell
@@ -239,7 +266,46 @@ UITableViewDelegate {
             animated: true
         )
 
-        onSelect?(printings[indexPath.row])
+        onSelect?(filteredPrintings[indexPath.row])
+    }
+}
+
+// MARK: - Search
+
+extension PrintingSelectionOverlayView: UISearchBarDelegate {
+
+    func searchBar(
+        _ searchBar: UISearchBar,
+        textDidChange searchText: String
+    ) {
+        applySearch(searchText)
+    }
+
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        searchBar.resignFirstResponder()
+    }
+
+    private func applySearch(_ searchText: String) {
+        let query = searchText
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+
+        guard !query.isEmpty else {
+            filteredPrintings = printings
+            tableView.reloadData()
+            return
+        }
+
+        filteredPrintings = printings.filter { card in
+            card.name.lowercased().contains(query) ||
+            card.set.lowercased().contains(query) ||
+            card.setName.lowercased().contains(query) ||
+            card.collectorNumber.lowercased().contains(query) ||
+            "\(card.set.lowercased()) \(card.collectorNumber.lowercased())".contains(query) ||
+            "\(card.set.lowercased()) #\(card.collectorNumber.lowercased())".contains(query)
+        }
+
+        tableView.reloadData()
     }
 }
 

@@ -41,6 +41,7 @@ enum CardRowMapper {
 
             typeLine: text(statement, Column.typeLine) ?? "",
             oracleText: text(statement, Column.oracleText),
+            flavorText: text(statement, Column.flavorText),
 
             power: text(statement, Column.power),
             toughness: text(statement, Column.toughness),
@@ -113,6 +114,7 @@ private extension CardRowMapper {
         static let releasedAt = 26
         static let language = 27
         static let finishes = 28
+        static let flavorText = 29
     }
 }
 

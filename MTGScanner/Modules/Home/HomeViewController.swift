@@ -144,6 +144,62 @@ final class HomeViewController: UIViewController {
         }
     }
 
+    private let recentEmptyStateView: UIView = {
+        let view = UIView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        view.backgroundColor = .secondarySystemBackground
+        view.layer.cornerRadius = 14
+        view.layer.cornerCurve = .continuous
+        view.isHidden = true
+
+        let iconView = UIImageView(image: UIImage(systemName: "clock.arrow.circlepath"))
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+        iconView.tintColor = .secondaryLabel
+        iconView.contentMode = .scaleAspectFit
+        iconView.preferredSymbolConfiguration = UIImage.SymbolConfiguration(
+            pointSize: 28,
+            weight: .regular
+        )
+
+        let titleLabel = UILabel()
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        titleLabel.text = "No recently viewed cards"
+        titleLabel.font = .systemFont(ofSize: 17, weight: .semibold)
+        titleLabel.textAlignment = .center
+
+        let subtitleLabel = UILabel()
+        subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
+        subtitleLabel.text = "Open a card from search or random card to see it here."
+        subtitleLabel.font = .systemFont(ofSize: 13)
+        subtitleLabel.textColor = .secondaryLabel
+        subtitleLabel.textAlignment = .center
+        subtitleLabel.numberOfLines = 0
+
+        let stack = UIStackView(arrangedSubviews: [
+            iconView,
+            titleLabel,
+            subtitleLabel
+        ])
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        stack.axis = .vertical
+        stack.alignment = .center
+        stack.spacing = 8
+
+        view.addSubview(stack)
+
+        NSLayoutConstraint.activate([
+            iconView.widthAnchor.constraint(equalToConstant: 34),
+            iconView.heightAnchor.constraint(equalToConstant: 34),
+
+            stack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            stack.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            stack.leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: 20),
+            stack.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -20)
+        ])
+
+        return view
+    }()
+
     private lazy var recentCollectionView: UICollectionView = {
         let layout = UICollectionViewFlowLayout()
         layout.scrollDirection = .horizontal
@@ -217,7 +273,8 @@ final class HomeViewController: UIViewController {
             randomCommanderCard,
             lifeCounterCard,
             recentTitleLabel,
-            recentCollectionView
+            recentCollectionView,
+            recentEmptyStateView
         ].forEach {
             $0.translatesAutoresizingMaskIntoConstraints = false
             contentView.addSubview($0)
@@ -267,7 +324,12 @@ final class HomeViewController: UIViewController {
             recentCollectionView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
             recentCollectionView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
             recentCollectionView.heightAnchor.constraint(equalToConstant: 200),
-            recentCollectionView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -40)
+            recentCollectionView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -40),
+
+            recentEmptyStateView.topAnchor.constraint(equalTo: recentCollectionView.topAnchor),
+            recentEmptyStateView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
+            recentEmptyStateView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
+            recentEmptyStateView.heightAnchor.constraint(equalToConstant: 160)
             
         ])
 
@@ -407,6 +469,8 @@ final class HomeViewController: UIViewController {
     private func refreshHomeContent() {
         recentCards = RecentlyViewedStore.shared.cards
         recentCollectionView.reloadData()
+        recentCollectionView.isHidden = recentCards.isEmpty
+        recentEmptyStateView.isHidden = !recentCards.isEmpty
         updateBannerStats()
     }
 

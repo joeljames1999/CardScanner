@@ -35,13 +35,33 @@ extension CardQueries {
     LIMIT 1;
     """
 
+    static let cardBySetAndCollectorNumber = """
+    SELECT *
+    FROM cards
+    WHERE
+        set_code = ? COLLATE NOCASE
+        AND (
+            collector_number = ?
+            OR LTRIM(collector_number, '0') = LTRIM(?, '0')
+        )
+    ORDER BY
+        CASE COALESCE(lang, 'en')
+            WHEN 'en' THEN 0
+            ELSE 1
+        END
+    LIMIT 1;
+    """
+
     static let languagesByPrinting = """
     SELECT DISTINCT COALESCE(lang, 'en')
     FROM cards
     WHERE
         name = ? COLLATE NOCASE
         AND set_code = ? COLLATE NOCASE
-        AND collector_number = ?
+        AND (
+            collector_number = ?
+            OR LTRIM(collector_number, '0') = LTRIM(?, '0')
+        )
     ORDER BY
         CASE COALESCE(lang, 'en')
             WHEN 'en' THEN 0
@@ -87,6 +107,21 @@ extension CardQueries {
     static let searchBase = """
     SELECT *
     FROM cards
+    """
+
+    static let groupedSearchBase = """
+    SELECT *
+    FROM (
+        SELECT
+            cards.*,
+            ROW_NUMBER() OVER (
+                PARTITION BY LOWER(name)
+                ORDER BY
+                    COALESCE(released_at, '') DESC,
+                    set_code COLLATE NOCASE DESC,
+                    collector_number COLLATE NOCASE DESC
+            ) AS grouping_rank
+        FROM cards
     """
 
     static let searchOrder = """
@@ -233,7 +268,8 @@ extension CardQueries {
         card_faces_json,
         released_at,
         lang,
-        finishes
+        finishes,
+        flavor_text
     )
     VALUES
     (
@@ -241,7 +277,7 @@ extension CardQueries {
         ?,?,?,?,?,?,
         ?,?,?,?,?,?,
         ?,?,?,?,?,?,
-        ?,?,?,?,?
+        ?,?,?,?,?,?
     );
     """
 
@@ -321,7 +357,8 @@ extension CardQueries {
         card_faces_json TEXT,
         released_at TEXT,
         lang TEXT,
-        finishes TEXT
+        finishes TEXT,
+        flavor_text TEXT
     );
     """
 

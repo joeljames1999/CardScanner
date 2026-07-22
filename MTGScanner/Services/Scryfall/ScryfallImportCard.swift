@@ -7,6 +7,7 @@ struct ScryfallImportCard: Decodable {
     let cmc: Double?
     let typeLine: String?
     let oracleText: String?
+    let flavorText: String?
     let power: String?
     let toughness: String?
     let rarity: String?
@@ -37,6 +38,7 @@ struct ScryfallImportCard: Decodable {
         case manaCost = "mana_cost"
         case typeLine = "type_line"
         case oracleText = "oracle_text"
+        case flavorText = "flavor_text"
         case setCode = "set"
         case setName = "set_name"
         case collectorNumber = "collector_number"
@@ -60,6 +62,7 @@ struct ScryfallImportCard: Decodable {
         self.cmc = try container.decodeIfPresent(Double.self, forKey: .cmc)
         self.typeLine = try container.decodeIfPresent(String.self, forKey: .typeLine)
         self.oracleText = try container.decodeIfPresent(String.self, forKey: .oracleText)
+        self.flavorText = try container.decodeIfPresent(String.self, forKey: .flavorText)
         self.power = try container.decodeIfPresent(String.self, forKey: .power)
         self.toughness = try container.decodeIfPresent(String.self, forKey: .toughness)
         self.rarity = try container.decodeIfPresent(String.self, forKey: .rarity)

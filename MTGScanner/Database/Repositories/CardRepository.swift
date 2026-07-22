@@ -76,6 +76,18 @@ extension CardRepository {
         )
     }
 
+    func card(
+        set: String,
+        collectorNumber: String
+    ) throws -> MTGCard? {
+
+        try CardLookup.card(
+            set: set,
+            collectorNumber: collectorNumber,
+            database: database
+        )
+    }
+
     func languages(
         name: String,
         set: String,

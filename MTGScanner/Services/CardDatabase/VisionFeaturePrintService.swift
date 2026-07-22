@@ -6,6 +6,12 @@ final class VisionFeaturePrintService {
     static let shared = VisionFeaturePrintService()
     private init() {}
 
+    struct VisualMatch {
+        let card: MTGCard
+        let distance: Float
+        let nextBestDistance: Float?
+    }
+
     private struct CachedFeaturePrints {
         let cropped: VNFeaturePrintObservation?
         let full: VNFeaturePrintObservation?
@@ -35,18 +41,83 @@ final class VisionFeaturePrintService {
         scannedImage: UIImage,
         candidates: [MTGCard]
     ) async -> MTGCard? {
-        await bestVisualMatch(
+        await closestVisualMatch(
             scannedImage: scannedImage,
             candidates: candidates
-        ) ?? candidates.first
+        )?.card ?? candidates.first
     }
 
     /// Returns nil when no cached visual evidence is available.
-    func bestVisualMatch(
+    func closestVisualMatch(
         scannedImage: UIImage,
         candidates: [MTGCard]
-    ) async -> MTGCard? {
-        guard !candidates.isEmpty else { return nil }
+    ) async -> VisualMatch? {
+        let scoredCandidates = await scoredVisualMatches(
+            scannedImage: scannedImage,
+            candidates: candidates
+        )
+
+        guard let winner = scoredCandidates.first else {
+            return nil
+        }
+
+        AppLog.debug(
+            "[Vision] Universal Winner Determined:",
+            winner.card.set,
+            winner.card.collectorNumber,
+            "Confidence Distance Score:",
+            winner.distance
+        )
+
+        return VisualMatch(
+            card: winner.card,
+            distance: winner.distance,
+            nextBestDistance: scoredCandidates.dropFirst().first?.distance
+        )
+    }
+
+    func confidentVisualMatch(
+        scannedImage: UIImage,
+        candidates: [MTGCard]
+    ) async -> VisualMatch? {
+        guard let match = await closestVisualMatch(
+            scannedImage: scannedImage,
+            candidates: candidates
+        ) else {
+            return nil
+        }
+
+        let maximumDistance: Float = 0.35
+        let minimumDistanceGap: Float = 0.05
+        let maximumDistanceRatio: Float = 0.86
+
+        guard match.distance <= maximumDistance else {
+            AppLog.debug("[Vision] Rejecting visual match; distance too high:", match.distance)
+            return nil
+        }
+
+        if let nextBestDistance = match.nextBestDistance {
+            let hasClearGap = nextBestDistance - match.distance >= minimumDistanceGap
+            let hasClearRatio = match.distance / max(nextBestDistance, 0.001) <= maximumDistanceRatio
+
+            guard hasClearGap || hasClearRatio else {
+                AppLog.debug(
+                    "[Vision] Rejecting visual match; runner-up too close:",
+                    match.distance,
+                    nextBestDistance
+                )
+                return nil
+            }
+        }
+
+        return match
+    }
+
+    private func scoredVisualMatches(
+        scannedImage: UIImage,
+        candidates: [MTGCard]
+    ) async -> [(card: MTGCard, distance: Float)] {
+        guard !candidates.isEmpty else { return [] }
 
         let croppedLiveImage = scannedImage.artworkCrop()?.normalizedLandscape() ?? scannedImage
         let fullLiveImage = scannedImage.normalizedLandscape()
@@ -55,7 +126,7 @@ final class VisionFeaturePrintService {
             let livePrintCropped = await generateFeaturePrint(from: croppedLiveImage),
             let livePrintFull = await generateFeaturePrint(from: fullLiveImage)
         else {
-            return nil
+            return []
         }
 
         let cachedPrints = Dictionary(
@@ -81,7 +152,7 @@ final class VisionFeaturePrintService {
         )
 
         guard !cachedPrints.isEmpty else {
-            return nil
+            return []
         }
 
         let scoredCandidates: [(card: MTGCard, distance: Float)] = await withTaskGroup(of: (MTGCard, Float)?.self) { group in
@@ -116,19 +187,7 @@ final class VisionFeaturePrintService {
             return results
         }
 
-        guard let winner = scoredCandidates.min(by: { $0.distance < $1.distance }) else {
-            return nil
-        }
-
-        AppLog.debug(
-            "[Vision] Universal Winner Determined:",
-            winner.card.set,
-            winner.card.collectorNumber,
-            "Confidence Distance Score:",
-            winner.distance
-        )
-
-        return winner.card
+        return scoredCandidates.sorted { $0.distance < $1.distance }
     }
 
 

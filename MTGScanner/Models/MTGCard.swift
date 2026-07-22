@@ -15,6 +15,7 @@ struct MTGCard: Decodable {
 
     let typeLine: String
     let oracleText: String?
+    let flavorText: String?
 
     let power: String?
     let toughness: String?
@@ -60,6 +61,7 @@ struct MTGCard: Decodable {
         let manaCost: String?
         let typeLine: String?
         let oracleText: String?
+        let flavorText: String?
 
         let power: String?
         let toughness: String?
@@ -74,6 +76,7 @@ struct MTGCard: Decodable {
             case manaCost = "mana_cost"
             case typeLine = "type_line"
             case oracleText = "oracle_text"
+            case flavorText = "flavor_text"
 
             case imageUris = "image_uris"
         }
@@ -110,6 +113,7 @@ struct MTGCard: Decodable {
 
         case typeLine = "type_line"
         case oracleText = "oracle_text"
+        case flavorText = "flavor_text"
 
         case setName = "set_name"
         case collectorNumber = "collector_number"

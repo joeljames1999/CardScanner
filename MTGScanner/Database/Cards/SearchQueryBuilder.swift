@@ -20,7 +20,9 @@ enum SearchQueryBuilder {
         filter: SearchFilter
     ) -> SearchQuery {
 
-        var sql = CardQueries.searchBase
+        var sql = filter.groupPrintings
+            ? CardQueries.groupedSearchBase
+            : CardQueries.searchBase
 
         var clauses: [String] = ["COALESCE(lang, 'en') = 'en'"]
         var parameters: [Any] = []
@@ -152,8 +154,14 @@ enum SearchQueryBuilder {
             )
         }
 
-        sql += "\n"
-        sql += CardQueries.searchOrder
+        if filter.groupPrintings {
+            sql += "\n) AS grouped_cards\n"
+            sql += "WHERE grouping_rank = 1\n"
+            sql += CardQueries.searchOrder
+        } else {
+            sql += "\n"
+            sql += CardQueries.searchOrder
+        }
 
         return SearchQuery(
             sql: sql,

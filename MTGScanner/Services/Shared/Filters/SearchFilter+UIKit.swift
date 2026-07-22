@@ -27,17 +27,17 @@ extension SearchFilter.ManaColor {
     var image: UIImage? {
         switch self {
         case .white:
-            return UIImage.whiteManaSymbol
+            return UIImage(named: "mana-w")
         case .blue:
-            return UIImage.blueManaSymbol
+            return UIImage(named: "mana-u")
         case .black:
-            return UIImage.blackManaSymbol
+            return UIImage(named: "mana-b")
         case .red:
-            return UIImage.redManaSymbol
+            return UIImage(named: "mana-r")
         case .green:
-            return UIImage.greenManaSymbol
+            return UIImage(named: "mana-g")
         case .colorless:
-            return UIImage.colourlessManaSymbol
+            return UIImage(named: "mana-c")
         }
     }
 }

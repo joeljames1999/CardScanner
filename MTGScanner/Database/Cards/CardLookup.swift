@@ -194,6 +194,31 @@ enum CardLookup {
         )
     }
 
+    static func card(
+        set: String,
+        collectorNumber: String,
+        database: Database
+    ) throws -> MTGCard? {
+
+        let statement = try database.prepare(
+            CardQueries.cardBySetAndCollectorNumber
+        )
+
+        defer {
+            statement.finalize()
+        }
+
+        try statement.bind(set, at: 1)
+        try statement.bind(collectorNumber, at: 2)
+        try statement.bind(collectorNumber, at: 3)
+
+        guard statement.step() else {
+            return nil
+        }
+
+        return try CardRowMapper.map(statement)
+    }
+
     // MARK: - Languages
 
     static func languages(
@@ -213,6 +238,7 @@ enum CardLookup {
         try statement.bind(name, at: 1)
         try statement.bind(set, at: 2)
         try statement.bind(collectorNumber, at: 3)
+        try statement.bind(collectorNumber, at: 4)
 
         var languages: [String] = []
 
